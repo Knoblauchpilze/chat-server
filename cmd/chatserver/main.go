@@ -6,6 +6,7 @@ import (
 
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/config"
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/logger"
+	"github.com/KnoblauchPilze/backend-toolkit/pkg/rest"
 	"github.com/Knoblauchpilze/chat-server/cmd/chatserver/internal"
 	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 	"github.com/labstack/echo/v4"
@@ -33,11 +34,12 @@ func main() {
 	e.HideBanner = true
 	e.HidePort = true
 
-	e.GET("/", tcp.NewHandler(log))
+	route := rest.ConcatenateEndpoints("/", conf.Server.BasePath)
+	e.GET(route, tcp.NewHandler(log))
 
-	log.Infof("Starting server at \"%v\" on port %v", conf.Server.BasePath, conf.Server.Port)
+	log.Infof("Starting server at \"%v\" on port %v", route, conf.Server.Port)
 
-	address := fmt.Sprintf("%s:%d", conf.Server.BasePath, conf.Server.Port)
+	address := fmt.Sprintf(":%d", conf.Server.Port)
 	err = e.Start(address)
 	if err != nil {
 		log.Errorf("Failure while serving TCP: %v", err)
