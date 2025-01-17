@@ -1,0 +1,5 @@
+Server:
+  Port: 80
+Database:
+  User: user_service_manager
+  Password: comes-from-the-environment
