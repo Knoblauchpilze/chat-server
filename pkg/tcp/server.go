@@ -94,7 +94,7 @@ func (s *serverImpl) initializeListener() error {
 	s.listener, err = net.Listen("tcp", s.address)
 
 	if err != nil {
-		return errors.WrapCode(err, TcpInitializationFailure)
+		return errors.WrapCode(err, ErrTcpInitialization)
 	}
 	return nil
 }
@@ -103,7 +103,18 @@ func (s *serverImpl) shutdown() error {
 	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
 	close(s.quit)
 	err := s.listener.Close()
+
+	func() {
+		defer s.lock.Unlock()
+		s.lock.Lock()
+
+		for _, handler := range s.handlers {
+			handler.Close()
+		}
+	}()
+
 	s.waitForConnections.Wait()
+
 	return err
 }
 
@@ -137,8 +148,9 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	h := newHandler(s.log)
+	h := newHandler(s.shutdownTimeout-1*time.Second, s.log)
 
+	// TODO: We never clean the handler.
 	s.handlers = append(s.handlers, h)
 
 	s.waitForConnections.Add(1)
