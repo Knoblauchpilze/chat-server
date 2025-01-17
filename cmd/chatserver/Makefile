@@ -1,15 +1,15 @@
 
-APPLICATION ?= users
+APPLICATION ?= chat-server
 
 setup:
 	mkdir -p build/bin
-	cp configs/users-template-dev.yml configs/users-dev.yml
+	cp configs/config-template-dev.yml configs/config-dev.yml
 
 release:
 	go build -o build/bin/${APPLICATION} main.go
 
 run: release
-	./build/bin/${APPLICATION} users-dev
+	./build/bin/${APPLICATION} config-dev
 
 clean:
-	rm -rf build configs/users-dev.yml
+	rm -rf build configs/config-dev.yml
