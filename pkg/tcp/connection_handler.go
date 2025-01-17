@@ -25,7 +25,7 @@ func newHandler(log logger.Logger) ConnectionHandler {
 
 func (h *connHandlerImpl) Handle(conn net.Conn) error {
 	// https://github.com/venilnoronha/tcp-echo-server/blob/master/main.go#L43
-	h.log.Infof("Received connection")
+	h.log.Debugf("Received connection from %v", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 	for {
@@ -33,7 +33,7 @@ func (h *connHandlerImpl) Handle(conn net.Conn) error {
 		bytes, err := reader.ReadBytes(byte('\n'))
 		if err != nil {
 			if err == io.EOF {
-				h.log.Warnf("Client disconnected")
+				h.log.Debugf("Client disconnected")
 				return nil
 			}
 

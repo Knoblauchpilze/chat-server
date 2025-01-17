@@ -31,7 +31,7 @@ func main() {
 
 	err = s.Start(context.Background())
 	if err != nil {
-		log.Errorf("Error while serving TCP: %v", err)
+		log.Errorf("Error while serving TCP: %+v", err)
 		os.Exit(1)
 	}
 }
