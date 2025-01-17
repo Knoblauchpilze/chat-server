@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/config"
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/cmd/chatserver/internal"
+	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
+	"github.com/labstack/echo/v4"
 )
 
 func determineConfigName() string {
@@ -25,5 +28,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Infof("Configuration: %+v", conf)
+	// https://github.com/labstack/echo?tab=readme-ov-file#example
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.GET("/", tcp.NewHandler(log))
+
+	log.Infof("Starting server at \"%v\" on port %v", conf.Server.BasePath, conf.Server.Port)
+
+	address := fmt.Sprintf("%s:%d", conf.Server.BasePath, conf.Server.Port)
+	err = e.Start(address)
+	if err != nil {
+		log.Errorf("Failure while serving TCP: %v", err)
+		os.Exit(1)
+	}
 }
