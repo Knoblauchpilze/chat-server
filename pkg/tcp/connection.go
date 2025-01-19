@@ -24,7 +24,7 @@ type connectionImpl struct {
 	readTimeout time.Duration
 }
 
-func newConnection(conn net.Conn) Connection {
+func Wrap(conn net.Conn) Connection {
 	return newConnectionWithOptions(conn, connectionOptions{})
 }
 
