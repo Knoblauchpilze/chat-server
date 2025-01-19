@@ -52,7 +52,7 @@ func (c *connectionImpl) Read() ([]byte, error) {
 	if err == io.EOF {
 		return nil, errors.NewCode(ErrClientDisconnected)
 	} else if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-		return bytes, nil
+		return bytes, errors.NewCode(ErrReadTimeout)
 	}
 
 	return nil, err
