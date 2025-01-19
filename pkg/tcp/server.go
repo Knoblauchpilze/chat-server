@@ -148,7 +148,7 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 	opts := ConnectionHandlerOptions{
 		ReadTimeout: s.shutdownTimeout - 1*time.Second,
 	}
-	closer, _ := HandleConnection(conn, opts)
+	closer := HandleConnection(conn, opts)
 
 	// TODO: We never clean the handler.
 	s.closers = append(s.closers, closer)

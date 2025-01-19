@@ -11,11 +11,9 @@ func TestUnit_HandleConnection_StartStop(t *testing.T) {
 	client, server := newTestConnection()
 	opts := ConnectionHandlerOptions{}
 
-	close, err := HandleConnection(client, opts)
+	close := HandleConnection(client, opts)
 	server.Close()
 	close()
-
-	assert.Nil(t, err)
 }
 
 func TestUnit_HandleConnection_StartStop_WithTimeout(t *testing.T) {
@@ -24,10 +22,9 @@ func TestUnit_HandleConnection_StartStop_WithTimeout(t *testing.T) {
 		ReadTimeout: 100 * time.Millisecond,
 	}
 
-	close, err := HandleConnection(client, opts)
+	close := HandleConnection(client, opts)
 	close()
 
-	assert.Nil(t, err)
 }
 
 func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
@@ -35,10 +32,9 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	var actual []byte
 	var called int
 
-	read := func(data []byte) error {
+	read := func(data []byte) {
 		called++
 		actual = data
-		return nil
 	}
 
 	opts := ConnectionHandlerOptions{
@@ -49,13 +45,12 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	}
 
 	asyncWriteDataToConnectionWithDelay(t, client, 150*time.Millisecond)
-	close, err := HandleConnection(server, opts)
+	close := HandleConnection(server, opts)
 	// Sleep long enough to allow the write to happen and the next read
 	// to be triggered
 	time.Sleep(300 * time.Millisecond)
 	close()
 
-	assert.Nil(t, err)
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actual)
 }
@@ -64,9 +59,8 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 	client, server := newTestConnection()
 	var called int
 
-	disconnect := func() error {
+	disconnect := func() {
 		called++
-		return nil
 	}
 
 	opts := ConnectionHandlerOptions{
@@ -76,11 +70,10 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 		},
 	}
 
-	close, err := HandleConnection(server, opts)
+	close := HandleConnection(server, opts)
 	client.Close()
 	close()
 
-	assert.Nil(t, err)
 	assert.Equal(t, 1, called)
 }
 
@@ -89,10 +82,9 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	var called int
 	var actual []byte
 
-	read := func(data []byte) error {
+	read := func(data []byte) {
 		called++
 		actual = data
-		return nil
 	}
 
 	opts := ConnectionHandlerOptions{
@@ -103,10 +95,9 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	}
 
 	asyncWriteDataToConnection(t, client)
-	close, err := HandleConnection(server, opts)
+	close := HandleConnection(server, opts)
 	close()
 
-	assert.Nil(t, err)
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actual)
 }

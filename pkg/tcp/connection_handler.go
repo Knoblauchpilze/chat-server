@@ -15,7 +15,7 @@ type ConnectionHandlerOptions struct {
 
 type ConnectionCloser func()
 
-func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) (closer ConnectionCloser, err error) {
+func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCloser {
 	connOpts := connectionOptions{
 		ReadTimeout: opts.ReadTimeout,
 	}
@@ -25,7 +25,7 @@ func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) (closer Conn
 	wg.Add(1)
 
 	quit := make(chan interface{})
-	closer = func() {
+	closer := func() {
 		close(quit)
 		wg.Wait()
 	}
@@ -35,16 +35,14 @@ func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) (closer Conn
 		defer wg.Done()
 
 		running := true
-		var data []byte
-		var handleErr error
 
 		for running {
-			data, err = tcpConn.Read()
+			data, err := tcpConn.Read()
 
 			if err == nil {
-				handleErr = opts.Callbacks.OnReadData(data)
+				opts.Callbacks.OnReadData(data)
 			} else if errors.IsErrorWithCode(err, ErrClientDisconnected) {
-				handleErr = opts.Callbacks.OnDisconnect()
+				opts.Callbacks.OnDisconnect()
 			} else if errors.IsErrorWithCode(err, ErrReadTimeout) {
 				select {
 				case <-quit:
@@ -53,16 +51,14 @@ func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) (closer Conn
 				}
 				err = nil
 			} else {
-				handleErr = opts.Callbacks.OnReadError(err)
+				opts.Callbacks.OnReadError(err)
 			}
 
 			if err != nil {
 				running = false
 			}
 		}
-
-		err = handleErr
 	}()
 
-	return
+	return closer
 }
