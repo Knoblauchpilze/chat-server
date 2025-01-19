@@ -1,8 +1,8 @@
 package tcp
 
-type OnDisconnect func() error
-type OnReadError func(err error) error
-type OnReadData func(data []byte) error
+type OnDisconnect func()
+type OnReadError func(err error)
+type OnReadData func(data []byte)
 
 type ConnectionCallbacks struct {
 	DisconnectCallback OnDisconnect
@@ -10,26 +10,26 @@ type ConnectionCallbacks struct {
 	ReadDataCallback   OnReadData
 }
 
-func (c ConnectionCallbacks) OnDisconnect() error {
+func (c ConnectionCallbacks) OnDisconnect() {
 	if c.DisconnectCallback == nil {
-		return nil
+		return
 	}
 
-	return c.DisconnectCallback()
+	c.DisconnectCallback()
 }
 
-func (c ConnectionCallbacks) OnReadError(err error) error {
+func (c ConnectionCallbacks) OnReadError(err error) {
 	if c.ReadErrorCallback == nil {
-		return nil
+		return
 	}
 
-	return c.ReadErrorCallback(err)
+	c.ReadErrorCallback(err)
 }
 
-func (c ConnectionCallbacks) OnReadData(data []byte) error {
+func (c ConnectionCallbacks) OnReadData(data []byte) {
 	if c.ReadDataCallback == nil {
-		return nil
+		return
 	}
 
-	return c.ReadDataCallback(data)
+	c.ReadDataCallback(data)
 }
