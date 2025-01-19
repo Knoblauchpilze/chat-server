@@ -36,7 +36,7 @@ func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *test
 
 	actual, err := conn.Read()
 
-	assert.Nil(t, err)
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 	assert.Equal(t, []byte{}, actual)
 }
 
@@ -50,7 +50,7 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 
 	wg, writeErr := asyncWriteDataToConnectionWithDelay(t, client, 1*time.Second)
 	firstRead, err := conn.Read()
-	assert.Nil(t, err)
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 
 	secondRead, err := conn.Read()
 	assert.Nil(t, err)
