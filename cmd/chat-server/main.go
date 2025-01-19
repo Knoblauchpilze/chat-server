@@ -6,7 +6,7 @@ import (
 
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/config"
 	"github.com/KnoblauchPilze/backend-toolkit/pkg/logger"
-	"github.com/Knoblauchpilze/chat-server/cmd/chatserver/internal"
+	"github.com/Knoblauchpilze/chat-server/cmd/chat-server/internal"
 	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
 
