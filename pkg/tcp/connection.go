@@ -59,5 +59,11 @@ func (c *connectionImpl) Read() ([]byte, error) {
 }
 
 func (c *connectionImpl) Write(data []byte) (int, error) {
-	return c.conn.Write(data)
+	n, err := c.conn.Write(data)
+
+	if err == io.ErrClosedPipe {
+		return n, errors.NewCode(ErrClientDisconnected)
+	}
+
+	return n, err
 }

@@ -88,6 +88,18 @@ func TestUnit_Connection_Write(t *testing.T) {
 	assert.Equal(t, sampleData, actual.data[:actual.size])
 }
 
+func TestUnit_Connection_Write_WhenDisconnect_ReturnsExplicitError(t *testing.T) {
+	client, server := newTestConnection()
+	conn := Wrap(server)
+
+	err := client.Close()
+	assert.Nil(t, err)
+	actual, err := conn.Write(sampleData)
+
+	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
+	assert.Equal(t, 0, actual)
+}
+
 func newTestConnection() (client net.Conn, server net.Conn) {
 	return net.Pipe()
 }
