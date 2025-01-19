@@ -16,7 +16,7 @@ var sampleData = []byte("hello\n")
 
 func TestUnit_Connection_Read(t *testing.T) {
 	client, server := newTestConnection()
-	conn := newConnection(server)
+	conn := Wrap(server)
 
 	wg, writeErr := asyncWriteDataToConnection(t, client)
 	actual, err := conn.Read()
@@ -64,7 +64,7 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 
 func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) {
 	client, server := newTestConnection()
-	conn := newConnection(server)
+	conn := Wrap(server)
 
 	err := client.Close()
 	assert.Nil(t, err)
@@ -76,7 +76,7 @@ func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) 
 
 func TestUnit_Connection_Write(t *testing.T) {
 	client, server := newTestConnection()
-	conn := newConnection(server)
+	conn := Wrap(server)
 
 	wg, actual := asyncReadDataFromConnection(client)
 	sizeWritten, err := conn.Write(sampleData)
