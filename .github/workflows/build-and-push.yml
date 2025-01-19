@@ -1,0 +1,113 @@
+name: Build services
+
+on:
+  push:
+    paths:
+      - "go.mod"
+      - ".github/workflows/**"
+      - "build/**"
+      - "pkg/**"
+      - "internal/**"
+      - "cmd/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-test-names:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect tests not matching naming pattern
+        id: matching
+        # https://unix.stackexchange.com/questions/330660/preventing-grep-from-causing-premature-termination-of-bash-e-script
+        run: |
+          grep -rh 'func Test' --include *_test.go > all_tests.txt
+          sed -i 's/func //g' all_tests.txt
+          cat all_tests.txt | cut -d'(' -f1 > test_names.txt
+          grep -v TestMain test_names.txt > test_without_main.txt
+          grep -vE '^Test(Unit|IT|)_' test_without_main.txt > not_matching.txt || [[ $? == 1 ]]
+          FAILURES=$(wc -l < not_matching.txt)
+          if [[ ${FAILURES} -ne 0 ]]; then
+            echo 'failed=true' >> $GITHUB_OUTPUT
+          fi
+      - name: Fail if some do not match
+        if: ${{ steps.matching.outputs.failed == 'true' }}
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#example-setting-an-error-message
+        run: |
+          echo "::error ::Detected at least one test not matching the naming convention!"
+          exit 1
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: [check-test-names]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+      - name: Run tests with coverage
+        run: go test -run='^TestUnit_.*' ./... -coverpkg=./... -race -covermode=atomic -coverprofile=coverage.out
+      - name: Upload coverage to Codecov
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ./coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  extract-service-tag:
+    runs-on: ubuntu-latest
+    # https://docs.github.com/en/actions/using-jobs/defining-outputs-for-jobs
+    outputs:
+      version: ${{ steps.service-version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract git commit hash
+        id: service-version
+        # https://stackoverflow.com/questions/58886293/getting-current-branch-and-commit-hash-in-github-action
+        run: echo "tag=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
+
+  build-and-push-docker-image:
+    runs-on: ubuntu-latest
+    needs: [extract-service-tag, tests, it-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-docker-hub
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./build/chat-server/Dockerfile
+          build-args: GIT_COMMIT_HASH=${{ needs.extract-service-tag.outputs.version }}
+          push: ${{ github.actor != 'dependabot[bot]' }}
+          tags: totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
+
+  update-deployment:
+    runs-on: ubuntu-latest
+    needs: [extract-service-tag, build-and-push-docker-image]
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: "Knoblauchpilze/ec2-deployment"
+          # https://stackoverflow.com/questions/64374179/how-to-push-to-another-repository-in-github-actions
+          token: ${{ secrets.DEPLOYMENT_TOKEN }}
+      - name: Update service tag
+        run: |
+          echo "${{ needs.extract-service-tag.outputs.version }}" > ./build/chat-server/version.txt
+      - name: "Commit changes"
+        run: |
+          git pull
+          git config --global user.name 'totocorpbot'
+          git config --global user.email 'totocorpbot@users.noreply.github.com'
+          git commit -am "infra: Bumped chat-server version to ${{ needs.extract-service-tag.outputs.version }}"
+          git push
