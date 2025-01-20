@@ -14,7 +14,7 @@ type Connection interface {
 	Write(b []byte) (int, error)
 }
 
-type connectionOptions struct {
+type ConnectionOptions struct {
 	ReadTimeout time.Duration
 }
 
@@ -25,10 +25,10 @@ type connectionImpl struct {
 }
 
 func Wrap(conn net.Conn) Connection {
-	return newConnectionWithOptions(conn, connectionOptions{})
+	return WithOptions(conn, ConnectionOptions{})
 }
 
-func newConnectionWithOptions(conn net.Conn, options connectionOptions) Connection {
+func WithOptions(conn net.Conn, options ConnectionOptions) Connection {
 	c := &connectionImpl{
 		conn:        conn,
 		reader:      bufio.NewReader(conn),
