@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	var actual []byte
 	var called int
 
-	read := func(data []byte) {
+	read := func(id uuid.UUID, data []byte) {
 		called++
 		actual = data
 	}
@@ -59,7 +60,7 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 	client, server := newTestConnection()
 	var called int
 
-	disconnect := func() {
+	disconnect := func(id uuid.UUID) {
 		called++
 	}
 
@@ -82,7 +83,7 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	var called int
 	var actual []byte
 
-	read := func(data []byte) {
+	read := func(id uuid.UUID, data []byte) {
 		called++
 		actual = data
 	}

@@ -7,9 +7,11 @@ import (
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/google/uuid"
 )
 
 type ConnectionHandlerOptions struct {
+	Id          uuid.UUID
 	ReadTimeout time.Duration
 	Callbacks   ConnectionCallbacks
 }
@@ -42,7 +44,7 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 			var err error
 
 			readPanic := errors.SafeRun(func() {
-				timeout, err = readFromConnection(tcpConn, opts.Callbacks)
+				timeout, err = readFromConnection(opts.Id, tcpConn, opts.Callbacks)
 			})
 
 			if timeout {
@@ -54,7 +56,7 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 			}
 
 			if readPanic != nil {
-				opts.Callbacks.OnPanic(readPanic)
+				opts.Callbacks.OnPanic(opts.Id, readPanic)
 			}
 
 			if err != nil {
@@ -66,19 +68,19 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 	return closer
 }
 
-func readFromConnection(conn Connection, callbacks ConnectionCallbacks) (timeout bool, err error) {
+func readFromConnection(id uuid.UUID, conn Connection, callbacks ConnectionCallbacks) (timeout bool, err error) {
 	var data []byte
 	data, err = conn.Read()
 
 	if err == nil {
-		callbacks.OnReadData(data)
+		callbacks.OnReadData(id, data)
 	} else if bterr.IsErrorWithCode(err, ErrClientDisconnected) {
-		callbacks.OnDisconnect()
+		callbacks.OnDisconnect(id)
 	} else if bterr.IsErrorWithCode(err, ErrReadTimeout) {
 		timeout = true
 		err = nil
 	} else {
-		callbacks.OnReadError(err)
+		callbacks.OnReadError(id, err)
 	}
 
 	return
