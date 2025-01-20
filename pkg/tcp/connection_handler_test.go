@@ -11,7 +11,7 @@ func TestUnit_HandleConnection_StartStop(t *testing.T) {
 	client, server := newTestConnection()
 	opts := ConnectionHandlerOptions{}
 
-	close := HandleConnection(client, opts)
+	close := handleConnection(client, opts)
 	server.Close()
 	close()
 }
@@ -22,7 +22,7 @@ func TestUnit_HandleConnection_StartStop_WithTimeout(t *testing.T) {
 		ReadTimeout: 100 * time.Millisecond,
 	}
 
-	close := HandleConnection(client, opts)
+	close := handleConnection(client, opts)
 	close()
 
 }
@@ -45,7 +45,7 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	}
 
 	asyncWriteDataToConnectionWithDelay(t, client, 150*time.Millisecond)
-	close := HandleConnection(server, opts)
+	close := handleConnection(server, opts)
 	// Sleep long enough to allow the write to happen and the next read
 	// to be triggered
 	time.Sleep(300 * time.Millisecond)
@@ -70,7 +70,7 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 		},
 	}
 
-	close := HandleConnection(server, opts)
+	close := handleConnection(server, opts)
 	client.Close()
 	close()
 
@@ -95,7 +95,7 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	}
 
 	asyncWriteDataToConnection(t, client)
-	close := HandleConnection(server, opts)
+	close := handleConnection(server, opts)
 	close()
 
 	assert.Equal(t, 1, called)

@@ -15,7 +15,7 @@ type ConnectionHandlerOptions struct {
 
 type ConnectionCloser func()
 
-func HandleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCloser {
+func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCloser {
 	connOpts := connectionOptions{
 		ReadTimeout: opts.ReadTimeout,
 	}
