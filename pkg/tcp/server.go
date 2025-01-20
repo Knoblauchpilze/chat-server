@@ -20,9 +20,8 @@ type Server interface {
 }
 
 type serverImpl struct {
-	basePath string
-	port     uint16
-	address  string
+	port    uint16
+	address string
 
 	log logger.Logger
 
@@ -36,8 +35,7 @@ type serverImpl struct {
 
 func NewServer(config server.Config, log logger.Logger) Server {
 	return &serverImpl{
-		basePath: config.BasePath,
-		port:     config.Port,
+		port: config.Port,
 
 		log: log,
 
