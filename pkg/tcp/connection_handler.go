@@ -5,7 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
+	bterr "github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 )
 
 type ConnectionHandlerOptions struct {
@@ -37,7 +38,12 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 		running := true
 
 		for running {
-			timeout, err := readFromConnection(tcpConn, opts.Callbacks)
+			var timeout bool
+			var err error
+
+			readPanic := errors.SafeRun(func() {
+				timeout, err = readFromConnection(tcpConn, opts.Callbacks)
+			})
 
 			if timeout {
 				select {
@@ -45,6 +51,10 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 					running = false
 				default:
 				}
+			}
+
+			if readPanic != nil {
+				opts.Callbacks.OnPanic(readPanic)
 			}
 
 			if err != nil {
@@ -62,9 +72,9 @@ func readFromConnection(conn Connection, callbacks ConnectionCallbacks) (timeout
 
 	if err == nil {
 		callbacks.OnReadData(data)
-	} else if errors.IsErrorWithCode(err, ErrClientDisconnected) {
+	} else if bterr.IsErrorWithCode(err, ErrClientDisconnected) {
 		callbacks.OnDisconnect()
-	} else if errors.IsErrorWithCode(err, ErrReadTimeout) {
+	} else if bterr.IsErrorWithCode(err, ErrReadTimeout) {
 		timeout = true
 		err = nil
 	} else {
