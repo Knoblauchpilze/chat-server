@@ -3,7 +3,7 @@ package internal
 import (
 	"time"
 
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/server"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 )
 
 type Configuration struct {

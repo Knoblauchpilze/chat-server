@@ -1,6 +1,6 @@
 package tcp
 
-import "github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
+import "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 
 const (
 	ErrTcpInitialization  errors.ErrorCode = 100

@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/config"
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/config"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/cmd/chat-server/internal"
 	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
