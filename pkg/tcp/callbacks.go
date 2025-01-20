@@ -2,11 +2,13 @@ package tcp
 
 type OnDisconnect func()
 type OnReadError func(err error)
+type OnPanic func(err error)
 type OnReadData func(data []byte)
 
 type ConnectionCallbacks struct {
 	DisconnectCallback OnDisconnect
 	ReadErrorCallback  OnReadError
+	PanicCallback      OnPanic
 	ReadDataCallback   OnReadData
 }
 
@@ -24,6 +26,14 @@ func (c ConnectionCallbacks) OnReadError(err error) {
 	}
 
 	c.ReadErrorCallback(err)
+}
+
+func (c ConnectionCallbacks) OnPanic(err error) {
+	if c.PanicCallback == nil {
+		return
+	}
+
+	c.PanicCallback(err)
 }
 
 func (c ConnectionCallbacks) OnReadData(data []byte) {
