@@ -19,10 +19,10 @@ type ConnectionHandlerOptions struct {
 type ConnectionCloser func()
 
 func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCloser {
-	connOpts := connectionOptions{
+	connOpts := ConnectionOptions{
 		ReadTimeout: opts.ReadTimeout,
 	}
-	tcpConn := newConnectionWithOptions(conn, connOpts)
+	tcpConn := WithOptions(conn, connOpts)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
