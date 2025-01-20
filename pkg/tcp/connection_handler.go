@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	bterr "github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
+	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 )
 

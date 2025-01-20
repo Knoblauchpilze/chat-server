@@ -3,7 +3,7 @@ package errors
 import (
 	"fmt"
 
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 )
 
 type Process func()

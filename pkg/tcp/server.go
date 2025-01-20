@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/errors"
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/logger"
-	"github.com/KnoblauchPilze/backend-toolkit/pkg/server"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 )
 
 type Server interface {
