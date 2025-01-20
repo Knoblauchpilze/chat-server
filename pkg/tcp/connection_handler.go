@@ -37,21 +37,14 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 		running := true
 
 		for running {
-			data, err := tcpConn.Read()
+			timeout, err := readFromConnection(tcpConn, opts.Callbacks)
 
-			if err == nil {
-				opts.Callbacks.OnReadData(data)
-			} else if errors.IsErrorWithCode(err, ErrClientDisconnected) {
-				opts.Callbacks.OnDisconnect()
-			} else if errors.IsErrorWithCode(err, ErrReadTimeout) {
+			if timeout {
 				select {
 				case <-quit:
 					running = false
 				default:
 				}
-				err = nil
-			} else {
-				opts.Callbacks.OnReadError(err)
 			}
 
 			if err != nil {
@@ -61,4 +54,22 @@ func handleConnection(conn net.Conn, opts ConnectionHandlerOptions) ConnectionCl
 	}()
 
 	return closer
+}
+
+func readFromConnection(conn Connection, callbacks ConnectionCallbacks) (timeout bool, err error) {
+	var data []byte
+	data, err = conn.Read()
+
+	if err == nil {
+		callbacks.OnReadData(data)
+	} else if errors.IsErrorWithCode(err, ErrClientDisconnected) {
+		callbacks.OnDisconnect()
+	} else if errors.IsErrorWithCode(err, ErrReadTimeout) {
+		timeout = true
+		err = nil
+	} else {
+		callbacks.OnReadError(err)
+	}
+
+	return
 }
