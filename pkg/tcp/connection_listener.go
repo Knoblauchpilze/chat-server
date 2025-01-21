@@ -11,7 +11,6 @@ import (
 )
 
 type ConnectionListenerOptions struct {
-	Id          uuid.UUID
 	ReadTimeout time.Duration
 	Callbacks   ConnectionCallbacks
 }
