@@ -29,8 +29,8 @@ type serverImpl struct {
 	shutdownTimeout time.Duration
 	quit            chan interface{}
 
-	lock    sync.Mutex
-	closers []ConnectionCloser
+	lock        sync.Mutex
+	connections []ConnectionListener
 }
 
 func NewServer(config server.Config, log logger.Logger) Server {
@@ -105,8 +105,8 @@ func (s *serverImpl) shutdown() error {
 		defer s.lock.Unlock()
 		s.lock.Lock()
 
-		for _, closer := range s.closers {
-			closer()
+		for _, conn := range s.connections {
+			conn.Close()
 		}
 	}()
 
@@ -143,11 +143,12 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	opts := ConnectionHandlerOptions{
+	opts := ConnectionListenerOptions{
 		ReadTimeout: s.shutdownTimeout - 1*time.Second,
 	}
-	closer := handleConnection(conn, opts)
+	listener := newListener(conn, opts)
+	listener.StartListening()
 
 	// TODO: We never clean the handler.
-	s.closers = append(s.closers, closer)
+	s.connections = append(s.connections, listener)
 }

@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -8,24 +9,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnit_HandleConnection_StartStop(t *testing.T) {
+func TestUnit_ConnectionListener_StartStop(t *testing.T) {
 	client, server := newTestConnection()
-	opts := ConnectionHandlerOptions{}
+	opts := ConnectionListenerOptions{}
 
-	close := handleConnection(client, opts)
+	listener := createAndStartListener(client, opts)
 	server.Close()
-	close()
+	listener.Close()
 }
 
 func TestUnit_HandleConnection_StartStop_WithTimeout(t *testing.T) {
 	client, _ := newTestConnection()
-	opts := ConnectionHandlerOptions{
+	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 	}
 
-	close := handleConnection(client, opts)
-	close()
-
+	listener := createAndStartListener(client, opts)
+	listener.Close()
 }
 
 func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
@@ -38,7 +38,7 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 		actual = data
 	}
 
-	opts := ConnectionHandlerOptions{
+	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
 			ReadDataCallback: read,
@@ -46,11 +46,11 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	}
 
 	asyncWriteDataToConnectionWithDelay(t, client, 150*time.Millisecond)
-	close := handleConnection(server, opts)
+	listener := createAndStartListener(server, opts)
 	// Sleep long enough to allow the write to happen and the next read
 	// to be triggered
 	time.Sleep(300 * time.Millisecond)
-	close()
+	listener.Close()
 
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actual)
@@ -64,16 +64,16 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 		called++
 	}
 
-	opts := ConnectionHandlerOptions{
+	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
 			DisconnectCallback: disconnect,
 		},
 	}
 
-	close := handleConnection(server, opts)
+	listener := createAndStartListener(server, opts)
 	client.Close()
-	close()
+	listener.Close()
 
 	assert.Equal(t, 1, called)
 }
@@ -88,7 +88,7 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 		actual = data
 	}
 
-	opts := ConnectionHandlerOptions{
+	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
 			ReadDataCallback: read,
@@ -96,9 +96,15 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	}
 
 	asyncWriteDataToConnection(t, client)
-	close := handleConnection(server, opts)
-	close()
+	listener := createAndStartListener(server, opts)
+	listener.Close()
 
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actual)
+}
+
+func createAndStartListener(conn net.Conn, opts ConnectionListenerOptions) ConnectionListener {
+	listener := newListener(conn, opts)
+	listener.StartListening()
+	return listener
 }
