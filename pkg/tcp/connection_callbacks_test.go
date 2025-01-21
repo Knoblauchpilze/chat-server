@@ -11,7 +11,7 @@ import (
 var errSample = fmt.Errorf("some error")
 var sampleUuid = uuid.New()
 
-func TestUnit_Callbacks_OnDisconnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
+func TestUnit_ConnectionCallbacks_OnDisconnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks ConnectionCallbacks
 
 	callback := func() {
@@ -20,7 +20,7 @@ func TestUnit_Callbacks_OnDisconnect_WhenUnset_ExpectNoFatalFailure(t *testing.T
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_Callbacks_OnReadError_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
+func TestUnit_ConnectionCallbacks_OnReadError_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks ConnectionCallbacks
 
 	callback := func() {
@@ -29,7 +29,7 @@ func TestUnit_Callbacks_OnReadError_WhenUnset_ExpectNoFatalFailure(t *testing.T)
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_Callbacks_OnPanic_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
+func TestUnit_ConnectionCallbacks_OnPanic_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks ConnectionCallbacks
 
 	callback := func() {
@@ -38,7 +38,7 @@ func TestUnit_Callbacks_OnPanic_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_Callbacks_OnReadData_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
+func TestUnit_ConnectionCallbacks_OnReadData_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks ConnectionCallbacks
 
 	callback := func() {
