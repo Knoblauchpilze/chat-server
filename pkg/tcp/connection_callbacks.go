@@ -8,40 +8,32 @@ type OnPanic func(id uuid.UUID, err error)
 type OnReadData func(id uuid.UUID, data []byte)
 
 type ConnectionCallbacks struct {
-	DisconnectCallback OnDisconnect
-	ReadErrorCallback  OnReadError
-	PanicCallback      OnPanic
-	ReadDataCallback   OnReadData
+	DisconnectCallbacks []OnDisconnect
+	ReadErrorCallbacks  []OnReadError
+	PanicCallbacks      []OnPanic
+	ReadDataCallbacks   []OnReadData
 }
 
 func (c ConnectionCallbacks) OnDisconnect(id uuid.UUID) {
-	if c.DisconnectCallback == nil {
-		return
+	for _, callback := range c.DisconnectCallbacks {
+		callback(id)
 	}
-
-	c.DisconnectCallback(id)
 }
 
 func (c ConnectionCallbacks) OnReadError(id uuid.UUID, err error) {
-	if c.ReadErrorCallback == nil {
-		return
+	for _, callback := range c.ReadErrorCallbacks {
+		callback(id, err)
 	}
-
-	c.ReadErrorCallback(id, err)
 }
 
 func (c ConnectionCallbacks) OnPanic(id uuid.UUID, err error) {
-	if c.PanicCallback == nil {
-		return
+	for _, callback := range c.PanicCallbacks {
+		callback(id, err)
 	}
-
-	c.PanicCallback(id, err)
 }
 
 func (c ConnectionCallbacks) OnReadData(id uuid.UUID, data []byte) {
-	if c.ReadDataCallback == nil {
-		return
+	for _, callback := range c.ReadDataCallbacks {
+		callback(id, data)
 	}
-
-	c.ReadDataCallback(id, data)
 }

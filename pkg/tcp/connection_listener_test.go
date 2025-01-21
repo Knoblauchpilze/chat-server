@@ -41,7 +41,7 @@ func TestUnit_HandleConnection_AcceptsDataComingAfterReadTimeout(t *testing.T) {
 	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
-			ReadDataCallback: read,
+			ReadDataCallbacks: []OnReadData{read},
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestUnit_HandleConnection_CallsDisconnectCallback(t *testing.T) {
 	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
-			DisconnectCallback: disconnect,
+			DisconnectCallbacks: []OnDisconnect{disconnect},
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestUnit_HandleConnection_CallsReadDataCallback(t *testing.T) {
 	opts := ConnectionListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: ConnectionCallbacks{
-			ReadDataCallback: read,
+			ReadDataCallbacks: []OnReadData{read},
 		},
 	}
 
