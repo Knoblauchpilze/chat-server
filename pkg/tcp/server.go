@@ -10,9 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
+	"github.com/google/uuid"
 )
 
 type Server interface {
@@ -20,8 +21,7 @@ type Server interface {
 }
 
 type serverImpl struct {
-	port    uint16
-	address string
+	port uint16
 
 	log logger.Logger
 
@@ -30,7 +30,7 @@ type serverImpl struct {
 	quit            chan interface{}
 
 	lock        sync.Mutex
-	connections []ConnectionListener
+	connections map[uuid.UUID]ConnectionListener
 }
 
 func NewServer(config server.Config, log logger.Logger) Server {
@@ -41,6 +41,8 @@ func NewServer(config server.Config, log logger.Logger) Server {
 
 		shutdownTimeout: config.ShutdownTimeout,
 		quit:            make(chan interface{}),
+
+		connections: make(map[uuid.UUID]ConnectionListener),
 	}
 }
 
@@ -58,9 +60,9 @@ func (s *serverImpl) Start(ctx context.Context) error {
 	var runError error
 
 	go func() {
-		s.log.Infof("Starting server at %s", s.address)
+		s.log.Infof("Starting server")
 		err := s.acceptLoop()
-		s.log.Infof("Server at %s is shutting down", s.address)
+		s.log.Infof("Server is shutting down")
 
 		if err != nil {
 			runError = err
@@ -80,19 +82,22 @@ func (s *serverImpl) Start(ctx context.Context) error {
 		return runError
 	}
 
-	s.log.Infof("Server at %s gracefully shutdown", s.address)
+	s.log.Infof("Server gracefully shutdown")
 	return nil
 }
 
 func (s *serverImpl) initializeListener() error {
 	var err error
 
-	s.address = fmt.Sprintf(":%d", s.port)
-	s.listener, err = net.Listen("tcp", s.address)
+	address := fmt.Sprintf(":%d", s.port)
+	s.listener, err = net.Listen("tcp", address)
 
 	if err != nil {
-		return errors.WrapCode(err, ErrTcpInitialization)
+		return bterr.WrapCode(err, ErrTcpInitialization)
 	}
+
+	s.log.Infof("Server will be listening at %s", address)
+
 	return nil
 }
 
@@ -100,17 +105,19 @@ func (s *serverImpl) shutdown() error {
 	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
 	close(s.quit)
 	err := s.listener.Close()
-
-	func() {
-		defer s.lock.Unlock()
-		s.lock.Lock()
-
-		for _, conn := range s.connections {
-			conn.Close()
-		}
-	}()
-
+	s.closeAllConnections()
 	return err
+}
+
+func (s *serverImpl) closeAllConnections() {
+	defer s.lock.Unlock()
+	s.lock.Lock()
+
+	for _, conn := range s.connections {
+		conn.Close()
+	}
+
+	clear(s.connections)
 }
 
 func (s *serverImpl) acceptLoop() error {
@@ -145,10 +152,27 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 
 	opts := ConnectionListenerOptions{
 		ReadTimeout: s.shutdownTimeout - 1*time.Second,
+		Callbacks: ConnectionCallbacks{
+			DisconnectCallbacks: []OnDisconnect{
+				func(id uuid.UUID) {
+					s.handleConnectionRemoval(id)
+				},
+			},
+			PanicCallbacks: []OnPanic{
+				func(id uuid.UUID, err error) {
+					s.handleConnectionRemoval(id)
+				},
+			},
+		},
 	}
 	listener := newListener(conn, opts)
-	listener.StartListening()
+	s.connections[listener.Id()] = listener
 
-	// TODO: We never clean the handler.
-	s.connections = append(s.connections, listener)
+	s.log.Debugf("Registered connection %v", listener.Id())
+	listener.StartListening()
+}
+
+func (s *serverImpl) handleConnectionRemoval(id uuid.UUID) {
+	delete(s.connections, id)
+	s.log.Debugf("Removed connection %v", id)
 }
