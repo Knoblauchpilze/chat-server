@@ -1,18 +1,22 @@
 package tcp
 
-import "net"
+import (
+	"net"
 
-type OnConnect func(net.Conn)
+	"github.com/google/uuid"
+)
+
+type OnConnect func(id uuid.UUID, conn net.Conn)
 
 type ServerCallbacks struct {
 	ConnectCallback OnConnect
 	Connection      ConnectionCallbacks
 }
 
-func (c ServerCallbacks) OnConnect(conn net.Conn) {
+func (c ServerCallbacks) OnConnect(id uuid.UUID, conn net.Conn) {
 	if c.ConnectCallback == nil {
 		return
 	}
 
-	c.ConnectCallback(conn)
+	c.ConnectCallback(id, conn)
 }
