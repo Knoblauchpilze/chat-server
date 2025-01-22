@@ -19,7 +19,7 @@ func TestUnit_SafeRun_CallsProcess(t *testing.T) {
 
 	actual := SafeRun(proc)
 
-	assert.Nil(t, actual)
+	assert.Nil(t, actual, "Actual err: %v", actual)
 	assert.Equal(t, 1, called)
 }
 
@@ -33,7 +33,7 @@ func TestUnit_SafeRun_NoPanic(t *testing.T) {
 	}
 
 	assert.NotPanics(t, run)
-	assert.Nil(t, actual)
+	assert.Nil(t, actual, "Actual err: %v", actual)
 }
 
 func TestUnit_SafeRun_PanicWithError(t *testing.T) {
