@@ -173,6 +173,9 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 }
 
 func (s *serverImpl) handleConnectionRemoval(id uuid.UUID) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	delete(s.connections, id)
 	s.log.Debugf("Removed connection %v", id)
 }
