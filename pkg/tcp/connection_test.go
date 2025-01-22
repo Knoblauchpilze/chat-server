@@ -22,8 +22,8 @@ func TestUnit_Connection_Read(t *testing.T) {
 	actual, err := conn.Read()
 	wg.Wait()
 
-	assert.Nil(t, *writeErr)
-	assert.Nil(t, err)
+	assert.Nil(t, *writeErr, "Actual err: %v", *writeErr)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, sampleData, actual)
 }
 
@@ -53,11 +53,11 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 
 	secondRead, err := conn.Read()
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg.Wait()
 
-	assert.Nil(t, *writeErr)
+	assert.Nil(t, *writeErr, "Actual err: %v", writeErr)
 	assert.Equal(t, []byte{}, firstRead)
 	assert.Equal(t, sampleData, secondRead)
 }
@@ -67,7 +67,7 @@ func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) 
 	conn := Wrap(server)
 
 	err := client.Close()
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	actual, err := conn.Read()
 
 	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
@@ -82,8 +82,8 @@ func TestUnit_Connection_Write(t *testing.T) {
 	sizeWritten, err := conn.Write(sampleData)
 	wg.Wait()
 
-	assert.Nil(t, err)
-	assert.Nil(t, actual.err)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Nil(t, actual.err, "Actual err: %v", actual.err)
 	assert.Equal(t, sizeWritten, actual.size)
 	assert.Equal(t, sampleData, actual.data[:actual.size])
 }
@@ -93,7 +93,7 @@ func TestUnit_Connection_Write_WhenDisconnect_ReturnsExplicitError(t *testing.T)
 	conn := Wrap(server)
 
 	err := client.Close()
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	actual, err := conn.Write(sampleData)
 
 	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
@@ -121,7 +121,7 @@ func asyncWriteDataToConnectionWithDelay(t *testing.T, conn net.Conn, delay time
 		}
 
 		_, err = conn.Write(sampleData)
-		assert.Nil(t, err)
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
 	return &wg, &err
