@@ -11,7 +11,6 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -107,8 +106,8 @@ func TestUnit_Server_WhenServerStopped_ExpectClosesBeforeConnectionCloses(t *tes
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
 
-func newTestServerConfig(port uint16) server.Config {
-	return server.Config{
+func newTestServerConfig(port uint16) Config {
+	return Config{
 		Port:            port,
 		ShutdownTimeout: 1 * time.Second,
 	}

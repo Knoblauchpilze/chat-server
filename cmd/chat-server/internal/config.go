@@ -3,17 +3,16 @@ package internal
 import (
 	"time"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
+	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
 
 type Configuration struct {
-	Server server.Config
+	Server tcp.Config
 }
 
 func DefaultConfig() Configuration {
 	return Configuration{
-		Server: server.Config{
-			BasePath:        "/v1/chat-server",
+		Server: tcp.Config{
 			Port:            uint16(80),
 			ShutdownTimeout: 5 * time.Second,
 		},
