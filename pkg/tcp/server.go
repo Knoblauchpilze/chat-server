@@ -25,9 +25,9 @@ type serverImpl struct {
 
 	log logger.Logger
 
-	listener        net.Listener
-	shutdownTimeout time.Duration
-	quit            chan interface{}
+	listener                  net.Listener
+	connectionShutdownTimeout time.Duration
+	quit                      chan interface{}
 
 	lock        sync.Mutex
 	connections map[uuid.UUID]ConnectionListener
@@ -39,8 +39,8 @@ func NewServer(config server.Config, log logger.Logger) Server {
 
 		log: log,
 
-		shutdownTimeout: config.ShutdownTimeout,
-		quit:            make(chan interface{}),
+		connectionShutdownTimeout: config.ShutdownTimeout,
+		quit:                      make(chan interface{}),
 
 		connections: make(map[uuid.UUID]ConnectionListener),
 	}
@@ -151,7 +151,7 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 	defer s.lock.Unlock()
 
 	opts := ConnectionListenerOptions{
-		ReadTimeout: s.shutdownTimeout - 1*time.Second,
+		ReadTimeout: s.connectionShutdownTimeout,
 		Callbacks: ConnectionCallbacks{
 			DisconnectCallbacks: []OnDisconnect{
 				func(id uuid.UUID) {
