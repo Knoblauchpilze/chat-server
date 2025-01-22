@@ -12,7 +12,6 @@ import (
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +32,7 @@ type serverImpl struct {
 	connections map[uuid.UUID]ConnectionListener
 }
 
-func NewServer(config server.Config, log logger.Logger) Server {
+func NewServer(config Config, log logger.Logger) Server {
 	return &serverImpl{
 		port: config.Port,
 
