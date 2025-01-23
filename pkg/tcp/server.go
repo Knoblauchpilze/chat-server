@@ -28,6 +28,7 @@ type serverImpl struct {
 	connectionShutdownTimeout time.Duration
 	quit                      chan interface{}
 
+	callbacks   ServerCallbacks
 	lock        sync.Mutex
 	connections map[uuid.UUID]ConnectionListener
 }
@@ -41,6 +42,7 @@ func NewServer(config Config, log logger.Logger) Server {
 		connectionShutdownTimeout: config.ShutdownTimeout,
 		quit:                      make(chan interface{}),
 
+		callbacks:   config.Callbacks,
 		connections: make(map[uuid.UUID]ConnectionListener),
 	}
 }
@@ -109,14 +111,21 @@ func (s *serverImpl) shutdown() error {
 }
 
 func (s *serverImpl) closeAllConnections() {
-	defer s.lock.Unlock()
-	s.lock.Lock()
+	// Copy all connections to prevent dead locks in case one is
+	// removed due to a disconnect or read error.
+	var allConnections map[uuid.UUID]ConnectionListener
 
-	for _, conn := range s.connections {
+	func() {
+		defer s.lock.Unlock()
+		s.lock.Lock()
+
+		allConnections = s.connections
+		clear(s.connections)
+	}()
+
+	for _, conn := range allConnections {
 		conn.Close()
 	}
-
-	clear(s.connections)
 }
 
 func (s *serverImpl) acceptLoop() error {
@@ -146,26 +155,30 @@ func (s *serverImpl) acceptLoop() error {
 }
 
 func (s *serverImpl) handleConnection(conn net.Conn) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	var listener ConnectionListener
 
-	opts := ConnectionListenerOptions{
-		ReadTimeout: s.connectionShutdownTimeout,
-		Callbacks: ConnectionCallbacks{
-			DisconnectCallbacks: []OnDisconnect{
-				func(id uuid.UUID) {
-					s.handleConnectionRemoval(id)
-				},
-			},
-			PanicCallbacks: []OnPanic{
-				func(id uuid.UUID, err error) {
-					s.handleConnectionRemoval(id)
-				},
-			},
-		},
-	}
-	listener := newListener(conn, opts)
-	s.connections[listener.Id()] = listener
+	func() {
+		defer s.lock.Unlock()
+		s.lock.Lock()
+
+		opts := ConnectionListenerOptions{
+			ReadTimeout: s.connectionShutdownTimeout,
+			Callbacks:   s.callbacks.Connection,
+		}
+		opts.Callbacks.DisconnectCallbacks = append(opts.Callbacks.DisconnectCallbacks,
+			func(id uuid.UUID) {
+				s.handleConnectionRemoval(id)
+			})
+		opts.Callbacks.PanicCallbacks = append(opts.Callbacks.PanicCallbacks,
+			func(id uuid.UUID, err error) {
+				s.handleConnectionRemoval(id)
+			})
+
+		listener = newListener(conn, opts)
+		s.connections[listener.Id()] = listener
+	}()
+
+	s.callbacks.OnConnect(listener.Id(), conn)
 
 	s.log.Debugf("Registered connection %v", listener.Id())
 	listener.StartListening()
