@@ -11,6 +11,7 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,6 +104,123 @@ func TestUnit_Server_WhenServerStopped_ExpectClosesBeforeConnectionCloses(t *tes
 	assert.False(t, connClosed.Load())
 	wg.Wait()
 
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+}
+
+func TestUnit_Server_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6004)
+	var called int
+	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) {
+		called++
+	}
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServer(s, cancellable)
+
+	conn, dialErr := net.Dial("tcp", ":6004")
+	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
+	closeErr := conn.Close()
+	assert.Nil(t, closeErr, "Actual err: %v", closeErr)
+
+	cancel()
+	wg.Wait()
+
+	require.Equal(t, 1, called)
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+}
+
+func TestUnit_Server_OnDisconnect_ExpectCallbackToBeCalled(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6005)
+	var called int
+	config.Callbacks.Connection.DisconnectCallbacks = append(
+		config.Callbacks.Connection.DisconnectCallbacks,
+		func(id uuid.UUID) {
+			called++
+		},
+	)
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServer(s, cancellable)
+
+	conn, dialErr := net.Dial("tcp", ":6005")
+	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
+	closeErr := conn.Close()
+	assert.Nil(t, closeErr, "Actual err: %v", closeErr)
+
+	cancel()
+	wg.Wait()
+
+	require.Equal(t, 1, called)
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+}
+
+func TestUnit_Server_OnDataAvailable_ExpectCallbackToBeCalled(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6005)
+	var called int
+	var actual []byte
+	config.Callbacks.Connection.ReadDataCallbacks = append(
+		config.Callbacks.Connection.ReadDataCallbacks,
+		func(id uuid.UUID, data []byte) {
+			called++
+			actual = data
+		},
+	)
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServer(s, cancellable)
+
+	conn, err := net.Dial("tcp", ":6005")
+	assert.Nil(t, err, "Actual err: %v", err)
+	_, err = conn.Write(sampleData)
+	assert.Nil(t, err, "Actual err: %v", err)
+	err = conn.Close()
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	cancel()
+	wg.Wait()
+
+	require.Equal(t, 1, called)
+	require.Equal(t, sampleData, actual, "Actual data: %s", string(actual))
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+}
+
+func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6005)
+	var called int
+	var reportedErr error
+	config.Callbacks.Connection.ReadDataCallbacks = append(
+		config.Callbacks.Connection.ReadDataCallbacks,
+		func(id uuid.UUID, data []byte) {
+			panic(errSample)
+		},
+	)
+	config.Callbacks.Connection.PanicCallbacks = append(
+		config.Callbacks.Connection.PanicCallbacks,
+		func(id uuid.UUID, err error) {
+			called++
+			reportedErr = err
+		},
+	)
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServer(s, cancellable)
+
+	conn, err := net.Dial("tcp", ":6005")
+	assert.Nil(t, err, "Actual err: %v", err)
+	_, err = conn.Write(sampleData)
+	assert.Nil(t, err, "Actual err: %v", err)
+	err = conn.Close()
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	cancel()
+	wg.Wait()
+
+	require.Equal(t, 1, called)
+	require.Equal(t, errSample, reportedErr, "Actual err: %v", reportedErr)
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
 
