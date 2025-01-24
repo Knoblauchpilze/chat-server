@@ -117,8 +117,8 @@ func (s *serverImpl) shutdown() error {
 func (s *serverImpl) closeAllConnections() {
 	// Copy all connections to prevent dead locks in case one is
 	// removed due to a disconnect or read error.
-	var allConnections map[uuid.UUID]ConnectionListener
-	// allConnections := make(map[uuid.UUID]ConnectionListener)
+	// var allConnections map[uuid.UUID]ConnectionListener
+	allConnections := make(map[uuid.UUID]ConnectionListener)
 
 	fmt.Printf("Starting closing, copying connections\n")
 	func() {
