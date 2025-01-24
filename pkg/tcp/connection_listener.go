@@ -61,7 +61,9 @@ func (l *connectionListenerImpl) StartListening() {
 
 func (l *connectionListenerImpl) Close() {
 	close(l.quit)
+	fmt.Printf("Waiting to close connection %v\n", l.id)
 	l.wg.Wait()
+	fmt.Printf("Connection %v closed\n", l.id)
 }
 
 func (l *connectionListenerImpl) activeLoop() {

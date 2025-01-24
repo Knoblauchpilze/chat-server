@@ -119,9 +119,12 @@ func (s *serverImpl) closeAllConnections() {
 	// removed due to a disconnect or read error.
 	var allConnections map[uuid.UUID]ConnectionListener
 
+	fmt.Printf("Starting closing, copying connections\n")
 	func() {
 		defer s.lock.Unlock()
 		s.lock.Lock()
+
+		fmt.Printf("Processing copy after lock is acquired\n")
 
 		allConnections = s.connections
 		clear(s.connections)
@@ -165,9 +168,13 @@ func (s *serverImpl) acceptLoop() error {
 func (s *serverImpl) handleConnection(conn net.Conn) {
 	var listener ConnectionListener
 
+	fmt.Printf("Starting handling of new connection\n")
+
 	func() {
 		defer s.lock.Unlock()
 		s.lock.Lock()
+
+		fmt.Printf("Processing new connection after lock is acquired\n")
 
 		opts := ConnectionListenerOptions{
 			ReadTimeout: s.connectionShutdownTimeout,
@@ -184,6 +191,8 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 
 		listener = newListener(conn, opts)
 		s.connections[listener.Id()] = listener
+
+		fmt.Printf("Registered %v internally\n", listener.Id())
 	}()
 
 	s.callbacks.OnConnect(listener.Id(), conn)
