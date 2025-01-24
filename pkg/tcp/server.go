@@ -135,7 +135,7 @@ func (s *serverImpl) closeAllConnections() {
 		clear(s.connections)
 	}()
 
-	fmt.Printf("Closing all connections\n")
+	fmt.Printf("Closing all %d connection(s)\n", len(allConnections))
 
 	for _, conn := range allConnections {
 		conn.Close()
