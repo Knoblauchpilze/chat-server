@@ -94,6 +94,7 @@ func (l *connectionListenerImpl) activeLoop() {
 			running = false
 		}
 	}
+	fmt.Printf("Ending connection %v active loop\n", l.id)
 }
 
 func readFromConnection(id uuid.UUID, conn Connection, callbacks ConnectionCallbacks) (timeout bool, err error) {

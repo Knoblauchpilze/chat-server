@@ -118,6 +118,7 @@ func (s *serverImpl) closeAllConnections() {
 	// Copy all connections to prevent dead locks in case one is
 	// removed due to a disconnect or read error.
 	var allConnections map[uuid.UUID]ConnectionListener
+	// allConnections := make(map[uuid.UUID]ConnectionListener)
 
 	fmt.Printf("Starting closing, copying connections\n")
 	func() {
@@ -126,7 +127,11 @@ func (s *serverImpl) closeAllConnections() {
 
 		fmt.Printf("Processing copy after lock is acquired\n")
 
-		allConnections = s.connections
+		// https://stackoverflow.com/questions/23057785/how-to-deep-copy-a-map-and-then-clear-the-original
+		for id, conn := range s.connections {
+			allConnections[id] = conn
+		}
+
 		clear(s.connections)
 	}()
 
