@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -44,8 +43,6 @@ func (c *connectionImpl) Read() ([]byte, error) {
 		timeout := time.Now().Add(c.readTimeout)
 		c.conn.SetReadDeadline(timeout)
 	}
-
-	fmt.Printf("Starting read with timeout %v\n", c.readTimeout)
 
 	bytes, err := c.reader.ReadBytes(byte('\n'))
 	if err == nil {
