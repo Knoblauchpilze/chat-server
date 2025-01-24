@@ -62,7 +62,7 @@ func TestUnit_Server_ConnectDisconnect(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	s := NewServer(newTestServerConfig(6002), logger.New(os.Stdout))
 
-	wg, serverErr := asyncRunServer(s, cancellable)
+	wg, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":6002")
 	closeErr := conn.Close()
@@ -79,7 +79,7 @@ func TestUnit_Server_WhenServerStopped_ExpectClosesBeforeConnectionCloses(t *tes
 	cancellable, cancel := context.WithCancel(context.Background())
 	s := NewServer(newTestServerConfig(6003), logger.New(os.Stdout))
 
-	wgServer, serverErr := asyncRunServer(s, cancellable)
+	wgServer, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":6003")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
@@ -117,7 +117,7 @@ func TestUnit_Server_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
 	}
 	s := NewServer(config, logger.New(os.Stdout))
 
-	wg, serverErr := asyncRunServer(s, cancellable)
+	wg, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":6004")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
@@ -143,7 +143,7 @@ func TestUnit_Server_OnDisconnect_ExpectCallbackToBeCalled(t *testing.T) {
 	)
 	s := NewServer(config, logger.New(os.Stdout))
 
-	wg, serverErr := asyncRunServer(s, cancellable)
+	wg, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":6005")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
@@ -171,7 +171,7 @@ func TestUnit_Server_OnDataAvailable_ExpectCallbackToBeCalled(t *testing.T) {
 	)
 	s := NewServer(config, logger.New(os.Stdout))
 
-	wg, serverErr := asyncRunServer(s, cancellable)
+	wg, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, err := net.Dial("tcp", ":6005")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -210,7 +210,7 @@ func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *
 	)
 	s := NewServer(config, logger.New(os.Stdout))
 
-	wg, serverErr := asyncRunServer(s, cancellable)
+	wg, serverErr := asyncRunServer(t, s, cancellable)
 
 	conn, err := net.Dial("tcp", ":6005")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -239,13 +239,18 @@ func asyncCancelContext(delay time.Duration, cancel context.CancelFunc) {
 	cancel()
 }
 
-func asyncRunServer(s Server, ctx context.Context) (*sync.WaitGroup, *error) {
+func asyncRunServer(t *testing.T, s Server, ctx context.Context) (*sync.WaitGroup, *error) {
 	var err error
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if panicErr := recover(); panicErr != nil {
+				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
+			}
+		}()
 		err = s.Start(ctx)
 	}()
 
