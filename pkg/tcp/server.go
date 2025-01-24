@@ -61,9 +61,11 @@ func (s *serverImpl) Start(ctx context.Context) error {
 	var runError error
 
 	go func() {
-		s.log.Infof("Starting server")
+		// s.log.Infof("Starting server")
+		fmt.Printf("Starting server\n")
 		err := s.acceptLoop()
-		s.log.Infof("Server is shutting down")
+		// s.log.Infof("Server is shutting down")
+		fmt.Printf("Server is shutting down\n")
 
 		if err != nil {
 			runError = err
@@ -83,7 +85,8 @@ func (s *serverImpl) Start(ctx context.Context) error {
 		return runError
 	}
 
-	s.log.Infof("Server gracefully shutdown")
+	// s.log.Infof("Server gracefully shutdown")
+	fmt.Printf("Server gracefully shutdown\n")
 	return nil
 }
 
@@ -97,7 +100,8 @@ func (s *serverImpl) initializeListener() error {
 		return bterr.WrapCode(err, ErrTcpInitialization)
 	}
 
-	s.log.Infof("Server will be listening at %s", address)
+	// s.log.Infof("Server will be listening at %s", address)
+	fmt.Printf("Server will be listening at %s\n", address)
 
 	return nil
 }
@@ -113,11 +117,15 @@ func (s *serverImpl) shutdown() error {
 func (s *serverImpl) closeAllConnections() {
 	// Copy all connections to prevent dead locks in case one is
 	// removed due to a disconnect or read error.
+	// var allConnections map[uuid.UUID]ConnectionListener
 	allConnections := make(map[uuid.UUID]ConnectionListener)
 
+	fmt.Printf("Starting closing, copying connections\n")
 	func() {
 		defer s.lock.Unlock()
 		s.lock.Lock()
+
+		fmt.Printf("Processing copy after lock is acquired\n")
 
 		// https://stackoverflow.com/questions/23057785/how-to-deep-copy-a-map-and-then-clear-the-original
 		for id, conn := range s.connections {
@@ -127,9 +135,13 @@ func (s *serverImpl) closeAllConnections() {
 		clear(s.connections)
 	}()
 
+	fmt.Printf("Closing all connections\n")
+
 	for _, conn := range allConnections {
 		conn.Close()
 	}
+
+	fmt.Printf("All connections closed\n")
 }
 
 func (s *serverImpl) acceptLoop() error {
@@ -161,9 +173,13 @@ func (s *serverImpl) acceptLoop() error {
 func (s *serverImpl) handleConnection(conn net.Conn) {
 	var listener ConnectionListener
 
+	fmt.Printf("Starting handling of new connection\n")
+
 	func() {
 		defer s.lock.Unlock()
 		s.lock.Lock()
+
+		fmt.Printf("Processing new connection after lock is acquired\n")
 
 		opts := ConnectionListenerOptions{
 			ReadTimeout: s.connectionShutdownTimeout,
@@ -180,11 +196,14 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 
 		listener = newListener(conn, opts)
 		s.connections[listener.Id()] = listener
+
+		fmt.Printf("Registered %v internally\n", listener.Id())
 	}()
 
 	s.callbacks.OnConnect(listener.Id(), conn)
 
-	s.log.Debugf("Registered connection %v", listener.Id())
+	// s.log.Debugf("Registered connection %v", listener.Id())
+	fmt.Printf("Registered connection %v\n", listener.Id())
 	listener.StartListening()
 }
 
@@ -193,5 +212,6 @@ func (s *serverImpl) handleConnectionRemoval(id uuid.UUID) {
 	defer s.lock.Unlock()
 
 	delete(s.connections, id)
-	s.log.Debugf("Removed connection %v", id)
+	// s.log.Debugf("Removed connection %v", id)
+	fmt.Printf("Removed connection %v\n", id)
 }

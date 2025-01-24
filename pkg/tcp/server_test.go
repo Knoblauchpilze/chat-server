@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -195,12 +196,14 @@ func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *
 	config.Callbacks.Connection.ReadDataCallbacks = append(
 		config.Callbacks.Connection.ReadDataCallbacks,
 		func(id uuid.UUID, data []byte) {
+			fmt.Printf("Calling read data, this will panic\n")
 			panic(errSample)
 		},
 	)
 	config.Callbacks.Connection.PanicCallbacks = append(
 		config.Callbacks.Connection.PanicCallbacks,
 		func(id uuid.UUID, err error) {
+			fmt.Printf("Calling panic handler for %v, err: %v\n", id, err)
 			called++
 			reportedErr = err
 		},
