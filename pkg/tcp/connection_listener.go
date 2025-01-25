@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -55,15 +54,12 @@ func (l *connectionListenerImpl) Id() uuid.UUID {
 func (l *connectionListenerImpl) StartListening() {
 	// https://github.com/venilnoronha/tcp-echo-server/blob/master/main.go#L43
 	l.wg.Add(1)
-	fmt.Printf("Starting listening for %v\n", l.id)
 	go l.activeLoop()
 }
 
 func (l *connectionListenerImpl) Close() {
 	close(l.quit)
-	fmt.Printf("Waiting to close connection %v\n", l.id)
 	l.wg.Wait()
-	fmt.Printf("Connection %v closed\n", l.id)
 }
 
 func (l *connectionListenerImpl) activeLoop() {
@@ -94,15 +90,12 @@ func (l *connectionListenerImpl) activeLoop() {
 			running = false
 		}
 	}
-	fmt.Printf("Ending connection %v active loop\n", l.id)
 }
 
 func readFromConnection(id uuid.UUID, conn Connection, callbacks ConnectionCallbacks) (timeout bool, err error) {
 	var data []byte
 
 	data, err = conn.Read()
-
-	fmt.Printf("Read returned err: %v\n", err)
 
 	if err == nil {
 		callbacks.OnReadData(id, data)
@@ -114,8 +107,6 @@ func readFromConnection(id uuid.UUID, conn Connection, callbacks ConnectionCallb
 	} else {
 		callbacks.OnReadError(id, err)
 	}
-
-	fmt.Printf("After read timeout is: %t\n", timeout)
 
 	return
 }
