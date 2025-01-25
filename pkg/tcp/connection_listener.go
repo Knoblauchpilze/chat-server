@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"net"
-	"sync"
 	"time"
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -28,7 +27,7 @@ type connectionListenerImpl struct {
 	callbacks ConnectionCallbacks
 
 	quit chan interface{}
-	wg   sync.WaitGroup
+	done chan bool
 }
 
 // Create a new connection with an already
@@ -42,6 +41,7 @@ func newListener(conn net.Conn, opts ConnectionListenerOptions) ConnectionListen
 		conn:      WithOptions(conn, connOpts),
 		callbacks: opts.Callbacks,
 		quit:      make(chan interface{}),
+		done:      make(chan bool),
 	}
 
 	return l
@@ -53,17 +53,18 @@ func (l *connectionListenerImpl) Id() uuid.UUID {
 
 func (l *connectionListenerImpl) StartListening() {
 	// https://github.com/venilnoronha/tcp-echo-server/blob/master/main.go#L43
-	l.wg.Add(1)
 	go l.activeLoop()
 }
 
 func (l *connectionListenerImpl) Close() {
 	close(l.quit)
-	l.wg.Wait()
+	<-l.done
 }
 
 func (l *connectionListenerImpl) activeLoop() {
-	defer l.wg.Done()
+	defer func() {
+		l.done <- true
+	}()
 
 	running := true
 	for running {
