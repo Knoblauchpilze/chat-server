@@ -135,7 +135,6 @@ func TestUnit_Server_OnDisconnect_ExpectCallbackToBeCalled(t *testing.T) {
 	config.Callbacks.Connection.DisconnectCallbacks = append(
 		config.Callbacks.Connection.DisconnectCallbacks,
 		func(id uuid.UUID) {
-			fmt.Printf("Disconnect callback is called\n")
 			called++
 		},
 	)
@@ -145,13 +144,9 @@ func TestUnit_Server_OnDisconnect_ExpectCallbackToBeCalled(t *testing.T) {
 
 	openConnectionAndSendData(t, 6005, nil)
 
-	fmt.Printf("Cancelling context\n")
 	cancel()
-	fmt.Printf("Waiting for server wait group\n")
 	wg.Wait()
-	fmt.Printf("End of test, running assertions\n")
 
-	fmt.Printf("Called value is: %d\n", called)
 	require.Equal(t, 1, called)
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
@@ -183,7 +178,6 @@ func TestUnit_Server_OnDataAvailable_ExpectCallbackToBeCalled(t *testing.T) {
 }
 
 func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *testing.T) {
-	fmt.Printf("Beginning test\n")
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestServerConfig(6007)
 	var called int
@@ -191,14 +185,12 @@ func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *
 	config.Callbacks.Connection.ReadDataCallbacks = append(
 		config.Callbacks.Connection.ReadDataCallbacks,
 		func(id uuid.UUID, data []byte) {
-			fmt.Printf("Calling read data, this will panic\n")
 			panic(errSample)
 		},
 	)
 	config.Callbacks.Connection.PanicCallbacks = append(
 		config.Callbacks.Connection.PanicCallbacks,
 		func(id uuid.UUID, err error) {
-			fmt.Printf("Calling panic handler for %v, err: %v\n", id, err)
 			called++
 			reportedErr = err
 		},
@@ -215,7 +207,6 @@ func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *
 	require.Equal(t, 1, called)
 	require.Equal(t, errSample, reportedErr, "Actual err: %v", reportedErr)
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
-	fmt.Printf("End of test\n")
 }
 
 func newTestServerConfig(port uint16) Config {
