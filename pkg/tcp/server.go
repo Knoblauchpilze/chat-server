@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -26,6 +27,7 @@ type serverImpl struct {
 
 	listener                  net.Listener
 	connectionShutdownTimeout time.Duration
+	accepting                 atomic.Bool
 	quit                      chan interface{}
 
 	callbacks   ServerCallbacks
@@ -34,7 +36,7 @@ type serverImpl struct {
 }
 
 func NewServer(config Config, log logger.Logger) Server {
-	return &serverImpl{
+	s := serverImpl{
 		port: config.Port,
 
 		log: log,
@@ -45,6 +47,10 @@ func NewServer(config Config, log logger.Logger) Server {
 		callbacks:   config.Callbacks,
 		connections: make(map[uuid.UUID]ConnectionListener),
 	}
+
+	s.accepting.Store(true)
+
+	return &s
 }
 
 func (s *serverImpl) Start(ctx context.Context) error {
@@ -103,6 +109,11 @@ func (s *serverImpl) initializeListener() error {
 }
 
 func (s *serverImpl) shutdown() error {
+	if !s.accepting.CompareAndSwap(true, false) {
+		// Server already closed
+		return nil
+	}
+
 	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
 	close(s.quit)
 	err := s.listener.Close()
@@ -167,7 +178,10 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 		s.lock.Lock()
 
 		listener = s.prepareConnection(conn)
-		s.connections[listener.Id()] = listener
+
+		if s.accepting.Load() {
+			s.connections[listener.Id()] = listener
+		}
 	}()
 
 	s.callbacks.OnConnect(listener.Id(), conn)
