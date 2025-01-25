@@ -22,6 +22,14 @@ INSERT INTO chat_server_schema.chat_user ("id", "name", "api_user")
     '00b265e6-6638-4b1b-aeac-5898c7307eb8'
   );
 
+-- i-dont-care-about-@security.de
+INSERT INTO chat_server_schema.chat_user ("id", "name", "api_user")
+  VALUES (
+    'beb2a2dc-2a9f-48d6-b2ca-fd3b5ca3249f',
+    'i-m-super-banned',
+    '00b265e6-6638-4b1b-aeac-5898c7307eb8'
+  );
+
 -- room-1
 INSERT INTO chat_server_schema.room ("id", "name")
   VALUES (
@@ -68,10 +76,10 @@ INSERT INTO chat_server_schema.room_user ("room", "chat_user")
     'd9bf6974-3f1c-4fb8-a389-e75e0ed2b9bf'
   );
 
-INSERT INTO chat_server_schema.user_ban ("chat_user", "room", "valid_until", "reason")
+INSERT INTO chat_server_schema.room_ban ("room", "chat_user", "valid_until", "reason")
   VALUES (
-    'd9bf6974-3f1c-4fb8-a389-e75e0ed2b9bf',
     'b9d66811-c6f2-4f20-9374-4fc754c5098f',
+    'd9bf6974-3f1c-4fb8-a389-e75e0ed2b9bf',
     current_timestamp + make_interval(hours => 6),
     'i do not like you'
   );
@@ -110,4 +118,12 @@ INSERT INTO chat_server_schema.room ("id", "name")
   VALUES (
     '7c3515ed-3c23-4761-a822-b004814b8e73',
     'room-with-nobody'
+  );
+
+-- user ban
+INSERT INTO chat_server_schema.user_ban ("chat_user", "valid_until", "reason")
+  VALUES (
+    'beb2a2dc-2a9f-48d6-b2ca-fd3b5ca3249f',
+    current_timestamp + make_interval(hours => 6),
+    'no particular reason'
   );
