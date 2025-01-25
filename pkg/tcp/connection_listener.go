@@ -30,7 +30,6 @@ type connectionListenerImpl struct {
 	done chan bool
 }
 
-// Create a new connection with an already
 func newListener(conn net.Conn, opts ConnectionListenerOptions) ConnectionListener {
 	connOpts := ConnectionOptions{
 		ReadTimeout: opts.ReadTimeout,
