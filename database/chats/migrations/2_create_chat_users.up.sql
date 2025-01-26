@@ -14,17 +14,3 @@ CREATE TRIGGER trigger_chat_user_updated_at
   BEFORE UPDATE OR INSERT ON chat_user
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
-
-CREATE TABLE user_status (
-  chat_user UUID NOT NULL,
-  status TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (chat_user),
-  FOREIGN KEY (chat_user) REFERENCES chat_user(id)
-);
-
-CREATE TRIGGER trigger_user_status_updated_at
-  BEFORE UPDATE OR INSERT ON user_status
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
