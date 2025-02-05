@@ -8,7 +8,7 @@ import (
 
 type Process func()
 
-func SyncSafeRun(proc Process) error {
+func SafeRunSync(proc Process) error {
 	var err error
 
 	func() {
