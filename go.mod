@@ -2,7 +2,10 @@ module github.com/Knoblauchpilze/chat-server
 
 go 1.23.2
 
-require github.com/Knoblauchpilze/backend-toolkit v0.3.0
+require (
+	github.com/Knoblauchpilze/backend-toolkit v0.3.0
+	github.com/google/uuid v1.6.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
