@@ -12,12 +12,11 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const reasonableWaitTimeForServerToBeUp = 50 * time.Millisecond
+const reasonableWaitTimeForServerToBeUp = 500 * time.Millisecond
 
 func TestUnit_Server_Start_StopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
@@ -51,8 +50,9 @@ func TestUnit_Server_Start_WhenPortIsNotFree_ExpectInitializationFailure(t *test
 		err2 = s2.Start(context.Background())
 	}()
 
-	// Wait for both servers to be up
-	time.Sleep(reasonableWaitTimeForServerToBeUp)
+	// Wait a bit longer to be sure that the second server
+	// has the time to fail
+	time.Sleep(3 * reasonableWaitTimeForServerToBeUp)
 
 	cancel()
 	wg.Wait()
@@ -67,7 +67,7 @@ func TestUnit_Server_ConnectDisconnect(t *testing.T) {
 
 	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
 
-	openConnectionAndSendData(t, 6002, nil)
+	openConnectionAndCloseIt(t, 6002)
 
 	cancel()
 	wg.Wait()
@@ -112,100 +112,19 @@ func TestUnit_Server_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestServerConfig(6004)
 	var called int
-	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) {
+	config.Callbacks.ConnectCallback = func(conn net.Conn) {
 		called++
 	}
 	s := NewServer(config, logger.New(os.Stdout))
 
 	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
 
-	openConnectionAndSendData(t, 6004, nil)
+	openConnectionAndCloseIt(t, 6004)
 
 	cancel()
 	wg.Wait()
 
 	require.Equal(t, 1, called)
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
-}
-
-func TestUnit_Server_OnDisconnect_ExpectCallbackToBeCalled(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestServerConfig(6005)
-	var called int
-	config.Callbacks.Connection.DisconnectCallbacks = append(
-		config.Callbacks.Connection.DisconnectCallbacks,
-		func(id uuid.UUID) {
-			called++
-		},
-	)
-	s := NewServer(config, logger.New(os.Stdout))
-
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
-
-	openConnectionAndSendData(t, 6005, nil)
-
-	cancel()
-	wg.Wait()
-
-	require.Equal(t, 1, called)
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
-}
-
-func TestUnit_Server_OnDataAvailable_ExpectCallbackToBeCalled(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestServerConfig(6006)
-	var called int
-	var actual []byte
-	config.Callbacks.Connection.ReadDataCallbacks = append(
-		config.Callbacks.Connection.ReadDataCallbacks,
-		func(id uuid.UUID, data []byte) {
-			called++
-			actual = data
-		},
-	)
-	s := NewServer(config, logger.New(os.Stdout))
-
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
-
-	openConnectionAndSendData(t, 6006, sampleData)
-
-	cancel()
-	wg.Wait()
-
-	require.Equal(t, 1, called)
-	require.Equal(t, sampleData, actual, "Actual data: %s", string(actual))
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
-}
-
-func TestUnit_Server_WhenReadDataCallbackPanic_ExpectPanicCallbackToBeCalled(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestServerConfig(6007)
-	var called int
-	var reportedErr error
-	config.Callbacks.Connection.ReadDataCallbacks = append(
-		config.Callbacks.Connection.ReadDataCallbacks,
-		func(id uuid.UUID, data []byte) {
-			panic(errSample)
-		},
-	)
-	config.Callbacks.Connection.PanicCallbacks = append(
-		config.Callbacks.Connection.PanicCallbacks,
-		func(id uuid.UUID, err error) {
-			called++
-			reportedErr = err
-		},
-	)
-	s := NewServer(config, logger.New(os.Stdout))
-
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
-
-	openConnectionAndSendData(t, 6007, sampleData)
-
-	cancel()
-	wg.Wait()
-
-	require.Equal(t, 1, called)
-	require.Equal(t, errSample, reportedErr, "Actual err: %v", reportedErr)
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
 
@@ -241,6 +160,10 @@ func asyncRunServerAndWaitForItToBeUp(t *testing.T, s Server, ctx context.Contex
 	time.Sleep(reasonableWaitTimeForServerToBeUp)
 
 	return &wg, &err
+}
+
+func openConnectionAndCloseIt(t *testing.T, port uint16) {
+	openConnectionAndSendData(t, port, nil)
 }
 
 func openConnectionAndSendData(t *testing.T, port uint16, data []byte) {

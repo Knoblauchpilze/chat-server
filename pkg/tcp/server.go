@@ -6,14 +6,12 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	"github.com/google/uuid"
 )
 
 type Server interface {
@@ -30,9 +28,7 @@ type serverImpl struct {
 	accepting                 atomic.Bool
 	quit                      chan interface{}
 
-	callbacks   ServerCallbacks
-	lock        sync.Mutex
-	connections map[uuid.UUID]ConnectionListener
+	callbacks ServerCallbacks
 }
 
 func NewServer(config Config, log logger.Logger) Server {
@@ -44,8 +40,7 @@ func NewServer(config Config, log logger.Logger) Server {
 		connectionShutdownTimeout: config.ShutdownTimeout,
 		quit:                      make(chan interface{}),
 
-		callbacks:   config.Callbacks,
-		connections: make(map[uuid.UUID]ConnectionListener),
+		callbacks: config.Callbacks,
 	}
 
 	s.accepting.Store(true)
@@ -116,31 +111,7 @@ func (s *serverImpl) shutdown() error {
 
 	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
 	close(s.quit)
-	err := s.listener.Close()
-	s.closeAllConnections()
-	return err
-}
-
-func (s *serverImpl) closeAllConnections() {
-	// Copy all connections to prevent dead locks in case one is
-	// removed due to a disconnect or read error.
-	allConnections := make(map[uuid.UUID]ConnectionListener)
-
-	func() {
-		defer s.lock.Unlock()
-		s.lock.Lock()
-
-		// https://stackoverflow.com/questions/23057785/how-to-deep-copy-a-map-and-then-clear-the-original
-		for id, conn := range s.connections {
-			allConnections[id] = conn
-		}
-
-		clear(s.connections)
-	}()
-
-	for _, conn := range allConnections {
-		conn.Close()
-	}
+	return s.listener.Close()
 }
 
 func (s *serverImpl) acceptLoop() error {
@@ -162,56 +133,9 @@ func (s *serverImpl) acceptLoop() error {
 		}
 
 		if accept {
-			s.handleConnection(conn)
+			s.callbacks.OnConnect(conn)
 		}
 	}
 
 	return nil
-}
-
-func (s *serverImpl) handleConnection(conn net.Conn) {
-	var listener ConnectionListener
-
-	func() {
-		defer s.lock.Unlock()
-		s.lock.Lock()
-
-		listener = s.prepareConnection(conn)
-
-		if s.accepting.Load() {
-			s.connections[listener.Id()] = listener
-		}
-	}()
-
-	s.callbacks.OnConnect(listener.Id(), conn)
-
-	s.log.Debugf("Registered connection %v", listener.Id())
-}
-
-func (s *serverImpl) prepareConnection(conn net.Conn) ConnectionListener {
-	opts := ConnectionListenerOptions{
-		ReadTimeout: s.connectionShutdownTimeout,
-		Callbacks:   s.callbacks.Connection,
-	}
-	opts.Callbacks.DisconnectCallbacks = append(opts.Callbacks.DisconnectCallbacks,
-		func(id uuid.UUID) {
-			s.handleConnectionRemoval(id)
-		})
-	opts.Callbacks.PanicCallbacks = append(opts.Callbacks.PanicCallbacks,
-		func(id uuid.UUID, err error) {
-			s.handleConnectionRemoval(id)
-		})
-
-	l := newListener(conn, opts)
-	l.StartListening()
-
-	return l
-}
-
-func (s *serverImpl) handleConnectionRemoval(id uuid.UUID) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	delete(s.connections, id)
-	s.log.Debugf("Removed connection %v", id)
 }

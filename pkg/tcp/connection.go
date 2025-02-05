@@ -12,6 +12,7 @@ import (
 type Connection interface {
 	Read() ([]byte, error)
 	Write(b []byte) (int, error)
+	Close() error
 }
 
 type ConnectionOptions struct {
@@ -66,4 +67,8 @@ func (c *connectionImpl) Write(data []byte) (int, error) {
 	}
 
 	return n, err
+}
+
+func (c *connectionImpl) Close() error {
+	return c.conn.Close()
 }
