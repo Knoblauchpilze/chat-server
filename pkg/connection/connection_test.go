@@ -1,8 +1,6 @@
-package tcp
+package connection
 
 import (
-	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,13 +10,11 @@ import (
 
 // https://stackoverflow.com/questions/30688685/how-does-one-test-net-conn-in-unit-tests-in-golang
 
-var sampleData = []byte("hello\n")
-
 func TestUnit_Connection_Read(t *testing.T) {
 	client, server := newTestConnection()
 	conn := Wrap(server)
 
-	wg, writeErr := asyncWriteDataToConnection(t, client)
+	wg, writeErr := asyncWriteSampleDataToConnection(t, client)
 	actual, err := conn.Read()
 	wg.Wait()
 
@@ -29,7 +25,7 @@ func TestUnit_Connection_Read(t *testing.T) {
 
 func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *testing.T) {
 	_, server := newTestConnection()
-	opts := ConnectionOptions{
+	opts := connectionOptions{
 		ReadTimeout: 500 * time.Millisecond,
 	}
 	conn := WithOptions(server, opts)
@@ -42,13 +38,13 @@ func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *test
 
 func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	client, server := newTestConnection()
-	opts := ConnectionOptions{
+	opts := connectionOptions{
 		// 2 reads will be over the delay we set for the client connection
 		ReadTimeout: 700 * time.Millisecond,
 	}
 	conn := WithOptions(server, opts)
 
-	wg, writeErr := asyncWriteDataToConnectionWithDelay(t, client, 1*time.Second)
+	wg, writeErr := asyncWriteSampleDataToConnectionWithDelay(t, client, 1*time.Second)
 	firstRead, err := conn.Read()
 	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 
@@ -98,55 +94,4 @@ func TestUnit_Connection_Write_WhenDisconnect_ReturnsExplicitError(t *testing.T)
 
 	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
 	assert.Equal(t, 0, actual)
-}
-
-func newTestConnection() (client net.Conn, server net.Conn) {
-	return net.Pipe()
-}
-
-func asyncWriteDataToConnection(t *testing.T, conn net.Conn) (*sync.WaitGroup, *error) {
-	return asyncWriteDataToConnectionWithDelay(t, conn, 0)
-}
-
-func asyncWriteDataToConnectionWithDelay(t *testing.T, conn net.Conn, delay time.Duration) (*sync.WaitGroup, *error) {
-	var wg sync.WaitGroup
-	var err error
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-
-		_, err = conn.Write(sampleData)
-		assert.Nil(t, err, "Actual err: %v", err)
-	}()
-
-	return &wg, &err
-}
-
-type readResult struct {
-	data []byte
-	size int
-	err  error
-}
-
-func asyncReadDataFromConnection(conn net.Conn) (*sync.WaitGroup, *readResult) {
-	var wg sync.WaitGroup
-
-	const reasonableBufferSize = 15
-	out := readResult{
-		data: make([]byte, reasonableBufferSize),
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		out.size, out.err = conn.Read(out.data)
-	}()
-
-	return &wg, &out
 }

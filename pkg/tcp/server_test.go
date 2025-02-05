@@ -18,6 +18,8 @@ import (
 
 const reasonableWaitTimeForServerToBeUp = 500 * time.Millisecond
 
+var sampleData = []byte("hello\n")
+
 func TestUnit_Server_Start_StopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	s := NewServer(newTestServerConfig(6000), logger.New(os.Stdout))
