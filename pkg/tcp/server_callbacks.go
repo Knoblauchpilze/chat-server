@@ -1,8 +1,6 @@
 package tcp
 
-import (
-	"net"
-)
+import "net"
 
 type OnConnect func(conn net.Conn)
 
