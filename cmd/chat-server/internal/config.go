@@ -1,17 +1,11 @@
 package internal
 
-import (
-	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
-)
-
 type Configuration struct {
-	Server tcp.Config
+	Port uint16
 }
 
 func DefaultConfig() Configuration {
 	return Configuration{
-		Server: tcp.Config{
-			Port: uint16(80),
-		},
+		Port: uint16(80),
 	}
 }

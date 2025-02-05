@@ -7,7 +7,6 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/config"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/cmd/chat-server/internal"
-	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
 
 func determineConfigName() string {
@@ -27,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s := tcp.NewServer(conf.Server, log)
+	s := internal.NewServer(conf, log)
 
 	err = s.Start(context.Background())
 	if err != nil {
