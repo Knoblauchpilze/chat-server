@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnit_DefaultConfig_DefinesCorrectRestConfiguration(t *testing.T) {
+func TestUnit_DefaultConfig_DefinesCorrectPort(t *testing.T) {
 	config := DefaultConfig()
 
-	assert.Equal(t, uint16(80), config.Server.Port)
+	assert.Equal(t, uint16(80), config.Port)
 }
