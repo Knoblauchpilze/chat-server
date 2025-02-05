@@ -130,8 +130,7 @@ func TestUnit_Server_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
 
 func newTestServerConfig(port uint16) Config {
 	return Config{
-		Port:            port,
-		ShutdownTimeout: 1 * time.Second,
+		Port: port,
 	}
 }
 

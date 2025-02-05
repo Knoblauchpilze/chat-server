@@ -23,10 +23,9 @@ type serverImpl struct {
 
 	log logger.Logger
 
-	listener                  net.Listener
-	connectionShutdownTimeout time.Duration
-	accepting                 atomic.Bool
-	quit                      chan interface{}
+	listener  net.Listener
+	accepting atomic.Bool
+	quit      chan interface{}
 
 	callbacks ServerCallbacks
 }
@@ -37,8 +36,7 @@ func NewServer(config Config, log logger.Logger) Server {
 
 		log: log,
 
-		connectionShutdownTimeout: config.ShutdownTimeout,
-		quit:                      make(chan interface{}),
+		quit: make(chan interface{}),
 
 		callbacks: config.Callbacks,
 	}
