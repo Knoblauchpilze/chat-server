@@ -1,4 +1,4 @@
-package tcp
+package connection
 
 import (
 	"bufio"
@@ -9,13 +9,13 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 )
 
-type Connection interface {
+type connection interface {
 	Read() ([]byte, error)
 	Write(b []byte) (int, error)
 	Close() error
 }
 
-type ConnectionOptions struct {
+type connectionOptions struct {
 	ReadTimeout time.Duration
 }
 
@@ -25,11 +25,11 @@ type connectionImpl struct {
 	readTimeout time.Duration
 }
 
-func Wrap(conn net.Conn) Connection {
-	return WithOptions(conn, ConnectionOptions{})
+func Wrap(conn net.Conn) connection {
+	return WithOptions(conn, connectionOptions{})
 }
 
-func WithOptions(conn net.Conn, options ConnectionOptions) Connection {
+func WithOptions(conn net.Conn, options connectionOptions) connection {
 	c := &connectionImpl{
 		conn:        conn,
 		reader:      bufio.NewReader(conn),
@@ -62,6 +62,7 @@ func (c *connectionImpl) Read() ([]byte, error) {
 func (c *connectionImpl) Write(data []byte) (int, error) {
 	n, err := c.conn.Write(data)
 
+	// TODO: This is most likely not what is returned with a real connection.
 	if err == io.ErrClosedPipe {
 		return n, errors.NewCode(ErrClientDisconnected)
 	}
