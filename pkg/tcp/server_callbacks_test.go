@@ -13,7 +13,7 @@ func TestUnit_ServerCallbacks_OnConnect_WhenUnset_ExpectNoFatalFailure(t *testin
 	conn, _ := net.Pipe()
 
 	callback := func() {
-		callbacks.OnConnect(sampleUuid, conn)
+		callbacks.OnConnect(conn)
 	}
 	assert.NotPanics(t, callback)
 }
