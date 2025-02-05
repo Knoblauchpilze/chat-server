@@ -130,3 +130,76 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actualData)
 }
+
+func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectId(t *testing.T) {
+	client, server := newTestConnection()
+
+	var actualId uuid.UUID
+	opts := ListenerOptions{
+		ReadTimeout: sampleReadTimeout,
+		Callbacks: Callbacks{
+			ReadDataCallbacks: []OnReadData{
+				func(id uuid.UUID, data []byte) {
+					actualId = id
+				},
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	asyncWriteSampleDataToConnection(t, client)
+	listener.Start()
+	listener.Close()
+
+	assert.Equal(t, listener.Id(), actualId)
+}
+
+func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackReceivesCorrectId(t *testing.T) {
+	client, server := newTestConnection()
+
+	var actualId uuid.UUID
+	opts := ListenerOptions{
+		Callbacks: Callbacks{
+			DisconnectCallbacks: []OnDisconnect{
+				func(id uuid.UUID) {
+					actualId = id
+				},
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	client.Close()
+	listener.Start()
+	listener.Close()
+
+	assert.Equal(t, listener.Id(), actualId)
+}
+
+func TestUnit_Listener_WhenReadDataErrors_ExpectCallbackReceivesCorrectId(t *testing.T) {
+	client, server := newTestConnection()
+
+	var actualId uuid.UUID
+	opts := ListenerOptions{
+		ReadTimeout: sampleReadTimeout,
+		Callbacks: Callbacks{
+			ReadDataCallbacks: []OnReadData{
+				func(id uuid.UUID, data []byte) {
+					panic(errSample)
+				},
+			},
+			ReadErrorCallbacks: []OnReadError{
+				func(id uuid.UUID, err error) {
+					actualId = id
+				},
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	asyncWriteSampleDataToConnection(t, client)
+	listener.Start()
+	listener.Close()
+
+	assert.Equal(t, listener.Id(), actualId)
+}
