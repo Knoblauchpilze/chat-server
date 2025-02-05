@@ -8,7 +8,9 @@ import (
 
 type Process func()
 
-func SafeRun(proc Process) (err error) {
+func SyncSafeRun(proc Process) error {
+	var err error
+
 	func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -21,7 +23,7 @@ func SafeRun(proc Process) (err error) {
 		}()
 
 		proc()
-
 	}()
-	return
+
+	return err
 }

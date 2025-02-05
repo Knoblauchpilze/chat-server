@@ -70,7 +70,7 @@ func (l *connectionListenerImpl) activeLoop() {
 		var timeout bool
 		var err error
 
-		readPanic := errors.SafeRun(func() {
+		readPanic := errors.SyncSafeRun(func() {
 			timeout, err = readFromConnection(l.id, l.conn, l.callbacks)
 		})
 
