@@ -10,33 +10,33 @@ import (
 
 var errSample = fmt.Errorf("sample error")
 
-func TestUnit_SyncSafeRun_CallsProcess(t *testing.T) {
+func TestUnit_SafeRunSync_CallsProcess(t *testing.T) {
 	var called int
 
 	proc := func() {
 		called++
 	}
 
-	actual := SyncSafeRun(proc)
+	actual := SafeRunSync(proc)
 
 	assert.Nil(t, actual, "Actual err: %v", actual)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_SyncSafeRun_NoPanic(t *testing.T) {
+func TestUnit_SafeRunSync_NoPanic(t *testing.T) {
 	proc := func() {}
 
 	var actual error
 
 	run := func() {
-		actual = SyncSafeRun(proc)
+		actual = SafeRunSync(proc)
 	}
 
 	assert.NotPanics(t, run)
 	assert.Nil(t, actual, "Actual err: %v", actual)
 }
 
-func TestUnit_SyncSafeRun_PanicWithError(t *testing.T) {
+func TestUnit_SafeRunSync_PanicWithError(t *testing.T) {
 	proc := func() {
 		panic(errSample)
 	}
@@ -44,14 +44,14 @@ func TestUnit_SyncSafeRun_PanicWithError(t *testing.T) {
 	var actual error
 
 	run := func() {
-		actual = SyncSafeRun(proc)
+		actual = SafeRunSync(proc)
 	}
 
 	assert.NotPanics(t, run)
 	assert.Equal(t, errSample, actual)
 }
 
-func TestUnit_SyncSafeRun_PanicWithRandomDatatype(t *testing.T) {
+func TestUnit_SafeRunSync_PanicWithRandomDatatype(t *testing.T) {
 	proc := func() {
 		panic(2)
 	}
@@ -59,7 +59,7 @@ func TestUnit_SyncSafeRun_PanicWithRandomDatatype(t *testing.T) {
 	var actual error
 
 	run := func() {
-		actual = SyncSafeRun(proc)
+		actual = SafeRunSync(proc)
 	}
 
 	assert.NotPanics(t, run)
