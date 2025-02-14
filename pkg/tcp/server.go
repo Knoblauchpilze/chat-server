@@ -155,7 +155,7 @@ func (s *serverImpl) acceptConnection(conn net.Conn) {
 	)
 
 	if err != nil {
-		s.log.Errorf("Failed to accept connection: %v", err)
+		s.log.Warnf("Failed to accept connection from %v: %v", conn.RemoteAddr(), err)
 		conn.Close()
 	}
 }
