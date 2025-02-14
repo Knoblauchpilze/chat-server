@@ -6,12 +6,14 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 )
 
 type Server interface {
@@ -28,6 +30,8 @@ type serverImpl struct {
 	quit      chan interface{}
 
 	callbacks ServerCallbacks
+
+	wg sync.WaitGroup
 }
 
 func NewServer(config Config, log logger.Logger) Server {
@@ -109,7 +113,9 @@ func (s *serverImpl) shutdown() error {
 
 	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
 	close(s.quit)
-	return s.listener.Close()
+	err := s.listener.Close()
+	s.wg.Wait()
+	return err
 }
 
 func (s *serverImpl) acceptLoop() error {
@@ -131,9 +137,25 @@ func (s *serverImpl) acceptLoop() error {
 		}
 
 		if accept {
-			s.callbacks.OnConnect(conn)
+			s.wg.Add(1)
+			go s.acceptConnection(conn)
 		}
 	}
 
 	return nil
+}
+
+func (s *serverImpl) acceptConnection(conn net.Conn) {
+	defer s.wg.Done()
+
+	err := errors.SafeRunSync(
+		func() {
+			s.callbacks.OnConnect(conn)
+		},
+	)
+
+	if err != nil {
+		s.log.Errorf("Failed to accept connection: %v", err)
+		conn.Close()
+	}
 }
