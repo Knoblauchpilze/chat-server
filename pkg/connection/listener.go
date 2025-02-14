@@ -57,6 +57,7 @@ func (l *listenerImpl) Start() {
 func (l *listenerImpl) Close() {
 	close(l.quit)
 	<-l.done
+	// Voluntarily ignoring errors: there's not much we can do about it.
 	l.conn.Close()
 }
 
