@@ -1,7 +1,9 @@
 package connection
 
 import (
+	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
@@ -25,8 +27,9 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	quit chan interface{}
-	done chan bool
+	started atomic.Bool
+	quit    chan interface{}
+	done    chan bool
 }
 
 func New(conn net.Conn, opts ListenerOptions) Listener {
@@ -50,14 +53,23 @@ func (l *listenerImpl) Id() uuid.UUID {
 }
 
 func (l *listenerImpl) Start() {
+	if !l.started.CompareAndSwap(false, true) {
+		// Listener already started
+		return
+	}
+
 	// https://github.com/venilnoronha/tcp-echo-server/blob/master/main.go#L43
 	go l.activeLoop()
 }
 
 func (l *listenerImpl) Close() {
 	close(l.quit)
-	<-l.done
+	fmt.Printf("waiting for listener close\n")
+	if l.started.Load() {
+		<-l.done
+	}
 	// Voluntarily ignoring errors: there's not much we can do about it.
+	fmt.Printf("closing connection\n")
 	l.conn.Close()
 }
 
