@@ -57,6 +57,7 @@ func (l *listenerImpl) Start() {
 func (l *listenerImpl) Close() {
 	close(l.quit)
 	<-l.done
+	l.conn.Close()
 }
 
 func (l *listenerImpl) activeLoop() {
