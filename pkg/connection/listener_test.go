@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"io"
 	"testing"
 	"time"
 
@@ -202,4 +203,18 @@ func TestUnit_Listener_WhenReadDataErrors_ExpectCallbackReceivesCorrectId(t *tes
 	listener.Close()
 
 	assert.Equal(t, listener.Id(), actualId)
+}
+
+func TestUnit_Listener_WhenClosing_ExpectConnectionToAlsoBeClosed(t *testing.T) {
+	client, server := newTestConnection()
+
+	listener := New(server, sampleListenerOptions)
+	listener.Start()
+
+	listener.Close()
+
+	client.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	oneByte := make([]byte, 1)
+	_, err := client.Read(oneByte)
+	assert.Equal(t, io.EOF, err)
 }
