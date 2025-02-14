@@ -19,6 +19,7 @@ import (
 const reasonableWaitTimeForServerToBeUp = 500 * time.Millisecond
 
 var sampleData = []byte("hello\n")
+var errSample = fmt.Errorf("sample error")
 
 func TestUnit_Server_Start_StopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
@@ -130,6 +131,72 @@ func TestUnit_Server_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
 
+func TestUnit_Server_OnConnect_WhenProcessingIncomingConnection_DoesNotBlockAdditionalConnections(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6005)
+
+	var called atomic.Int32
+	waitingConnectCallback := func(conn net.Conn) {
+		time.Sleep(2 * time.Second)
+		called.Add(1)
+	}
+	config.Callbacks.ConnectCallback = waitingConnectCallback
+
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+
+	wgConn1 := asyncOpenConnectionAndCloseIt(t, 6005)
+	wgConn2 := asyncOpenConnectionAndCloseIt(t, 6005)
+
+	start := time.Now()
+
+	wgConn2.Wait()
+	wgConn1.Wait()
+
+	cancel()
+	wg.Wait()
+
+	elapsed := time.Since(start)
+
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+	assert.Equal(t, int32(2), called.Load())
+	assert.LessOrEqual(t, elapsed, 3*time.Second)
+}
+
+func TestUnit_Server_OnConnect_WhenCallbackPanics_ExpectServerDoesNotCrashAndStillAcceptsOtherConnections(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestServerConfig(6006)
+
+	var called atomic.Int32
+	doPanic := true
+	waitingConnectCallback := func(conn net.Conn) {
+		called.Add(1)
+		if doPanic {
+			panic(errSample)
+		}
+		doPanic = !doPanic
+	}
+	config.Callbacks.ConnectCallback = waitingConnectCallback
+
+	s := NewServer(config, logger.New(os.Stdout))
+
+	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+
+	openConnectionAndSendData(t, 6006, sampleData)
+
+	const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
+	time.Sleep(reasonableTimeForConnectionToBeProcessed)
+
+	openConnectionAndSendData(t, 6006, sampleData)
+
+	cancel()
+	wg.Wait()
+
+	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
+	assert.Equal(t, int32(2), called.Load())
+}
+
 func newTestServerConfig(port uint16) Config {
 	return Config{
 		Port: port,
@@ -182,4 +249,16 @@ func openConnectionAndSendData(t *testing.T, port uint16, data []byte) {
 
 	const reasonableWaitTimeForConnectionToBeProcessed = 50 * time.Millisecond
 	time.Sleep(reasonableWaitTimeForConnectionToBeProcessed)
+}
+
+func asyncOpenConnectionAndCloseIt(t *testing.T, port uint16) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		openConnectionAndCloseIt(t, port)
+	}()
+
+	return &wg
 }
