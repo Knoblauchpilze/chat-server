@@ -23,6 +23,13 @@ func TestUnit_Listener_StartStop(t *testing.T) {
 	listener.Close()
 }
 
+func TestUnit_Listener_WhenNotStarted_CanBeStopped(t *testing.T) {
+	client, _ := newTestConnection()
+	listener := New(client, sampleListenerOptions)
+
+	listener.Close()
+}
+
 func TestUnit_Listener_WhenDataReceived_ExpectCallbackNotified(t *testing.T) {
 	client, server := newTestConnection()
 
