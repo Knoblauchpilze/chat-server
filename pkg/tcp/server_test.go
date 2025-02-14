@@ -78,7 +78,7 @@ func TestUnit_Server_ConnectDisconnect(t *testing.T) {
 	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 }
 
-func TestUnit_Server_WhenServerStopped_ExpectClosesBeforeConnectionCloses(t *testing.T) {
+func TestUnit_Server_WhenServerShutdowns_ExpectClientConnectionIsNotClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	s := NewServer(newTestServerConfig(6003), logger.New(os.Stdout))
 
@@ -95,12 +95,17 @@ func TestUnit_Server_WhenServerStopped_ExpectClosesBeforeConnectionCloses(t *tes
 		defer wg.Done()
 		defer connClosed.Store(true)
 
+		conn.SetReadDeadline(time.Now())
+
 		// Wait long enough for cancel to be called in the main thread
-		// and shutdown timeout of the server to be reached
 		time.Sleep(5 * time.Second)
 
-		err := conn.Close()
-		assert.Nil(t, err)
+		oneByte := make([]byte, 1)
+		_, err := conn.Read(oneByte)
+
+		opErr, ok := err.(*net.OpError)
+		assert.True(t, ok)
+		assert.True(t, opErr.Timeout())
 	}()
 
 	cancel()
