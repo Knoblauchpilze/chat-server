@@ -1,8 +1,6 @@
 package connection
 
 import (
-	"io"
-	"net"
 	"testing"
 	"time"
 
@@ -273,15 +271,4 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actualData)
-}
-
-func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
-	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
-
-	oneByte := make([]byte, 1)
-	_, err := conn.Read(oneByte)
-
-	// As we use pipe and not real net.Conn the returned error is this one
-	// and not io.EOF.
-	assert.Equal(t, io.ErrClosedPipe, err)
 }
