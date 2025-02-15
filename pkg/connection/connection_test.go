@@ -14,11 +14,10 @@ func TestUnit_Connection_Read(t *testing.T) {
 	client, server := newTestConnection()
 	conn := Wrap(server)
 
-	wg, writeErr := asyncWriteSampleDataToConnection(t, client)
+	wg := asyncWriteSampleDataToConnection(t, client)
 	actual, err := conn.Read()
 	wg.Wait()
 
-	assert.Nil(t, *writeErr, "Actual err: %v", *writeErr)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, sampleData, actual)
 }
@@ -44,7 +43,7 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	}
 	conn := WithOptions(server, opts)
 
-	wg, writeErr := asyncWriteSampleDataToConnectionWithDelay(t, client, 200*time.Millisecond)
+	wg := asyncWriteSampleDataToConnectionWithDelay(t, client, 200*time.Millisecond)
 	firstRead, err := conn.Read()
 	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 
@@ -53,7 +52,6 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Nil(t, *writeErr, "Actual err: %v", writeErr)
 	assert.Equal(t, []byte{}, firstRead)
 	assert.Equal(t, sampleData, secondRead)
 }

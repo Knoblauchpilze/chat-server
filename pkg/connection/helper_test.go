@@ -19,11 +19,11 @@ func newTestConnection() (client net.Conn, server net.Conn) {
 	return net.Pipe()
 }
 
-func asyncWriteSampleDataToConnection(t *testing.T, conn net.Conn) (*sync.WaitGroup, *error) {
+func asyncWriteSampleDataToConnection(t *testing.T, conn net.Conn) *sync.WaitGroup {
 	return asyncWriteSampleDataToConnectionWithDelay(t, conn, 0)
 }
 
-func asyncWriteSampleDataToConnectionWithDelay(t *testing.T, conn net.Conn, delay time.Duration) (*sync.WaitGroup, *error) {
+func asyncWriteSampleDataToConnectionWithDelay(t *testing.T, conn net.Conn, delay time.Duration) *sync.WaitGroup {
 	var wg sync.WaitGroup
 	var err error
 
@@ -39,7 +39,7 @@ func asyncWriteSampleDataToConnectionWithDelay(t *testing.T, conn net.Conn, dela
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
-	return &wg, &err
+	return &wg
 }
 
 type readResult struct {
