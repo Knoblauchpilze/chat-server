@@ -26,7 +26,7 @@ func TestUnit_Connection_Read(t *testing.T) {
 func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *testing.T) {
 	_, server := newTestConnection()
 	opts := connectionOptions{
-		ReadTimeout: 500 * time.Millisecond,
+		ReadTimeout: 100 * time.Millisecond,
 	}
 	conn := WithOptions(server, opts)
 
@@ -40,11 +40,11 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	client, server := newTestConnection()
 	opts := connectionOptions{
 		// 2 reads will be over the delay we set for the client connection
-		ReadTimeout: 700 * time.Millisecond,
+		ReadTimeout: 150 * time.Millisecond,
 	}
 	conn := WithOptions(server, opts)
 
-	wg, writeErr := asyncWriteSampleDataToConnectionWithDelay(t, client, 1*time.Second)
+	wg, writeErr := asyncWriteSampleDataToConnectionWithDelay(t, client, 200*time.Millisecond)
 	firstRead, err := conn.Read()
 	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout))
 
