@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"testing"
@@ -45,10 +46,9 @@ func asyncWriteSampleDataToConnectionWithDelay(t *testing.T, conn net.Conn, dela
 type readResult struct {
 	data []byte
 	size int
-	err  error
 }
 
-func asyncReadDataFromConnection(conn net.Conn) (*sync.WaitGroup, *readResult) {
+func asyncReadDataFromConnection(t *testing.T, conn net.Conn) (*sync.WaitGroup, *readResult) {
 	var wg sync.WaitGroup
 
 	const reasonableBufferSize = 15
@@ -60,8 +60,21 @@ func asyncReadDataFromConnection(conn net.Conn) (*sync.WaitGroup, *readResult) {
 	go func() {
 		defer wg.Done()
 
-		out.size, out.err = conn.Read(out.data)
+		var err error
+		out.size, err = conn.Read(out.data)
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
 	return &wg, &out
+}
+
+func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
+	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+
+	oneByte := make([]byte, 1)
+	_, err := conn.Read(oneByte)
+
+	// As we use pipe and not real net.Conn the returned error is this one
+	// and not io.EOF.
+	assert.Equal(t, io.ErrClosedPipe, err)
 }

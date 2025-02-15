@@ -72,12 +72,11 @@ func TestUnit_Connection_Write(t *testing.T) {
 	client, server := newTestConnection()
 	conn := Wrap(server)
 
-	wg, actual := asyncReadDataFromConnection(client)
+	wg, actual := asyncReadDataFromConnection(t, client)
 	sizeWritten, err := conn.Write(sampleData)
 	wg.Wait()
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Nil(t, actual.err, "Actual err: %v", actual.err)
 	assert.Equal(t, sizeWritten, actual.size)
 	assert.Equal(t, sampleData, actual.data[:actual.size])
 }
