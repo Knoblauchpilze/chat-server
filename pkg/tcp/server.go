@@ -20,48 +20,50 @@ type Server interface {
 	Start(ctx context.Context) error
 }
 
+// Inspiration for the shutdown mechanism:
+// https://echo.labstack.com/docs/cookbook/graceful-shutdown
+// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
+
 type serverImpl struct {
 	port uint16
 
 	log logger.Logger
 
-	listener  net.Listener
-	accepting atomic.Bool
-	quit      chan interface{}
-
 	callbacks ServerCallbacks
 
-	wg sync.WaitGroup
+	listener net.Listener
+	running  atomic.Bool
+	wg       sync.WaitGroup
 }
 
 func NewServer(config Config, log logger.Logger) Server {
 	s := serverImpl{
-		port: config.Port,
-
-		log: log,
-
-		quit: make(chan interface{}),
-
+		port:      config.Port,
+		log:       log,
 		callbacks: config.Callbacks,
 	}
-
-	s.accepting.Store(true)
 
 	return &s
 }
 
 func (s *serverImpl) Start(ctx context.Context) error {
+	if !s.running.CompareAndSwap(false, true) {
+		// Server is already running
+		return bterr.NewCode(ErrAlreadyListening)
+	}
+
 	if err := s.initializeListener(); err != nil {
 		return err
 	}
 
-	// https://echo.labstack.com/docs/cookbook/graceful-shutdown
 	notifyCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	waitCtx, cancel := context.WithCancel(notifyCtx)
 
 	var runError error
+
+	s.wg.Add(1)
 
 	go func() {
 		s.log.Infof("Starting server")
@@ -79,7 +81,9 @@ func (s *serverImpl) Start(ctx context.Context) error {
 
 	<-waitCtx.Done()
 
+	fmt.Printf("shutting down\n")
 	err := s.shutdown()
+	fmt.Printf("waiting for shutting down finished\n")
 	if err != nil {
 		return err
 	} else if runError != nil {
@@ -106,41 +110,43 @@ func (s *serverImpl) initializeListener() error {
 }
 
 func (s *serverImpl) shutdown() error {
-	if !s.accepting.CompareAndSwap(true, false) {
-		// Server already closed
+	if !s.running.CompareAndSwap(true, false) {
+		// Server is already shutting down.
 		return nil
 	}
 
-	// https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/
-	close(s.quit)
 	err := s.listener.Close()
 	s.wg.Wait()
 	return err
 }
 
 func (s *serverImpl) acceptLoop() error {
+	defer s.wg.Done()
+
 	running := true
 
 	for running {
-		accept := true
-
+		fmt.Printf("accepting loop started\n")
 		conn, err := s.listener.Accept()
 		if err != nil {
-			select {
-			case <-s.quit:
-				running = false
-				accept = false
-			default:
-				s.log.Errorf("Failed to accept connection: %v", err)
-				accept = false
+			running = s.running.Load()
+			if running {
+				s.log.Errorf("Failed to accept connection in accept: %v", err)
+			} else {
+				fmt.Printf("accept loop finished\n")
 			}
 		}
 
-		if accept {
+		if running {
+			fmt.Printf("received connection, accepting\n")
 			s.wg.Add(1)
 			go s.acceptConnection(conn)
+		} else {
+			fmt.Printf("can't accept server is not running anymore\n")
 		}
 	}
+
+	fmt.Printf("exiting accept loop\n")
 
 	return nil
 }
@@ -148,6 +154,7 @@ func (s *serverImpl) acceptLoop() error {
 func (s *serverImpl) acceptConnection(conn net.Conn) {
 	defer s.wg.Done()
 
+	fmt.Printf("calling onConnect callback\n")
 	err := errors.SafeRunSync(
 		func() {
 			s.callbacks.OnConnect(conn)
@@ -158,4 +165,6 @@ func (s *serverImpl) acceptConnection(conn net.Conn) {
 		s.log.Warnf("Failed to accept connection from %v: %v", conn.RemoteAddr(), err)
 		conn.Close()
 	}
+
+	fmt.Printf("callback called and finished\n")
 }
