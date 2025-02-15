@@ -69,7 +69,7 @@ func asyncReadDataFromConnection(t *testing.T, conn net.Conn) (*sync.WaitGroup, 
 }
 
 func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
-	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 	oneByte := make([]byte, 1)
 	_, err := conn.Read(oneByte)
