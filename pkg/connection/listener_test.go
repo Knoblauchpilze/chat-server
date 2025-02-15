@@ -43,15 +43,6 @@ func TestUnit_Listener_WhenNotStartedAndStopping_ExpectAttachedConnectionToBeClo
 	assertConnectionIsClosed(t, server)
 }
 
-func TestUnit_Listener_WhenNotStarted_CanBeStopped(t *testing.T) {
-	_, server := newTestConnection()
-	listener := New(server, sampleListenerOptions)
-
-	listener.Close()
-
-	assertConnectionIsClosed(t, server)
-}
-
 func TestUnit_Listener_WhenStartedMultipleTimes_ShouldStillStopAfterOneClose(t *testing.T) {
 	_, server := newTestConnection()
 	listener := New(server, sampleListenerOptions)

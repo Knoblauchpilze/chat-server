@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -28,9 +27,8 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	started       atomic.Bool
-	stopRequested atomic.Bool
-	wg            sync.WaitGroup
+	running atomic.Bool
+	wg      sync.WaitGroup
 }
 
 func New(conn net.Conn, opts ListenerOptions) Listener {
@@ -52,12 +50,10 @@ func (l *listenerImpl) Id() uuid.UUID {
 }
 
 func (l *listenerImpl) Start() {
-	if !l.started.CompareAndSwap(false, true) {
-		// Listener already started
+	if !l.running.CompareAndSwap(false, true) {
+		// Listener already running
 		return
 	}
-
-	fmt.Printf("starting listener\n")
 
 	l.wg.Add(1)
 
@@ -66,21 +62,17 @@ func (l *listenerImpl) Start() {
 }
 
 func (l *listenerImpl) Close() {
-	if !l.stopRequested.CompareAndSwap(false, true) {
-		// Stop already requested
+	// Voluntarily ignoring errors: there's not much we can do about it.
+	// Also closing the connection even if we did not start listening.
+	// This can be called multiple times and this is okay.
+	defer l.conn.Close()
+
+	if !l.running.CompareAndSwap(true, false) {
+		// Listener not started
 		return
 	}
-	defer l.stopRequested.Store(false)
 
-	if l.started.CompareAndSwap(true, false) {
-		fmt.Printf("closing listener\n")
-		l.wg.Wait()
-		fmt.Printf("closing listener done\n")
-	}
-
-	// Voluntarily ignoring errors: there's not much we can do about it.
-	fmt.Printf("closing connection from listener\n")
-	l.conn.Close()
+	l.wg.Wait()
 }
 
 func (l *listenerImpl) activeLoop() {
@@ -96,9 +88,7 @@ func (l *listenerImpl) activeLoop() {
 		})
 
 		if timeout {
-			if l.stopRequested.Load() {
-				running = false
-			}
+			running = l.running.Load()
 		}
 
 		if readPanic != nil {
