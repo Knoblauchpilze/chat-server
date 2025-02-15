@@ -3,6 +3,7 @@ package connection
 import (
 	"fmt"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,9 +28,9 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	started atomic.Bool
-	quit    chan interface{}
-	done    chan bool
+	started       atomic.Bool
+	stopRequested atomic.Bool
+	wg            sync.WaitGroup
 }
 
 func New(conn net.Conn, opts ListenerOptions) Listener {
@@ -41,8 +42,6 @@ func New(conn net.Conn, opts ListenerOptions) Listener {
 		id:        uuid.New(),
 		conn:      WithOptions(conn, connOpts),
 		callbacks: opts.Callbacks,
-		quit:      make(chan interface{}),
-		done:      make(chan bool),
 	}
 
 	return l
@@ -58,25 +57,34 @@ func (l *listenerImpl) Start() {
 		return
 	}
 
+	fmt.Printf("starting listener\n")
+
+	l.wg.Add(1)
+
 	// https://github.com/venilnoronha/tcp-echo-server/blob/master/main.go#L43
 	go l.activeLoop()
 }
 
 func (l *listenerImpl) Close() {
-	close(l.quit)
-	fmt.Printf("waiting for listener close\n")
-	if l.started.Load() {
-		<-l.done
+	if !l.stopRequested.CompareAndSwap(false, true) {
+		// Stop already requested
+		return
 	}
+	defer l.stopRequested.Store(false)
+
+	if l.started.CompareAndSwap(true, false) {
+		fmt.Printf("closing listener\n")
+		l.wg.Wait()
+		fmt.Printf("closing listener done\n")
+	}
+
 	// Voluntarily ignoring errors: there's not much we can do about it.
-	fmt.Printf("closing connection\n")
+	fmt.Printf("closing connection from listener\n")
 	l.conn.Close()
 }
 
 func (l *listenerImpl) activeLoop() {
-	defer func() {
-		l.done <- true
-	}()
+	defer l.wg.Done()
 
 	running := true
 	for running {
@@ -88,10 +96,8 @@ func (l *listenerImpl) activeLoop() {
 		})
 
 		if timeout {
-			select {
-			case <-l.quit:
+			if l.stopRequested.Load() {
 				running = false
-			default:
 			}
 		}
 
