@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
+const reasonableWaitTimeForAcceptorToBeUp = 200 * time.Millisecond
 
 var errSample = fmt.Errorf("some error")
 
@@ -23,12 +23,11 @@ func asyncCancelContext(delay time.Duration, cancel context.CancelFunc) {
 	}()
 }
 
-func asyncRunServerAndWaitForItToBeUp(
+func asyncRunAcceptorAndWaitForItToBeUp(
 	t *testing.T,
-	s Server,
+	ca ConnectionAcceptor,
 	ctx context.Context,
-) (*sync.WaitGroup, *error) {
-	var err error
+) *sync.WaitGroup {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -39,12 +38,13 @@ func asyncRunServerAndWaitForItToBeUp(
 				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
 			}
 		}()
-		err = s.Start(ctx)
+		err := ca.Listen(ctx)
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
-	time.Sleep(reasonableWaitTimeForServerToBeUp)
+	time.Sleep(reasonableWaitTimeForAcceptorToBeUp)
 
-	return &wg, &err
+	return &wg
 }
 
 func asyncOpenConnectionAndCloseIt(t *testing.T, port uint16) *sync.WaitGroup {
