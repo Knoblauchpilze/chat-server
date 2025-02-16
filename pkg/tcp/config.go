@@ -15,3 +15,8 @@ type ManagerConfig struct {
 	ReadTimeout time.Duration
 	Callbacks   clients.Callbacks
 }
+
+type ServerConfiguration struct {
+	Port      uint16
+	Callbacks clients.Callbacks
+}
