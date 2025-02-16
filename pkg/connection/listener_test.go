@@ -262,7 +262,7 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 	}
 	listener := New(server, opts)
 
-	// Write after a longer delay than the read timeout
+	// Write after a longer delay than the read timeout.
 	wg := asyncWriteSampleDataToConnectionWithDelay(t, client, 150*time.Millisecond)
 	listener.Start()
 

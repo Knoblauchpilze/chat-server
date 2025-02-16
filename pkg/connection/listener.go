@@ -51,7 +51,7 @@ func (l *listenerImpl) Id() uuid.UUID {
 
 func (l *listenerImpl) Start() {
 	if !l.running.CompareAndSwap(false, true) {
-		// Listener already running
+		// Listener already running.
 		return
 	}
 
@@ -68,7 +68,7 @@ func (l *listenerImpl) Close() {
 	defer l.conn.Close()
 
 	if !l.running.CompareAndSwap(true, false) {
-		// Listener not started
+		// Listener not started.
 		return
 	}
 

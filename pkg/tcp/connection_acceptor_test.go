@@ -225,7 +225,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	wgConn2.Wait()
 	wgConn1.Wait()
 
-	// Wait for connections to be processed before closing
+	// Wait for connections to be processed before closing.
 	time.Sleep(100 * time.Millisecond)
 
 	closeAcceptorAndAssertNoError(t, ca, wg)

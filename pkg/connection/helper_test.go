@@ -76,5 +76,6 @@ func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
 
 	// As we use pipe and not real net.Conn the returned error is this one
 	// and not io.EOF.
+	// TODO: Replace this with real connection.
 	assert.Equal(t, io.ErrClosedPipe, err)
 }
