@@ -46,24 +46,22 @@ func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testi
 	closeAcceptorAndAssertNoError(t, ca, &wg)
 }
 
+func TestUnit_ConnectionAcceptor_WhenNotStarted_StopDoesNotFail(t *testing.T) {
+	ca := NewConnectionAcceptor(newTestAcceptorConfig(6001), logger.New(os.Stdout))
+
+	err := ca.Close()
+
+	assert.Nil(t, err, "Actual err: %v", err)
+}
+
 func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStartReturnsInitializationFailure(t *testing.T) {
 	log := logger.New(os.Stdout)
 	ca1 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
 	ca2 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
 
-	var acceptErr error
-
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca1)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		acceptErr = ca2.Accept()
-	}()
-
-	// Wait a bit longer to be sure that the second acceptor
-	// has time to fail
-	time.Sleep(500 * time.Millisecond)
+	acceptErr := ca2.Accept()
 
 	closeAcceptorAndAssertNoError(t, ca1, wg)
 	assert.True(
@@ -72,6 +70,22 @@ func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStartReturnsInitializat
 		"Actual err: %v",
 		acceptErr,
 	)
+}
+
+func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStopDoesNotCrash(t *testing.T) {
+	log := logger.New(os.Stdout)
+	ca1 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
+	ca2 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
+
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca1)
+
+	acceptErr := ca2.Accept()
+	assert.NotNil(t, acceptErr)
+
+	closeAcceptorAndAssertNoError(t, ca1, wg)
+	err := ca2.Close()
+
+	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func TestUnit_ConnectionAcceptor_WhenAcceptorIsStopped_ExpectConnectionToNotBeClosed(t *testing.T) {

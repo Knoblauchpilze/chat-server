@@ -52,11 +52,12 @@ func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) ConnectionA
 
 func (a *acceptorImpl) Accept() error {
 	if !a.running.CompareAndSwap(false, true) {
-		// Server is already running
+		// Acceptor is already listening
 		return bterr.NewCode(ErrAlreadyListening)
 	}
 
 	if err := a.initializeListener(); err != nil {
+		fmt.Printf("err listener: %v\n", err)
 		return err
 	}
 
@@ -70,7 +71,10 @@ func (a *acceptorImpl) Close() error {
 		return nil
 	}
 
-	err := a.listener.Close()
+	var err error
+	if a.listener != nil {
+		err = a.listener.Close()
+	}
 	a.wg.Wait()
 	return err
 }
