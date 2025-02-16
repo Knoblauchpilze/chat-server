@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -23,7 +22,6 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectClientConnectionToBeClos
 
 	time.Sleep(50 * time.Millisecond)
 
-	fmt.Printf("asserting connection closed\n")
 	assertConnectionIsClosed(t, client)
 }
 

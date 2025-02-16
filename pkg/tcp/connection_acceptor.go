@@ -57,7 +57,6 @@ func (a *acceptorImpl) Accept() error {
 	}
 
 	if err := a.initializeListener(); err != nil {
-		fmt.Printf("err listener: %v\n", err)
 		return err
 	}
 
@@ -100,27 +99,19 @@ func (a *acceptorImpl) acceptLoop() error {
 	running := true
 
 	for running {
-		fmt.Printf("accepting loop started\n")
 		conn, err := a.listener.Accept()
 		if err != nil {
 			running = a.running.Load()
 			if running {
 				a.log.Errorf("Failed to accept connection in accept: %v", err)
-			} else {
-				fmt.Printf("accept loop finished: %v\n", err)
 			}
 		}
 
 		if running {
-			fmt.Printf("received connection, accepting\n")
 			a.wg.Add(1)
 			go a.acceptConnection(conn)
-		} else {
-			fmt.Printf("can't accept server is not running anymore\n")
 		}
 	}
-
-	fmt.Printf("exiting accept loop\n")
 
 	return nil
 }
@@ -128,7 +119,6 @@ func (a *acceptorImpl) acceptLoop() error {
 func (a *acceptorImpl) acceptConnection(conn net.Conn) {
 	defer a.wg.Done()
 
-	fmt.Printf("calling onConnect callback\n")
 	err := errors.SafeRunSync(
 		func() {
 			a.callbacks.OnConnect(conn)
@@ -139,6 +129,4 @@ func (a *acceptorImpl) acceptConnection(conn net.Conn) {
 		a.log.Warnf("Failed to accept connection from %v: %v", conn.RemoteAddr(), err)
 		conn.Close()
 	}
-
-	fmt.Printf("callback called and finished\n")
 }

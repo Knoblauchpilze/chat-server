@@ -54,13 +54,10 @@ func asyncOpenConnectionAndCloseIt(t *testing.T, port uint16) *sync.WaitGroup {
 		defer wg.Done()
 
 		address := fmt.Sprintf(":%d", port)
-		fmt.Printf("opening %d\n", port)
 		conn, err := net.Dial("tcp", address)
 		assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 		conn.Close()
-
-		fmt.Printf("finished opening and closing connection\n")
 	}()
 
 	return &wg

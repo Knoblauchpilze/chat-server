@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -65,14 +64,11 @@ func (m *managerImpl) Close() {
 		clear(m.listeners)
 	}()
 
-	fmt.Printf("closing all %d listener(s)\n", len(allListeners))
 	for _, listener := range allListeners {
 		listener.Close()
 	}
 
-	fmt.Printf("all %d listener(s) closed, waiting for wg\n", len(allListeners))
 	m.wg.Wait()
-	fmt.Printf("all pending connections closed\n")
 }
 
 func (m *managerImpl) prepareListenerOptions() connection.ListenerOptions {
@@ -156,7 +152,6 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
 	err := m.callCallbackAndLogError(cb, "OnReadData", id)
 
 	if !keepAlive {
-		fmt.Printf("closing as it's not alive anymore\n")
 		m.closeConnection(id)
 	} else if err != nil {
 		m.log.Errorf(
@@ -180,13 +175,10 @@ func (m *managerImpl) closeConnection(id uuid.UUID) {
 	}()
 
 	if ok {
-		fmt.Printf("requesting to close listener\n")
 		m.wg.Add(1)
 		go func() {
 			defer m.wg.Done()
-			fmt.Printf("waiting to close listener %v", id)
 			listener.Close()
-			fmt.Printf("removed %v\n", id)
 		}()
 		m.log.Debugf("Triggered removal of connection %v", id)
 	}

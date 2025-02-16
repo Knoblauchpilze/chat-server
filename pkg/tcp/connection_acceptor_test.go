@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -170,9 +169,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 	// Allow the callback to be processed.
 	time.Sleep(50 * time.Millisecond)
 
-	fmt.Printf("checking connection is closed\n")
 	assertConnectionIsClosed(t, conn)
-	fmt.Printf("after connection check\n")
 
 	closeAcceptorAndAssertNoError(t, ca, wg)
 }
@@ -212,9 +209,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	config := newTestAcceptorConfig(6009)
 	var called atomic.Int32
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
-		fmt.Printf("onConnect called\n")
 		time.Sleep(200 * time.Millisecond)
-		fmt.Printf("onConnect called and done\n")
 		called.Add(1)
 	}
 
@@ -265,7 +260,6 @@ func asyncRunAcceptorAndWaitForItToBeUp(
 		}()
 		err := ca.Accept()
 		assert.Nil(t, err, "Actual err: %v", err)
-		fmt.Printf("all good in the go routine\n")
 	}()
 
 	time.Sleep(reasonableWaitTimeForAcceptorToBeUp)
@@ -275,7 +269,6 @@ func asyncRunAcceptorAndWaitForItToBeUp(
 
 func closeAcceptorAndAssertNoError(t *testing.T, ca ConnectionAcceptor, wg *sync.WaitGroup) {
 	err := ca.Close()
-	fmt.Printf("waiting\n")
 	wg.Wait()
 	assert.Nil(t, err, "Actual err: %v", err)
 }
