@@ -177,11 +177,12 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillAcceptsOtherConnections(t *testing.T) {
 	config := newTestAcceptorConfig(6008)
 	var called atomic.Int32
-	doPanic := true
+	var doPanic atomic.Bool
+	doPanic.Store(true)
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
 		called.Add(1)
-		if doPanic {
-			doPanic = false
+		if doPanic.Load() {
+			doPanic.Store(false)
 			panic(errSample)
 		}
 	}
