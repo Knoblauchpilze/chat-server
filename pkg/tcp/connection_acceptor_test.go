@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
@@ -15,27 +14,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const reasonableWaitTimeForAcceptorToBeUp = 200 * time.Millisecond
+
 func TestUnit_ConnectionAcceptor_ListenWithContext(t *testing.T) {
 	ca := NewConnectionAcceptor(newTestAcceptorConfig(6000), logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	asyncCancelContext(reasonableWaitTimeForAcceptorToBeUp, cancel)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	err := ca.Listen(cancellable)
-
-	assert.Nil(t, err, "Actual err: %v", err)
+	closeAcceptorAndAssertNoError(t, ca, wg)
 }
 
 func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
 	ca := NewConnectionAcceptor(newTestAcceptorConfig(6001), logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
 	// Start the first acceptor: it should run without error.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := ca.Listen(cancellable)
+		err := ca.Accept()
 		assert.Nil(t, err)
 	}()
 
@@ -43,101 +40,67 @@ func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testi
 	time.Sleep(100 * time.Millisecond)
 
 	// Start the second acceptor: this should fail.
-	err := ca.Listen(context.Background())
+	err := ca.Accept()
 	assert.True(t, errors.IsErrorWithCode(err, ErrAlreadyListening))
 
-	cancel()
-	wg.Wait()
+	closeAcceptorAndAssertNoError(t, ca, &wg)
 }
 
 func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStartReturnsInitializationFailure(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
 	log := logger.New(os.Stdout)
 	ca1 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
 	ca2 := NewConnectionAcceptor(newTestAcceptorConfig(6002), log)
 
-	var err1, err2 error
-	var wg sync.WaitGroup
-	wg.Add(2)
+	var acceptErr error
 
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca1)
+
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err1 = ca1.Listen(cancellable)
-	}()
-
-	// Wait for the first acceptor to be up.
-	time.Sleep(100 * time.Millisecond)
-
-	go func() {
-		defer wg.Done()
-		err2 = ca2.Listen(context.Background())
+		acceptErr = ca2.Accept()
 	}()
 
 	// Wait a bit longer to be sure that the second acceptor
 	// has time to fail
 	time.Sleep(500 * time.Millisecond)
 
-	cancel()
-	wg.Wait()
-
-	assert.Nil(t, err1, "Actual err: %v", err1)
-	assert.True(t, errors.IsErrorWithCode(err2, ErrTcpInitialization), "Actual err: %v", err2)
+	closeAcceptorAndAssertNoError(t, ca1, wg)
+	assert.True(
+		t,
+		errors.IsErrorWithCode(acceptErr, ErrTcpInitialization),
+		"Actual err: %v",
+		acceptErr,
+	)
 }
 
 func TestUnit_ConnectionAcceptor_WhenAcceptorIsStopped_ExpectConnectionToNotBeClosed(t *testing.T) {
-	ca := NewConnectionAcceptor(newTestAcceptorConfig(6008), logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
+	ca := NewConnectionAcceptor(newTestAcceptorConfig(6003), logger.New(os.Stdout))
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	conn, err := net.Dial("tcp", ":6008")
+	conn, err := net.Dial("tcp", ":6003")
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	cancel()
-	wg.Wait()
+	closeAcceptorAndAssertNoError(t, ca, wg)
 
 	assertConnectionIsStillOpen(t, conn)
 }
 
 func TestUnit_ConnectionAcceptor_ConnectDisconnect(t *testing.T) {
-	ca := NewConnectionAcceptor(newTestAcceptorConfig(6003), logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
+	ca := NewConnectionAcceptor(newTestAcceptorConfig(6004), logger.New(os.Stdout))
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
-
-	conn, err := net.Dial("tcp", ":6003")
-	assert.Nil(t, err, "Unexpected dial error: %v", err)
-
-	conn.Close()
-
-	cancel()
-	wg.Wait()
-}
-
-func TestUnit_ConnectionAcceptor_OnConnect_ExpectCallbackNotified(t *testing.T) {
-	config := newTestAcceptorConfig(6004)
-	var called int
-	config.Callbacks.ConnectCallback = func(conn net.Conn) {
-		called++
-	}
-
-	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
-
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
 	conn, err := net.Dial("tcp", ":6004")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	conn.Close()
 
-	cancel()
-	wg.Wait()
-
-	assert.Equal(t, 1, called)
+	closeAcceptorAndAssertNoError(t, ca, wg)
 }
 
-func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackSucceeds_ExpectConnectionToStayOpen(t *testing.T) {
+func TestUnit_ConnectionAcceptor_OnConnect_ExpectCallbackNotified(t *testing.T) {
 	config := newTestAcceptorConfig(6005)
 	var called int
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
@@ -145,33 +108,49 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackSucceeds_ExpectConnectionT
 	}
 
 	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
 	conn, err := net.Dial("tcp", ":6005")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
+	conn.Close()
+
+	closeAcceptorAndAssertNoError(t, ca, wg)
+	assert.Equal(t, 1, called)
+}
+
+func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackSucceeds_ExpectConnectionToStayOpen(t *testing.T) {
+	config := newTestAcceptorConfig(6006)
+	var called int
+	config.Callbacks.ConnectCallback = func(conn net.Conn) {
+		called++
+	}
+
+	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
+
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
+
+	conn, err := net.Dial("tcp", ":6006")
+	assert.Nil(t, err, "Unexpected dial error: %v", err)
+
 	assertConnectionIsStillOpen(t, conn)
 
-	cancel()
-	wg.Wait()
-
+	closeAcceptorAndAssertNoError(t, ca, wg)
 	assert.Equal(t, 1, called)
 }
 
 func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestAcceptorConfig(6006)
+	config := newTestAcceptorConfig(6007)
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
 		panic(errSample)
 	}
 
 	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	conn, err := net.Dial("tcp", ":6006")
+	conn, err := net.Dial("tcp", ":6007")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	// Allow the callback to be processed.
@@ -181,12 +160,11 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 	assertConnectionIsClosed(t, conn)
 	fmt.Printf("after connection check\n")
 
-	cancel()
-	wg.Wait()
+	closeAcceptorAndAssertNoError(t, ca, wg)
 }
 
 func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillAcceptsOtherConnections(t *testing.T) {
-	config := newTestAcceptorConfig(6009)
+	config := newTestAcceptorConfig(6008)
 	var called int
 	doPanic := true
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
@@ -198,28 +176,26 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillA
 	}
 
 	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
 	// First connection should panic and be closed
-	conn, err := net.Dial("tcp", ":6009")
+	conn, err := net.Dial("tcp", ":6008")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 	time.Sleep(50 * time.Millisecond)
 	assertConnectionIsClosed(t, conn)
 
 	// Second connection should work
-	conn, err = net.Dial("tcp", ":6009")
+	conn, err = net.Dial("tcp", ":6008")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 	time.Sleep(50 * time.Millisecond)
 	assertConnectionIsStillOpen(t, conn)
 
-	cancel()
-	wg.Wait()
+	closeAcceptorAndAssertNoError(t, ca, wg)
 }
 
 func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCanBeProcessedConcurrently(t *testing.T) {
-	config := newTestAcceptorConfig(6007)
+	config := newTestAcceptorConfig(6009)
 	var called atomic.Int32
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
 		fmt.Printf("onConnect called\n")
@@ -229,12 +205,11 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	}
 
 	ca := NewConnectionAcceptor(config, logger.New(os.Stdout))
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca, cancellable)
+	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	wgConn1 := asyncOpenConnectionAndCloseIt(t, 6007)
-	wgConn2 := asyncOpenConnectionAndCloseIt(t, 6007)
+	wgConn1 := asyncOpenConnectionAndCloseIt(t, 6009)
+	wgConn2 := asyncOpenConnectionAndCloseIt(t, 6009)
 
 	start := time.Now()
 
@@ -244,8 +219,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	// Wait for connections to be processed before closing
 	time.Sleep(100 * time.Millisecond)
 
-	cancel()
-	wg.Wait()
+	closeAcceptorAndAssertNoError(t, ca, wg)
 
 	elapsed := time.Since(start)
 
@@ -259,4 +233,35 @@ func newTestAcceptorConfig(port uint16) AcceptorConfig {
 	return AcceptorConfig{
 		Port: port,
 	}
+}
+
+func asyncRunAcceptorAndWaitForItToBeUp(
+	t *testing.T,
+	ca ConnectionAcceptor,
+) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if panicErr := recover(); panicErr != nil {
+				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
+			}
+		}()
+		err := ca.Accept()
+		assert.Nil(t, err, "Actual err: %v", err)
+		fmt.Printf("all good in the go routine\n")
+	}()
+
+	time.Sleep(reasonableWaitTimeForAcceptorToBeUp)
+
+	return &wg
+}
+
+func closeAcceptorAndAssertNoError(t *testing.T, ca ConnectionAcceptor, wg *sync.WaitGroup) {
+	err := ca.Close()
+	fmt.Printf("waiting\n")
+	wg.Wait()
+	assert.Nil(t, err, "Actual err: %v", err)
 }

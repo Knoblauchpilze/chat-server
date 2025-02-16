@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-const reasonableWaitTimeForAcceptorToBeUp = 200 * time.Millisecond
 
 var errSample = fmt.Errorf("some error")
 var sampleData = []byte("hello\n")
@@ -47,37 +44,6 @@ func newTestConnection(
 	listener.Close()
 
 	return
-}
-
-func asyncCancelContext(delay time.Duration, cancel context.CancelFunc) {
-	go func() {
-		time.Sleep(delay)
-		cancel()
-	}()
-}
-
-func asyncRunAcceptorAndWaitForItToBeUp(
-	t *testing.T,
-	ca ConnectionAcceptor,
-	ctx context.Context,
-) *sync.WaitGroup {
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			if panicErr := recover(); panicErr != nil {
-				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
-			}
-		}()
-		err := ca.Listen(ctx)
-		assert.Nil(t, err, "Actual err: %v", err)
-	}()
-
-	time.Sleep(reasonableWaitTimeForAcceptorToBeUp)
-
-	return &wg
 }
 
 func asyncOpenConnectionAndCloseIt(t *testing.T, port uint16) *sync.WaitGroup {
