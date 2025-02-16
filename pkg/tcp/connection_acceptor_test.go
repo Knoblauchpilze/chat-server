@@ -174,7 +174,12 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 	conn, err := net.Dial("tcp", ":6006")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
+	// Allow the callback to be processed.
+	time.Sleep(50 * time.Millisecond)
+
+	fmt.Printf("checking connection is closed\n")
 	assertConnectionIsClosed(t, conn)
+	fmt.Printf("after connection check\n")
 
 	cancel()
 	wg.Wait()
@@ -250,8 +255,8 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	assert.LessOrEqual(t, elapsed, 300*time.Millisecond)
 }
 
-func newTestAcceptorConfig(port uint16) Config {
-	return Config{
+func newTestAcceptorConfig(port uint16) AcceptorConfig {
+	return AcceptorConfig{
 		Port: port,
 	}
 }
