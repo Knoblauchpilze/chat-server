@@ -30,8 +30,9 @@ func newTestConnection(
 		// Wait for the listener to be started in the main thread.
 		time.Sleep(50 * time.Millisecond)
 
-		client, err = net.Dial("tcp", address)
-		assert.Nil(t, err, "Actual err: %v", err)
+		var dialErr error
+		client, dialErr = net.Dial("tcp", address)
+		assert.Nil(t, dialErr, "Actual err: %v", dialErr)
 	}
 
 	go asyncConnect()
