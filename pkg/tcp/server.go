@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -87,9 +86,7 @@ func (s *serverImpl) Start(ctx context.Context) error {
 
 	<-waitCtx.Done()
 
-	fmt.Printf("shutting down\n")
 	err := s.shutdown()
-	fmt.Printf("waiting for shutting down finished, err: %v, runError: %v\n", err, runError)
 	if err != nil {
 		return err
 	} else if runError != nil {
