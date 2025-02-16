@@ -1,6 +1,17 @@
 package tcp
 
-type Config struct {
+import (
+	"time"
+
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
+)
+
+type AcceptorConfig struct {
 	Port      uint16
 	Callbacks ServerCallbacks
+}
+
+type ManagerConfig struct {
+	ReadTimeout time.Duration
+	Callbacks   clients.Callbacks
 }

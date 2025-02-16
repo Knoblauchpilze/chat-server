@@ -36,7 +36,7 @@ type acceptorImpl struct {
 	wg       sync.WaitGroup
 }
 
-func NewConnectionAcceptor(config Config, log logger.Logger) ConnectionAcceptor {
+func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) ConnectionAcceptor {
 	a := acceptorImpl{
 		port:      config.Port,
 		log:       log,
@@ -133,7 +133,7 @@ func (a *acceptorImpl) acceptLoop() error {
 			if running {
 				a.log.Errorf("Failed to accept connection in accept: %v", err)
 			} else {
-				fmt.Printf("accept loop finished\n")
+				fmt.Printf("accept loop finished: %v\n", err)
 			}
 		}
 
