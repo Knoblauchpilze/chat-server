@@ -55,7 +55,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) Server {
 
 func (s *serverImpl) Start(ctx context.Context) error {
 	if !s.running.CompareAndSwap(false, true) {
-		// Server is already running
+		// Server is already running.
 		return bterr.NewCode(ErrAlreadyRunning)
 	}
 

@@ -52,7 +52,7 @@ func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) ConnectionA
 
 func (a *acceptorImpl) Accept() error {
 	if !a.running.CompareAndSwap(false, true) {
-		// Acceptor is already listening
+		// Acceptor is already listening.
 		return bterr.NewCode(ErrAlreadyListening)
 	}
 
