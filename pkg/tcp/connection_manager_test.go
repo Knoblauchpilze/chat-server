@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,7 +45,10 @@ func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *tes
 func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
+	var wg sync.WaitGroup
+	wg.Add(1)
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+		defer wg.Done()
 		called++
 		return true
 	}
@@ -59,8 +63,7 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err)
 
-	// Wait for the processing to happen.
-	time.Sleep(50 * time.Millisecond)
+	wg.Wait()
 
 	assert.Equal(t, 1, called)
 }
@@ -113,7 +116,10 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
+	var wg sync.WaitGroup
+	wg.Add(1)
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
+		defer wg.Done()
 		called++
 	}
 
@@ -124,8 +130,7 @@ func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *
 	cm.OnClientConnected(server)
 	client.Close()
 
-	// Wait a bit for the processing to happen.
-	time.Sleep(50 * time.Millisecond)
+	wg.Wait()
 
 	assert.Equal(t, 1, called)
 }
@@ -133,7 +138,10 @@ func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *
 func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
+	var wg sync.WaitGroup
+	wg.Add(1)
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+		defer wg.Done()
 		called++
 		panic(errSample)
 	}
@@ -148,6 +156,7 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err)
 
+	wg.Wait()
 	// Wait long enough for the read timeout to expire.
 	time.Sleep(200 * time.Millisecond)
 
