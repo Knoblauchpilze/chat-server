@@ -176,10 +176,10 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 
 func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillAcceptsOtherConnections(t *testing.T) {
 	config := newTestAcceptorConfig(6008)
-	var called int
+	var called atomic.Int32
 	doPanic := true
 	config.Callbacks.ConnectCallback = func(conn net.Conn) {
-		called++
+		called.Add(1)
 		if doPanic {
 			doPanic = false
 			panic(errSample)
@@ -203,6 +203,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillA
 	assertConnectionIsStillOpen(t, conn)
 
 	closeAcceptorAndAssertNoError(t, ca, wg)
+	assert.Equal(t, int32(2), called.Load())
 }
 
 func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCanBeProcessedConcurrently(t *testing.T) {
