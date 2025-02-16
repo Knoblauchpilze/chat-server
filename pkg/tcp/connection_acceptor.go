@@ -35,6 +35,7 @@ type acceptorImpl struct {
 
 	callbacks ServerCallbacks
 
+	lock     sync.Mutex
 	listener net.Listener
 	running  atomic.Bool
 	wg       sync.WaitGroup
@@ -71,9 +72,14 @@ func (a *acceptorImpl) Close() error {
 	}
 
 	var err error
-	if a.listener != nil {
-		err = a.listener.Close()
-	}
+	func() {
+		a.lock.Lock()
+		defer a.lock.Unlock()
+
+		if a.listener != nil {
+			err = a.listener.Close()
+		}
+	}()
 	a.wg.Wait()
 	return err
 }
@@ -82,7 +88,12 @@ func (a *acceptorImpl) initializeListener() error {
 	var err error
 
 	address := fmt.Sprintf(":%d", a.port)
-	a.listener, err = net.Listen("tcp", address)
+	func() {
+		a.lock.Lock()
+		defer a.lock.Unlock()
+
+		a.listener, err = net.Listen("tcp", address)
+	}()
 
 	if err != nil {
 		return bterr.WrapCode(err, ErrTcpInitialization)
