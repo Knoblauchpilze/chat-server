@@ -1,15 +1,10 @@
 package tcp
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"os"
-	"os/signal"
 	"sync"
 	"sync/atomic"
-	"syscall"
-	"time"
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
@@ -17,7 +12,16 @@ import (
 )
 
 type ConnectionAcceptor interface {
-	Listen(ctx context.Context) error
+	// Prompt to start accepting incoming connection. This function blocks until
+	// Close is called on the same acceptor, at which point it returns any error.
+	// Calling it multiple times on the same acceptor will return an error.
+	Accept() error
+
+	// Interrupts any prior blocked call to Accept and prevents accepting any new
+	// connection. This call blocks until all on connect events have been processed.
+	// Calling this multiple times is safe although subsequent calls will return
+	// immediately.
+	Close() error
 }
 
 // Inspiration for the shutdown mechanism:
@@ -46,7 +50,7 @@ func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) ConnectionA
 	return &a
 }
 
-func (a *acceptorImpl) Listen(ctx context.Context) error {
+func (a *acceptorImpl) Accept() error {
 	if !a.running.CompareAndSwap(false, true) {
 		// Server is already running
 		return bterr.NewCode(ErrAlreadyListening)
@@ -56,42 +60,19 @@ func (a *acceptorImpl) Listen(ctx context.Context) error {
 		return err
 	}
 
-	notifyCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	waitCtx, cancel := context.WithCancel(notifyCtx)
-
-	var runError error
-
 	a.wg.Add(1)
+	return a.acceptLoop()
+}
 
-	go func() {
-		a.log.Infof("Starting server")
-		err := a.acceptLoop()
-		a.log.Infof("Server is shutting down")
-
-		if err != nil {
-			runError = err
-			cancel()
-		}
-	}()
-
-	const reasonableWaitTimeToInitializeServer = 50 * time.Millisecond
-	time.Sleep(reasonableWaitTimeToInitializeServer)
-
-	<-waitCtx.Done()
-
-	fmt.Printf("shutting down\n")
-	err := a.shutdown()
-	fmt.Printf("waiting for shutting down finished\n")
-	if err != nil {
-		return err
-	} else if runError != nil {
-		return runError
+func (a *acceptorImpl) Close() error {
+	if !a.running.CompareAndSwap(true, false) {
+		// Server is already shutting down.
+		return nil
 	}
 
-	a.log.Infof("Server gracefully shutdown")
-	return nil
+	err := a.listener.Close()
+	a.wg.Wait()
+	return err
 }
 
 func (a *acceptorImpl) initializeListener() error {
@@ -107,17 +88,6 @@ func (a *acceptorImpl) initializeListener() error {
 	a.log.Infof("Server will be listening at %s", address)
 
 	return nil
-}
-
-func (a *acceptorImpl) shutdown() error {
-	if !a.running.CompareAndSwap(true, false) {
-		// Server is already shutting down.
-		return nil
-	}
-
-	err := a.listener.Close()
-	a.wg.Wait()
-	return err
 }
 
 func (a *acceptorImpl) acceptLoop() error {
