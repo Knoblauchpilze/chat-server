@@ -1,8 +1,10 @@
 package tcp
 
 import (
+	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
@@ -22,6 +24,7 @@ type managerImpl struct {
 	readTimeout time.Duration
 	callbacks   clients.Callbacks
 
+	accepting atomic.Bool
 	lock      sync.Mutex
 	listeners map[uuid.UUID]connection.Listener
 	wg        sync.WaitGroup
@@ -34,6 +37,8 @@ func NewConnectionManager(config ManagerConfig, log logger.Logger) ConnectionMan
 		callbacks:   config.Callbacks,
 		listeners:   make(map[uuid.UUID]connection.Listener),
 	}
+
+	m.accepting.Store(true)
 
 	return m
 }
@@ -48,6 +53,10 @@ func (m *managerImpl) OnClientConnected(conn net.Conn) {
 }
 
 func (m *managerImpl) Close() {
+	if !m.accepting.CompareAndSwap(true, false) {
+		return
+	}
+
 	// Copy all listeners to prevent dead locks in case one is
 	// removed due to a disconnect or read error.
 	allListeners := make(map[uuid.UUID]connection.Listener)
@@ -65,6 +74,7 @@ func (m *managerImpl) Close() {
 	}()
 
 	for _, listener := range allListeners {
+		fmt.Printf("closing %v\n", listener.Id())
 		listener.Close()
 	}
 
@@ -126,6 +136,7 @@ func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.
 }
 
 func (m *managerImpl) onClientDisconnected(id uuid.UUID) {
+	fmt.Printf("received disconnect from %v\n", id)
 	cb := func() {
 		m.callbacks.OnDisconnect(id)
 	}
@@ -174,7 +185,7 @@ func (m *managerImpl) closeConnection(id uuid.UUID) {
 		delete(m.listeners, id)
 	}()
 
-	if ok {
+	if ok && m.accepting.Load() {
 		m.wg.Add(1)
 		go func() {
 			defer m.wg.Done()
