@@ -16,18 +16,20 @@ import (
 const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
 
 func TestUnit_Server_StartAndStopWithContext(t *testing.T) {
-	s := NewServer(newTestServerConfig(6000), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(6000), logger.New(os.Stdout))
+	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	asyncCancelContext(reasonableWaitTimeForServerToBeUp, cancel)
 
-	err := s.Start(cancellable)
+	err = s.Start(cancellable)
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
-	s := NewServer(newTestServerConfig(6001), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(6001), logger.New(os.Stdout))
+	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	// Start the first server: it should run without error.
@@ -43,7 +45,7 @@ func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Start the second server: this should fail.
-	err := s.Start(context.Background())
+	err = s.Start(context.Background())
 	assert.True(t, errors.IsErrorWithCode(err, ErrAlreadyRunning))
 
 	cancel()
@@ -52,27 +54,21 @@ func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
 
 func TestUnit_Server_WhenPortIsNotFree_ExpectStartReturnsInitializationFailure(t *testing.T) {
 	log := logger.New(os.Stdout)
-	s1 := NewServer(newTestServerConfig(6002), log)
-	s2 := NewServer(newTestServerConfig(6002), log)
-	cancellable, cancel := context.WithCancel(context.Background())
+	_, err1 := NewServer(newTestServerConfig(6002), log)
+	_, err2 := NewServer(newTestServerConfig(6002), log)
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, s1, cancellable)
-
-	acceptErr := s2.Start(context.Background())
-
-	cancel()
-	wg.Wait()
-
+	assert.Nil(t, err1, "Actual err: %v", err1)
 	assert.True(
 		t,
-		errors.IsErrorWithCode(acceptErr, ErrTcpInitialization),
+		errors.IsErrorWithCode(err2, ErrTcpInitialization),
 		"Actual err: %v",
-		acceptErr,
+		err2,
 	)
 }
 
 func TestUnit_Server_ConnectDisconnect(t *testing.T) {
-	s := NewServer(newTestServerConfig(6004), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(6004), logger.New(os.Stdout))
+	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
@@ -87,7 +83,8 @@ func TestUnit_Server_ConnectDisconnect(t *testing.T) {
 }
 
 func TestUnit_Server_WhenServerIsClosed_ExpectConnectionToBeClosed(t *testing.T) {
-	s := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
@@ -102,7 +99,8 @@ func TestUnit_Server_WhenServerIsClosed_ExpectConnectionToBeClosed(t *testing.T)
 }
 
 func TestUnit_Server_WhenServerIsClosed_ConnectionAreNotAcceptedAnymore(t *testing.T) {
-	s := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
@@ -110,7 +108,7 @@ func TestUnit_Server_WhenServerIsClosed_ConnectionAreNotAcceptedAnymore(t *testi
 	cancel()
 	wg.Wait()
 
-	_, err := net.Dial("tcp", ":6005")
+	_, err = net.Dial("tcp", ":6005")
 	assert.Regexp(t, "dial.* connection refused", err.Error(), "Actual err: %v", err)
 }
 
