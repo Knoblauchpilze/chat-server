@@ -19,7 +19,7 @@ type serverImpl struct {
 	callbacks clients.Callbacks
 }
 
-func NewServer(config Configuration, log logger.Logger) Server {
+func NewServer(config Configuration, log logger.Logger) (Server, error) {
 	s := &serverImpl{
 		log:       log,
 		callbacks: config.Callbacks,
@@ -43,14 +43,14 @@ func NewServer(config Configuration, log logger.Logger) Server {
 		},
 	}
 
-	s.server = tcp.NewServer(tcpConfig, log)
+	var err error
+	s.server, err = tcp.NewServer(tcpConfig, log)
 
-	return s
+	return s, err
 }
 
 func (s *serverImpl) Start(ctx context.Context) error {
-	err := s.server.Start(ctx)
-	return err
+	return s.server.Start(ctx)
 }
 
 func (s *serverImpl) onConnect(id uuid.UUID, address string) bool {
