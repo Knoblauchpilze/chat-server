@@ -54,19 +54,17 @@ func (s *serverImpl) Start(ctx context.Context) error {
 }
 
 func (s *serverImpl) onConnect(id uuid.UUID, address string) bool {
-	s.log.Infof("Registered client %v from %s", id, address)
-	return true
+	return s.callbacks.OnConnect(id, address)
 }
 
 func (s *serverImpl) onDisconnect(id uuid.UUID) {
-	s.log.Infof("Client %v disconnected %s", id)
+	s.callbacks.OnDisconnect(id)
 }
 
 func (s *serverImpl) onReadData(id uuid.UUID, data []byte) bool {
-	s.log.Infof("Received %d byte(s) from client %v: \"%s\"", len(data), id, data)
-	return false
+	return s.callbacks.OnReadData(id, data)
 }
 
 func (s *serverImpl) onReadError(id uuid.UUID, err error) {
-	s.log.Infof("Error when processing connection for %v: %v", id, err)
+	s.callbacks.OnReadError(id, err)
 }
