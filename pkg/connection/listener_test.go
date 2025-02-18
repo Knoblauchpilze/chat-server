@@ -15,7 +15,7 @@ var sampleListenerOptions = ListenerOptions{
 }
 
 func TestUnit_Listener_StartStop(t *testing.T) {
-	_, server := newTestConnection()
+	_, server := newTestConnection(t, 1200)
 	listener := New(server, sampleListenerOptions)
 
 	listener.Start()
@@ -23,37 +23,37 @@ func TestUnit_Listener_StartStop(t *testing.T) {
 }
 
 func TestUnit_Listener_WhenStopping_ExpectAttachedConnectionToBeClosed(t *testing.T) {
-	_, server := newTestConnection()
+	client, server := newTestConnection(t, 1201)
 	listener := New(server, sampleListenerOptions)
 
 	listener.Start()
 	listener.Close()
 
-	assertConnectionIsClosed(t, server)
+	assertConnectionIsClosed(t, client)
 }
 
 func TestUnit_Listener_WhenNotStartedAndStopping_ExpectAttachedConnectionToBeClosed(t *testing.T) {
-	_, server := newTestConnection()
+	client, server := newTestConnection(t, 1202)
 	listener := New(server, sampleListenerOptions)
 
 	listener.Close()
 
-	assertConnectionIsClosed(t, server)
+	assertConnectionIsClosed(t, client)
 }
 
 func TestUnit_Listener_WhenStartedMultipleTimes_ShouldStillStopAfterOneClose(t *testing.T) {
-	_, server := newTestConnection()
+	client, server := newTestConnection(t, 1203)
 	listener := New(server, sampleListenerOptions)
 
 	listener.Start()
 	listener.Start()
 	listener.Close()
 
-	assertConnectionIsClosed(t, server)
+	assertConnectionIsClosed(t, client)
 }
 
 func TestUnit_Listener_WhenClosingMultiple_ShouldSucceed(t *testing.T) {
-	_, server := newTestConnection()
+	_, server := newTestConnection(t, 1204)
 	listener := New(server, sampleListenerOptions)
 
 	listener.Start()
@@ -63,7 +63,7 @@ func TestUnit_Listener_WhenClosingMultiple_ShouldSucceed(t *testing.T) {
 }
 
 func TestUnit_Listener_WhenDataReceived_ExpectCallbackNotified(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1205)
 
 	var called int
 	opts := ListenerOptions{
@@ -88,7 +88,7 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackNotified(t *testing.T) {
 }
 
 func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectId(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1206)
 
 	var actualId uuid.UUID
 	opts := ListenerOptions{
@@ -113,7 +113,7 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectId(t *testi
 }
 
 func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectData(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1207)
 
 	var actualData []byte
 	opts := ListenerOptions{
@@ -138,7 +138,7 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectData(t *tes
 }
 
 func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1208)
 
 	var called int
 	opts := ListenerOptions{
@@ -160,7 +160,7 @@ func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T
 }
 
 func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackReceivesCorrectId(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1209)
 
 	var actualId uuid.UUID
 	opts := ListenerOptions{
@@ -182,7 +182,7 @@ func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackReceivesCorrectId(t *
 }
 
 func TestUnit_Listener_WhenReadDataPanics_ExpectErrorCallbackNotified(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1210)
 
 	var called int
 	var actualErr error
@@ -215,7 +215,7 @@ func TestUnit_Listener_WhenReadDataPanics_ExpectErrorCallbackNotified(t *testing
 }
 
 func TestUnit_Listener_WhenReadDataErrors_ExpectCallbackReceivesCorrectId(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1211)
 
 	var actualId uuid.UUID
 	opts := ListenerOptions{
@@ -245,7 +245,7 @@ func TestUnit_Listener_WhenReadDataErrors_ExpectCallbackReceivesCorrectId(t *tes
 }
 
 func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1212)
 
 	var called int
 	var actualData []byte

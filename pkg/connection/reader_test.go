@@ -10,7 +10,7 @@ import (
 )
 
 func TestUnit_ReadFromConnection_NoError(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1500)
 	conn := Wrap(client)
 	asyncWriteSampleDataToConnection(t, server)
 
@@ -21,7 +21,7 @@ func TestUnit_ReadFromConnection_NoError(t *testing.T) {
 }
 
 func TestUnit_ReadFromConnection_ReadTimeout(t *testing.T) {
-	client, _ := newTestConnection()
+	client, _ := newTestConnection(t, 1501)
 	opts := connectionOptions{
 		ReadTimeout: 100 * time.Millisecond,
 	}
@@ -34,7 +34,7 @@ func TestUnit_ReadFromConnection_ReadTimeout(t *testing.T) {
 }
 
 func TestUnit_ReadFromConnection_Disconnect(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1502)
 	err := server.Close()
 	assert.Nil(t, err, "Actual err: %v", err)
 	conn := Wrap(client)
@@ -46,7 +46,7 @@ func TestUnit_ReadFromConnection_Disconnect(t *testing.T) {
 }
 
 func TestUnit_ReadFromConnection_ReadWithCallback(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1503)
 	conn := Wrap(client)
 	asyncWriteSampleDataToConnection(t, server)
 
@@ -69,7 +69,7 @@ func TestUnit_ReadFromConnection_ReadWithCallback(t *testing.T) {
 }
 
 func TestUnit_ReadFromConnection_DisconnectWithCallback(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1504)
 	err := server.Close()
 	assert.Nil(t, err, "Actual err: %v", err)
 	conn := Wrap(client)

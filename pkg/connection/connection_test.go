@@ -11,7 +11,7 @@ import (
 // https://stackoverflow.com/questions/30688685/how-does-one-test-net-conn-in-unit-tests-in-golang
 
 func TestUnit_Connection_Read(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1600)
 	conn := Wrap(server)
 
 	wg := asyncWriteSampleDataToConnection(t, client)
@@ -23,7 +23,7 @@ func TestUnit_Connection_Read(t *testing.T) {
 }
 
 func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *testing.T) {
-	_, server := newTestConnection()
+	_, server := newTestConnection(t, 1601)
 	opts := connectionOptions{
 		ReadTimeout: 100 * time.Millisecond,
 	}
@@ -36,7 +36,7 @@ func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *test
 }
 
 func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1602)
 	opts := connectionOptions{
 		// 2 reads will be over the delay we set for the client connection.
 		ReadTimeout: 150 * time.Millisecond,
@@ -57,7 +57,7 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 }
 
 func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1603)
 	conn := Wrap(server)
 
 	err := client.Close()
@@ -69,7 +69,7 @@ func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) 
 }
 
 func TestUnit_Connection_Write(t *testing.T) {
-	client, server := newTestConnection()
+	client, server := newTestConnection(t, 1604)
 	conn := Wrap(server)
 
 	wg, actual := asyncReadDataFromConnection(t, client)
@@ -81,14 +81,16 @@ func TestUnit_Connection_Write(t *testing.T) {
 	assert.Equal(t, sampleData, actual.data[:actual.size])
 }
 
-func TestUnit_Connection_Write_WhenDisconnect_ReturnsExplicitError(t *testing.T) {
-	client, server := newTestConnection()
+func TestUnit_Connection_Write_WhenDisconnect_ReturnsNoError(t *testing.T) {
+	// This topic indicates that no error is returned when writing to a closed connection
+	// https://groups.google.com/g/golang-nuts/c/MRIOQ-82ofM
+	client, server := newTestConnection(t, 1605)
 	conn := Wrap(server)
 
 	err := client.Close()
 	assert.Nil(t, err, "Actual err: %v", err)
 	actual, err := conn.Write(sampleData)
 
-	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
-	assert.Equal(t, 0, actual)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(sampleData), actual)
 }

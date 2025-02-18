@@ -16,8 +16,34 @@ var sampleUuid = uuid.New()
 var errSample = fmt.Errorf("some error")
 var sampleData = []byte("hello\n")
 
-func newTestConnection() (client net.Conn, server net.Conn) {
-	return net.Pipe()
+func newTestConnection(t *testing.T, port uint16) (client net.Conn, server net.Conn) {
+	address := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", address)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	asyncConnect := func() {
+		defer wg.Done()
+
+		// Wait for the listener to be started in the main thread.
+		time.Sleep(50 * time.Millisecond)
+
+		var dialErr error
+		client, dialErr = net.Dial("tcp", address)
+		assert.Nil(t, dialErr, "Actual err: %v", dialErr)
+	}
+
+	go asyncConnect()
+
+	server, err = listener.Accept()
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	wg.Wait()
+
+	listener.Close()
+
+	return
 }
 
 func asyncWriteSampleDataToConnection(t *testing.T, conn net.Conn) *sync.WaitGroup {
@@ -74,8 +100,5 @@ func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
 	oneByte := make([]byte, 1)
 	_, err := conn.Read(oneByte)
 
-	// As we use pipe and not real net.Conn the returned error is this one
-	// and not io.EOF.
-	// TODO: Replace this with real connection.
-	assert.Equal(t, io.ErrClosedPipe, err)
+	assert.Equal(t, io.EOF, err)
 }
