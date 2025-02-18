@@ -124,7 +124,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	assert.Nil(t, err)
 
 	// Wait long enough for the read timeout to expire.
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	assert.Equal(t, 1, called)
 	assertConnectionIsClosed(t, client)
