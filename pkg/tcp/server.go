@@ -29,7 +29,7 @@ type serverImpl struct {
 
 const connectionReadTimeout = 1 * time.Second
 
-func NewServer(config ServerConfiguration, log logger.Logger) Server {
+func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 	s := serverImpl{
 		log: log,
 	}
@@ -48,9 +48,10 @@ func NewServer(config ServerConfiguration, log logger.Logger) Server {
 			},
 		},
 	}
-	s.acceptor = NewConnectionAcceptor(acceptorConfig, s.log)
+	var err error
+	s.acceptor, err = NewConnectionAcceptor(acceptorConfig, s.log)
 
-	return &s
+	return &s, err
 }
 
 func (s *serverImpl) Start(ctx context.Context) error {
