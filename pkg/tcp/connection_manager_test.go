@@ -43,6 +43,25 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnConnectDeniesConnectio
 	assertConnectionIsClosed(t, client)
 }
 
+func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOnlyOnce(t *testing.T) {
+	config := newTestManagerConfig()
+	var called int
+	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
+		called++
+	}
+	cm := NewConnectionManager(config, logger.New(os.Stdout))
+
+	_, server := newTestConnection(t, 5100)
+
+	cm.OnClientConnected(server)
+	// Wait for the connection to be processed
+	time.Sleep(50 * time.Millisecond)
+
+	cm.Close()
+
+	assert.Equal(t, 1, called)
+}
+
 func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
