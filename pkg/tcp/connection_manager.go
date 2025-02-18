@@ -76,6 +76,7 @@ func (m *managerImpl) Close() {
 	for _, listener := range allListeners {
 		fmt.Printf("closing %v\n", listener.Id())
 		listener.Close()
+		fmt.Printf("%v is closed\n", listener.Id())
 	}
 
 	m.wg.Wait()
@@ -112,25 +113,27 @@ func (m *managerImpl) registerListener(listener connection.Listener) {
 }
 
 func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.Listener) {
-	var accepted bool
-	cb := func() {
-		accepted = m.callbacks.OnConnect(listener.Id(), remoteAddress)
+	var err error
+	accepted := m.accepting.Load()
+	connId := listener.Id()
+
+	if accepted {
+		cb := func() {
+			accepted = m.callbacks.OnConnect(connId, remoteAddress)
+		}
+		err = m.callCallbackAndLogError(cb, "Connect", connId)
 	}
-	err := m.callCallbackAndLogError(cb, "Connect", listener.Id())
+
+	fmt.Printf("on connect result: %t, err: %v\n", accepted, err)
 
 	if !accepted {
-		m.log.Infof("Denied connection %v from %v", listener.Id(), remoteAddress)
-		m.closeConnection(listener.Id())
+		m.log.Infof("OnConnect: denied connection from %v", remoteAddress)
+		m.closeConnection(connId)
 	} else if err != nil {
-		m.log.Infof(
-			"Error while processing connect event for %v from %v (err: %v), disconnecting",
-			listener.Id(),
-			remoteAddress,
-			err,
-		)
-		m.closeConnection(listener.Id())
+		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, remoteAddress, err)
+		m.closeConnection(connId)
 	} else {
-		m.log.Debugf("Registered connection %v from %v", listener.Id(), remoteAddress)
+		m.log.Debugf("OnConnect: %v assigned to %v", remoteAddress, connId)
 		listener.Start()
 	}
 }
@@ -145,7 +148,7 @@ func (m *managerImpl) onClientDisconnected(id uuid.UUID) {
 }
 
 func (m *managerImpl) onReadError(id uuid.UUID, err error) {
-	m.log.Warnf("Received read error from %v (err: %v)", id, err)
+	m.log.Warnf("OnReadError: %v generated an error (err: %v)", id, err)
 
 	cb := func() {
 		m.callbacks.OnReadError(id, err)
@@ -162,14 +165,12 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
 	}
 	err := m.callCallbackAndLogError(cb, "OnReadData", id)
 
+	keepAlive = keepAlive && m.accepting.Load()
+
 	if !keepAlive {
 		m.closeConnection(id)
 	} else if err != nil {
-		m.log.Errorf(
-			"Failed to interpret data from connection %v (err: %v), disconnecting",
-			id,
-			err,
-		)
+		m.log.Errorf("OnRead: %v generated an error (err: %v)", id, err)
 		m.closeConnection(id)
 	}
 }
@@ -185,7 +186,7 @@ func (m *managerImpl) closeConnection(id uuid.UUID) {
 		delete(m.listeners, id)
 	}()
 
-	if ok && m.accepting.Load() {
+	if ok {
 		m.wg.Add(1)
 		go func() {
 			defer m.wg.Done()
@@ -202,12 +203,7 @@ func (m *managerImpl) callCallbackAndLogError(
 ) error {
 	err := errors.SafeRunSync(proc)
 	if err != nil {
-		m.log.Warnf(
-			"%s callback failed for connection %v with err: %v",
-			processName,
-			connId,
-			err,
-		)
+		m.log.Warnf("%s callback failed for connection %v with err: %v", processName, connId, err)
 	}
 	return err
 }
