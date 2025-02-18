@@ -60,14 +60,7 @@ func (c *connectionImpl) Read() ([]byte, error) {
 }
 
 func (c *connectionImpl) Write(data []byte) (int, error) {
-	n, err := c.conn.Write(data)
-
-	// TODO: This is most likely not what is returned with a real connection.
-	if err == io.ErrClosedPipe {
-		return n, errors.NewCode(ErrClientDisconnected)
-	}
-
-	return n, err
+	return c.conn.Write(data)
 }
 
 func (c *connectionImpl) Close() error {
