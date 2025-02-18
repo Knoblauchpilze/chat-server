@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -74,9 +73,7 @@ func (m *managerImpl) Close() {
 	}()
 
 	for _, listener := range allListeners {
-		fmt.Printf("closing %v\n", listener.Id())
 		listener.Close()
-		fmt.Printf("%v is closed\n", listener.Id())
 	}
 
 	m.wg.Wait()
@@ -124,8 +121,6 @@ func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.
 		err = m.callCallbackAndLogError(cb, "Connect", connId)
 	}
 
-	fmt.Printf("on connect result: %t, err: %v\n", accepted, err)
-
 	if !accepted {
 		m.log.Infof("OnConnect: denied connection from %v", remoteAddress)
 		m.closeConnection(connId)
@@ -139,7 +134,6 @@ func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.
 }
 
 func (m *managerImpl) onClientDisconnected(id uuid.UUID) {
-	fmt.Printf("received disconnect from %v\n", id)
 	cb := func() {
 		m.callbacks.OnDisconnect(id)
 	}
