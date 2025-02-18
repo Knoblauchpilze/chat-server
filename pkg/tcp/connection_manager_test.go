@@ -19,9 +19,25 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectClientConnectionToBeClos
 	client, server := newTestConnection(t, 7000)
 
 	cm.OnClientConnected(server)
+	// Wait for the connection to be processed
+	time.Sleep(50 * time.Millisecond)
+
 	cm.Close()
 
 	time.Sleep(50 * time.Millisecond)
+
+	assertConnectionIsClosed(t, client)
+}
+
+func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnConnectDeniesConnection(t *testing.T) {
+	cm := NewConnectionManager(newTestManagerConfig(), logger.New(os.Stdout))
+	cm.Close()
+	client, server := newTestConnection(t, 7001)
+
+	cm.OnClientConnected(server)
+
+	// Wait for the connection to be processed
+	time.Sleep(100 * time.Millisecond)
 
 	assertConnectionIsClosed(t, client)
 }
@@ -110,6 +126,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	// Wait long enough for the read timeout to expire.
 	time.Sleep(100 * time.Millisecond)
 
+	assert.Equal(t, 1, called)
 	assertConnectionIsClosed(t, client)
 }
 
