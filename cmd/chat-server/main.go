@@ -26,7 +26,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	s := internal.NewServer(conf, log)
+	s, err := internal.NewServer(conf, log)
+	if err != nil {
+		log.Errorf("Failed to initialize server: %v", err)
+		os.Exit(1)
+	}
 
 	err = s.Start(context.Background())
 	if err != nil {
