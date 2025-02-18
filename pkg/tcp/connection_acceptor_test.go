@@ -89,7 +89,7 @@ func TestUnit_ConnectionAcceptor_WhenAcceptorIsStopped_ExpectConnectionToNotBeCl
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	conn, err := net.Dial("tcp", ":6003")
+	conn, err := net.Dial("tcp", ":5205")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	closeAcceptorAndAssertNoError(t, ca, wg)
@@ -123,7 +123,7 @@ func TestUnit_ConnectionAcceptor_OnConnect_ExpectCallbackNotified(t *testing.T) 
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	conn, err := net.Dial("tcp", ":6007")
+	conn, err := net.Dial("tcp", ":5207")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	conn.Close()
@@ -164,7 +164,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
-	conn, err := net.Dial("tcp", ":5210")
+	conn, err := net.Dial("tcp", ":5209")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	// Allow the callback to be processed.
