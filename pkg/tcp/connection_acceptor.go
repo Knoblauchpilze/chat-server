@@ -35,30 +35,30 @@ type acceptorImpl struct {
 
 	callbacks ServerCallbacks
 
-	lock     sync.Mutex
 	listener net.Listener
 	running  atomic.Bool
 	wg       sync.WaitGroup
 }
 
-func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) ConnectionAcceptor {
+func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) (ConnectionAcceptor, error) {
 	a := acceptorImpl{
 		port:      config.Port,
 		log:       log,
 		callbacks: config.Callbacks,
 	}
 
-	return &a
+	var err error
+	a.listener, err = initializeListener(config.Port)
+
+	log.Infof("Server will be listening on port %v", config.Port)
+
+	return &a, err
 }
 
 func (a *acceptorImpl) Accept() error {
 	if !a.running.CompareAndSwap(false, true) {
 		// Acceptor is already listening.
 		return bterr.NewCode(ErrAlreadyListening)
-	}
-
-	if err := a.initializeListener(); err != nil {
-		return err
 	}
 
 	a.wg.Add(1)
@@ -71,37 +71,20 @@ func (a *acceptorImpl) Close() error {
 		return nil
 	}
 
-	var err error
-	func() {
-		a.lock.Lock()
-		defer a.lock.Unlock()
-
-		if a.listener != nil {
-			err = a.listener.Close()
-		}
-	}()
+	err := a.listener.Close()
 	a.wg.Wait()
 	return err
 }
 
-func (a *acceptorImpl) initializeListener() error {
-	var err error
-
-	address := fmt.Sprintf(":%d", a.port)
-	func() {
-		a.lock.Lock()
-		defer a.lock.Unlock()
-
-		a.listener, err = net.Listen("tcp", address)
-	}()
+func initializeListener(port uint16) (net.Listener, error) {
+	address := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", address)
 
 	if err != nil {
-		return bterr.WrapCode(err, ErrTcpInitialization)
+		return nil, bterr.WrapCode(err, ErrTcpInitialization)
 	}
 
-	a.log.Infof("Server will be listening at %s", address)
-
-	return nil
+	return listener, nil
 }
 
 func (a *acceptorImpl) acceptLoop() error {
