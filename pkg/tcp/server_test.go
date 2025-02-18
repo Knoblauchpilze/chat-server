@@ -16,7 +16,7 @@ import (
 const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
 
 func TestUnit_Server_StartAndStopWithContext(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(6000), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(5000), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -28,7 +28,7 @@ func TestUnit_Server_StartAndStopWithContext(t *testing.T) {
 }
 
 func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(6001), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(5001), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -52,10 +52,10 @@ func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_Server_WhenPortIsNotFree_ExpectStartReturnsInitializationFailure(t *testing.T) {
+func TestUnit_Server_WhenPortIsNotFree_ExpectConstructorReturnsInitializationFailure(t *testing.T) {
 	log := logger.New(os.Stdout)
-	_, err1 := NewServer(newTestServerConfig(6002), log)
-	_, err2 := NewServer(newTestServerConfig(6002), log)
+	_, err1 := NewServer(newTestServerConfig(5002), log)
+	_, err2 := NewServer(newTestServerConfig(5002), log)
 
 	assert.Nil(t, err1, "Actual err: %v", err1)
 	assert.True(
@@ -67,13 +67,13 @@ func TestUnit_Server_WhenPortIsNotFree_ExpectStartReturnsInitializationFailure(t
 }
 
 func TestUnit_Server_ConnectDisconnect(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(6004), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(5003), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
 
-	conn, err := net.Dial("tcp", ":6004")
+	conn, err := net.Dial("tcp", ":5003")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	conn.Close()
@@ -83,13 +83,13 @@ func TestUnit_Server_ConnectDisconnect(t *testing.T) {
 }
 
 func TestUnit_Server_WhenServerIsClosed_ExpectConnectionToBeClosed(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(5004), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
 
-	conn, err := net.Dial("tcp", ":6005")
+	conn, err := net.Dial("tcp", ":5004")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
 
 	cancel()
@@ -99,7 +99,7 @@ func TestUnit_Server_WhenServerIsClosed_ExpectConnectionToBeClosed(t *testing.T)
 }
 
 func TestUnit_Server_WhenServerIsClosed_ConnectionAreNotAcceptedAnymore(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(6005), logger.New(os.Stdout))
+	s, err := NewServer(newTestServerConfig(5005), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -108,7 +108,7 @@ func TestUnit_Server_WhenServerIsClosed_ConnectionAreNotAcceptedAnymore(t *testi
 	cancel()
 	wg.Wait()
 
-	_, err = net.Dial("tcp", ":6005")
+	_, err = net.Dial("tcp", ":5005")
 	assert.Regexp(t, "dial.* connection refused", err.Error(), "Actual err: %v", err)
 }
 
