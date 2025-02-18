@@ -95,7 +95,7 @@ func (l *listenerImpl) activeLoop() {
 			l.callbacks.OnReadError(l.id, readPanic)
 		}
 
-		if err != nil {
+		if err != nil || readPanic != nil {
 			running = false
 		}
 	}
