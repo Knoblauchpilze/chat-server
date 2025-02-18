@@ -3,6 +3,7 @@ package tcp
 import (
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -107,9 +108,9 @@ func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionTo
 
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
+	var called atomic.Int32
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		called++
+		called.Add(1)
 		return false
 	}
 
@@ -126,7 +127,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	// Wait long enough for the read timeout to expire.
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, 1, called)
+	assert.Equal(t, int32(1), called.Load())
 	assertConnectionIsClosed(t, client)
 }
 
