@@ -74,6 +74,12 @@ func (m *managerImpl) Close() {
 
 	for _, listener := range allListeners {
 		listener.Close()
+
+		cb := func() {
+			m.callbacks.OnDisconnect(listener.Id())
+		}
+		m.callCallbackAndLogError(cb, "Disconnect", listener.Id())
+
 	}
 
 	m.wg.Wait()
@@ -123,10 +129,10 @@ func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.
 
 	if !accepted {
 		m.log.Infof("OnConnect: denied connection from %v", remoteAddress)
-		m.closeConnection(connId)
+		m.closeConnection(connId, false)
 	} else if err != nil {
 		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, remoteAddress, err)
-		m.closeConnection(connId)
+		m.closeConnection(connId, false)
 	} else {
 		m.log.Debugf("OnConnect: %v assigned to %v", remoteAddress, connId)
 		listener.Start()
@@ -134,11 +140,7 @@ func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.
 }
 
 func (m *managerImpl) onClientDisconnected(id uuid.UUID) {
-	cb := func() {
-		m.callbacks.OnDisconnect(id)
-	}
-	m.callCallbackAndLogError(cb, "Disconnect", id)
-	m.closeConnection(id)
+	m.closeConnection(id, true)
 }
 
 func (m *managerImpl) onReadError(id uuid.UUID, err error) {
@@ -148,7 +150,7 @@ func (m *managerImpl) onReadError(id uuid.UUID, err error) {
 		m.callbacks.OnReadError(id, err)
 	}
 	m.callCallbackAndLogError(cb, "OnReadError", id)
-	m.closeConnection(id)
+	m.closeConnection(id, true)
 }
 
 func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
@@ -162,14 +164,14 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
 	keepAlive = keepAlive && m.accepting.Load()
 
 	if !keepAlive {
-		m.closeConnection(id)
+		m.closeConnection(id, true)
 	} else if err != nil {
 		m.log.Errorf("OnRead: %v generated an error (err: %v)", id, err)
-		m.closeConnection(id)
+		m.closeConnection(id, true)
 	}
 }
 
-func (m *managerImpl) closeConnection(id uuid.UUID) {
+func (m *managerImpl) closeConnection(id uuid.UUID, triggerDisconnect bool) {
 	var ok bool
 	var listener connection.Listener
 	func() {
@@ -186,7 +188,15 @@ func (m *managerImpl) closeConnection(id uuid.UUID) {
 			defer m.wg.Done()
 			listener.Close()
 		}()
-		m.log.Debugf("Triggered removal of connection %v", id)
+
+		m.log.Debugf("Triggered removal of connection %v", listener.Id())
+	}
+
+	if triggerDisconnect && m.accepting.Load() {
+		cb := func() {
+			m.callbacks.OnDisconnect(id)
+		}
+		m.callCallbackAndLogError(cb, "Disconnect", id)
 	}
 }
 
