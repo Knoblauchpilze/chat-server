@@ -18,6 +18,11 @@ type ConnectionManager interface {
 	Close()
 }
 
+type connectionData struct {
+	lock     sync.Mutex
+	listener connection.Listener
+}
+
 type managerImpl struct {
 	log         logger.Logger
 	readTimeout time.Duration
@@ -25,7 +30,7 @@ type managerImpl struct {
 
 	accepting atomic.Bool
 	lock      sync.Mutex
-	listeners map[uuid.UUID]connection.Listener
+	listeners map[uuid.UUID]*connectionData
 	wg        sync.WaitGroup
 }
 
@@ -34,7 +39,7 @@ func NewConnectionManager(config ManagerConfig, log logger.Logger) ConnectionMan
 		log:         log,
 		readTimeout: config.ReadTimeout,
 		callbacks:   config.Callbacks,
-		listeners:   make(map[uuid.UUID]connection.Listener),
+		listeners:   make(map[uuid.UUID]*connectionData),
 	}
 
 	m.accepting.Store(true)
@@ -58,27 +63,27 @@ func (m *managerImpl) Close() {
 
 	// Copy all listeners to prevent dead locks in case one is
 	// removed due to a disconnect or read error.
-	allListeners := make(map[uuid.UUID]connection.Listener)
+	allListeners := make(map[uuid.UUID]*connectionData)
 
 	func() {
 		defer m.lock.Unlock()
 		m.lock.Lock()
 
 		// https://stackoverflow.com/questions/23057785/how-to-deep-copy-a-map-and-then-clear-the-original
-		for id, listener := range m.listeners {
-			allListeners[id] = listener
+		for id, data := range m.listeners {
+			allListeners[id] = data
 		}
 
 		clear(m.listeners)
 	}()
 
-	for _, listener := range allListeners {
-		listener.Close()
+	for _, data := range allListeners {
+		data.Close()
 
 		cb := func() {
-			m.callbacks.OnDisconnect(listener.Id())
+			m.callbacks.OnDisconnect(data.listener.Id())
 		}
-		m.callCallbackAndLogError(cb, "Disconnect", listener.Id())
+		m.callCallbackAndLogError(cb, "Disconnect", data.listener.Id())
 
 	}
 
@@ -112,7 +117,9 @@ func (m *managerImpl) registerListener(listener connection.Listener) {
 	defer m.lock.Unlock()
 	m.lock.Lock()
 
-	m.listeners[listener.Id()] = listener
+	m.listeners[listener.Id()] = &connectionData{
+		listener: listener,
+	}
 }
 
 func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.Listener) {
@@ -173,23 +180,18 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
 
 func (m *managerImpl) closeConnection(id uuid.UUID, triggerDisconnect bool) {
 	var ok bool
-	var listener connection.Listener
+	var data *connectionData
 	func() {
 		defer m.lock.Unlock()
 		m.lock.Lock()
 
-		listener, ok = m.listeners[id]
+		data, ok = m.listeners[id]
 		delete(m.listeners, id)
 	}()
 
 	if ok {
-		m.wg.Add(1)
-		go func() {
-			defer m.wg.Done()
-			listener.Close()
-		}()
-
-		m.log.Debugf("Triggered removal of connection %v", listener.Id())
+		go data.Close()
+		m.log.Debugf("Triggered removal of connection %v", data.listener.Id())
 	}
 
 	if triggerDisconnect && m.accepting.Load() {
@@ -210,4 +212,11 @@ func (m *managerImpl) callCallbackAndLogError(
 		m.log.Warnf("%s callback failed for connection %v with err: %v", processName, connId, err)
 	}
 	return err
+}
+
+func (d *connectionData) Close() {
+	defer d.lock.Unlock()
+	d.lock.Lock()
+
+	d.listener.Close()
 }
