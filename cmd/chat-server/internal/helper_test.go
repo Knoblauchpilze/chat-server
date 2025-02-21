@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,9 +28,9 @@ func asyncCancelContext(delay time.Duration, cancel context.CancelFunc) {
 
 func asyncRunServerAndWaitForItToBeUp(
 	t *testing.T,
-	s Server,
+	config Configuration,
 	ctx context.Context,
-) (*sync.WaitGroup, *error) {
+) *sync.WaitGroup {
 	var err error
 	var wg sync.WaitGroup
 
@@ -40,27 +42,11 @@ func asyncRunServerAndWaitForItToBeUp(
 				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
 			}
 		}()
-		err = s.Start(ctx)
+		err = ListenAndServe(ctx, config, logger.New(os.Stdout))
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
 	time.Sleep(reasonableWaitTimeForServerToBeUp)
-
-	return &wg, &err
-}
-
-func asyncOpenConnectionAndCloseIt(t *testing.T, port uint16) *sync.WaitGroup {
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
-		address := fmt.Sprintf(":%d", port)
-		conn, err := net.Dial("tcp", address)
-		assert.Nil(t, err, "Unexpected dial error: %v", err)
-
-		conn.Close()
-	}()
 
 	return &wg
 }
