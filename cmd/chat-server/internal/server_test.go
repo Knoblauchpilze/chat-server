@@ -11,27 +11,21 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestUnit_Server_StartAndStopWithContext(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(7000), logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
+func TestUnit_ListenAndServe_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
+	asyncCancelContext(100*time.Millisecond, cancel)
 
-	asyncCancelContext(reasonableWaitTimeForServerToBeUp, cancel)
-
-	err = s.Start(cancellable)
+	err := ListenAndServe(cancellable, newTestServerConfig(7000), logger.New(os.Stdout))
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestUnit_Server_WhenServerIsStopped_ExpectClientConnectionToBeClosed(t *testing.T) {
-	s, err := NewServer(newTestServerConfig(7001), logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
+func TestUnit_ListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	config := newTestServerConfig(7001)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7001")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -39,23 +33,19 @@ func TestUnit_Server_WhenServerIsStopped_ExpectClientConnectionToBeClosed(t *tes
 	cancel()
 	wg.Wait()
 
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assertConnectionIsClosed(t, conn)
 }
 
-func TestUnit_Server_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
+func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestServerConfig(7002)
 	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, string) bool {
 		called++
 		return true
 	}
-
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7002")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
@@ -65,23 +55,19 @@ func TestUnit_Server_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	cancel()
 	wg.Wait()
 
-	assert.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_Server_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
+func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	config := newTestServerConfig(7003)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
 		called++
 		return true
 	}
-
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7003")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -95,22 +81,18 @@ func TestUnit_Server_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	cancel()
 	wg.Wait()
 
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_Server_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
+func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestServerConfig(7004)
 	var called int
 	config.Callbacks.DisconnectCallback = func(uuid.UUID) {
 		called++
 	}
-
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7004")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
@@ -120,22 +102,19 @@ func TestUnit_Server_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) 
 	cancel()
 	wg.Wait()
 
-	assert.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_Server_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
+func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestServerConfig(7003)
 	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, string) bool {
 		called++
 		return false
 	}
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
+	cancellable, cancel := context.WithCancel(context.Background())
 
-	wgServer, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":7003")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
@@ -146,25 +125,21 @@ func TestUnit_Server_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t 
 	assertConnectionIsClosed(t, conn)
 
 	cancel()
-	wgServer.Wait()
+	wg.Wait()
 
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_Server_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
+func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestServerConfig(7004)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
 		called++
 		return false
 	}
-
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7004")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -180,14 +155,11 @@ func TestUnit_Server_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectCon
 	cancel()
 	wg.Wait()
 
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, 1, called)
 }
 
-func TestUnit_Server_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
+func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *testing.T) {
 	config := newTestServerConfig(7006)
-
 	var called atomic.Int32
 	doPanic := true
 	var actual []byte
@@ -200,10 +172,9 @@ func TestUnit_Server_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *test
 		actual = data
 		return true
 	}
-	s, err := NewServer(config, logger.New(os.Stdout))
-	assert.Nil(t, err, "Actual err: %v", err)
+	cancellable, cancel := context.WithCancel(context.Background())
 
-	wgServer, serverErr := asyncRunServerAndWaitForItToBeUp(t, s, cancellable)
+	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	// First attempt panics, the connection should be closed.
 	conn, err := net.Dial("tcp", ":7006")
@@ -231,9 +202,8 @@ func TestUnit_Server_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *test
 	conn.Close()
 
 	cancel()
-	wgServer.Wait()
+	wg.Wait()
 
-	require.Nil(t, *serverErr, "Actual err: %v", *serverErr)
 	assert.Equal(t, sampleData, actual)
 }
 

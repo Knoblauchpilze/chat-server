@@ -26,13 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := internal.NewServer(conf, log)
-	if err != nil {
-		log.Errorf("Failed to initialize server: %v", err)
-		os.Exit(1)
-	}
-
-	err = s.Start(context.Background())
+	err = internal.ListenAndServe(context.Background(), conf, log)
 	if err != nil {
 		log.Errorf("Error while serving TCP: %+v", err)
 		os.Exit(1)
