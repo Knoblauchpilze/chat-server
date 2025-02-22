@@ -143,11 +143,39 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err)
 
-	// Wait long enough for the read timeout to expire.
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed.
 	time.Sleep(200 * time.Millisecond)
 
 	assert.Equal(t, int32(1), called.Load())
 	assertConnectionIsClosed(t, client)
+}
+
+func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectDisconnectCallbackIsCalled(t *testing.T) {
+	config := newTestManagerConfig()
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+		return false
+	}
+	var called atomic.Int32
+	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
+		called.Add(1)
+	}
+
+	cm := NewConnectionManager(config, logger.New(os.Stdout))
+
+	client, server := newTestConnection(t, 5105)
+
+	cm.OnClientConnected(server)
+
+	n, err := client.Write(sampleData)
+	assert.Equal(t, n, len(sampleData))
+	assert.Nil(t, err)
+
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed.
+	time.Sleep(200 * time.Millisecond)
+
+	assert.Equal(t, int32(1), called.Load())
 }
 
 func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
@@ -194,7 +222,8 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	assert.Nil(t, err)
 
 	wg.Wait()
-	// Wait long enough for the read timeout to expire.
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed.
 	time.Sleep(200 * time.Millisecond)
 
 	assert.Equal(t, 1, called)
