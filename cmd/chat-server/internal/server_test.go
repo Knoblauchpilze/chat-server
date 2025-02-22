@@ -148,7 +148,8 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err)
 
-	// Wait long enough for the read timeout to expire.
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed.
 	time.Sleep(1100 * time.Millisecond)
 	assertConnectionIsClosed(t, conn)
 
@@ -184,7 +185,8 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err)
 
-	// Wait long enough for the read timeout to expire.
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed.
 	time.Sleep(1100 * time.Millisecond)
 	assertConnectionIsClosed(t, conn)
 
