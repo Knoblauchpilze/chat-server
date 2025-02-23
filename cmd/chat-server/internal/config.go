@@ -11,6 +11,7 @@ type Configuration struct {
 
 func DefaultConfig() Configuration {
 	return Configuration{
-		Port: uint16(80),
+		// https://serverfault.com/questions/11806/which-ports-to-use-on-a-self-written-tcp-server
+		Port: uint16(49152),
 	}
 }
