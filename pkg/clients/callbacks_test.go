@@ -2,6 +2,7 @@ package clients
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,8 +14,9 @@ var errSample = fmt.Errorf("sample error")
 func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks Callbacks
 
+	var conn net.Conn
 	callback := func() {
-		callbacks.OnConnect(uuid.New(), "127.0.0.1:47134")
+		callbacks.OnConnect(uuid.New(), conn)
 	}
 	assert.NotPanics(t, callback)
 }
@@ -22,7 +24,8 @@ func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectConnectionAccepted(t *testing.T) {
 	var callbacks Callbacks
 
-	actual := callbacks.OnConnect(uuid.New(), "127.0.0.1:47134")
+	var conn net.Conn
+	actual := callbacks.OnConnect(uuid.New(), conn)
 
 	assert.True(t, actual)
 }
