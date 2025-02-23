@@ -52,8 +52,7 @@ func (m *managerImpl) OnClientConnected(conn net.Conn) {
 	listener := connection.New(conn, opts)
 
 	m.registerListener(listener)
-	address := conn.RemoteAddr().String()
-	m.handleOnConnect(address, listener)
+	m.handleOnConnect(conn, listener)
 }
 
 func (m *managerImpl) Close() {
@@ -122,26 +121,27 @@ func (m *managerImpl) registerListener(listener connection.Listener) {
 	}
 }
 
-func (m *managerImpl) handleOnConnect(remoteAddress string, listener connection.Listener) {
+func (m *managerImpl) handleOnConnect(conn net.Conn, listener connection.Listener) {
 	var err error
 	accepted := m.accepting.Load()
 	connId := listener.Id()
 
 	if accepted {
 		cb := func() {
-			accepted = m.callbacks.OnConnect(connId, remoteAddress)
+			accepted = m.callbacks.OnConnect(connId, conn)
 		}
 		err = m.callCallbackAndLogError(cb, "Connect", connId)
 	}
 
+	address := conn.RemoteAddr().String()
 	if !accepted {
-		m.log.Infof("OnConnect: denied connection from %v", remoteAddress)
+		m.log.Infof("OnConnect: denied connection from %v", address)
 		m.closeConnection(connId, false)
 	} else if err != nil {
-		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, remoteAddress, err)
+		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, address, err)
 		m.closeConnection(connId, false)
 	} else {
-		m.log.Debugf("OnConnect: %v assigned to %v", remoteAddress, connId)
+		m.log.Debugf("OnConnect: %v assigned to %v", address, connId)
 		listener.Start()
 	}
 }

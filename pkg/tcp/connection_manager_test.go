@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"net"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -65,7 +66,7 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOn
 func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
-	config.Callbacks.ConnectCallback = func(id uuid.UUID, address string) bool {
+	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
 		called++
 		return true
 	}
@@ -107,7 +108,7 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
 	var called int
-	config.Callbacks.ConnectCallback = func(id uuid.UUID, address string) bool {
+	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
 		called++
 		return false
 	}

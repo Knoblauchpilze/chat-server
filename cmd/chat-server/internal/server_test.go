@@ -39,7 +39,7 @@ func TestUnit_ListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClose
 func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestServerConfig(7002)
 	var called int
-	config.Callbacks.ConnectCallback = func(uuid.UUID, string) bool {
+	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called++
 		return true
 	}
@@ -108,7 +108,7 @@ func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *tes
 func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestServerConfig(7003)
 	var called int
-	config.Callbacks.ConnectCallback = func(uuid.UUID, string) bool {
+	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called++
 		return false
 	}

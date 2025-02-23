@@ -1,9 +1,13 @@
 package clients
 
-import "github.com/google/uuid"
+import (
+	"net"
+
+	"github.com/google/uuid"
+)
 
 // The return value should indicate whether or not the connection is accepted.
-type OnConnect func(id uuid.UUID, address string) bool
+type OnConnect func(id uuid.UUID, conn net.Conn) bool
 
 // The connection will automatically be closed after this callback is triggered.
 type OnDisconnect func(id uuid.UUID)
@@ -21,11 +25,11 @@ type Callbacks struct {
 	ReadDataCallback   OnReadData
 }
 
-func (c Callbacks) OnConnect(id uuid.UUID, address string) bool {
+func (c Callbacks) OnConnect(id uuid.UUID, conn net.Conn) bool {
 	if c.ConnectCallback == nil {
 		return true
 	}
-	return c.ConnectCallback(id, address)
+	return c.ConnectCallback(id, conn)
 }
 
 func (c Callbacks) OnDisconnect(id uuid.UUID) {
