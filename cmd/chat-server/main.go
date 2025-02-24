@@ -7,6 +7,7 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/config"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/cmd/chat-server/internal"
+	"github.com/Knoblauchpilze/chat-server/pkg/service"
 )
 
 func determineConfigName() string {
@@ -25,6 +26,12 @@ func main() {
 		log.Errorf("Failed to load configuration: %v", err)
 		os.Exit(1)
 	}
+
+	chat := service.NewChatService()
+	conf.Callbacks = chat.GenerateCallbacks()
+
+	chat.Start()
+	defer chat.Stop()
 
 	err = internal.ListenAndServe(context.Background(), conf, log)
 	if err != nil {
