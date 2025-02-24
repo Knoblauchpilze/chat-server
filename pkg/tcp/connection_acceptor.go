@@ -11,7 +11,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 )
 
-type ConnectionAcceptor interface {
+type connectionAcceptor interface {
 	// Prompt to start accepting incoming connection. This function blocks until
 	// Close is called on the same acceptor, at which point it returns any error.
 	// Calling it multiple times on the same acceptor will return an error.
@@ -40,7 +40,7 @@ type acceptorImpl struct {
 	wg       sync.WaitGroup
 }
 
-func NewConnectionAcceptor(config AcceptorConfig, log logger.Logger) (ConnectionAcceptor, error) {
+func newConnectionAcceptor(config acceptorConfig, log logger.Logger) (connectionAcceptor, error) {
 	a := acceptorImpl{
 		port:      config.Port,
 		log:       log,

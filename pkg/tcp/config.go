@@ -6,7 +6,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 )
 
-type AcceptorConfig struct {
+type acceptorConfig struct {
 	Port      uint16
 	Callbacks ServerCallbacks
 }

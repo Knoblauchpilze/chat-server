@@ -16,7 +16,7 @@ import (
 const reasonableWaitTimeForAcceptorToBeUp = 200 * time.Millisecond
 
 func TestUnit_ConnectionAcceptor_ListenWithContext(t *testing.T) {
-	ca, err := NewConnectionAcceptor(newTestAcceptorConfig(5200), logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(newTestAcceptorConfig(5200), logger.New(os.Stdout))
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
 
@@ -25,7 +25,7 @@ func TestUnit_ConnectionAcceptor_ListenWithContext(t *testing.T) {
 }
 
 func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
-	ca, err := NewConnectionAcceptor(newTestAcceptorConfig(5201), logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(newTestAcceptorConfig(5201), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Start the first acceptor: it should run without error.
@@ -48,7 +48,7 @@ func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testi
 }
 
 func TestUnit_ConnectionAcceptor_WhenNotStarted_StopDoesNotFail(t *testing.T) {
-	ca, err := NewConnectionAcceptor(newTestAcceptorConfig(5202), logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(newTestAcceptorConfig(5202), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	err = ca.Close()
@@ -58,8 +58,8 @@ func TestUnit_ConnectionAcceptor_WhenNotStarted_StopDoesNotFail(t *testing.T) {
 
 func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectConstructionReturnsInitializationFailure(t *testing.T) {
 	log := logger.New(os.Stdout)
-	_, err1 := NewConnectionAcceptor(newTestAcceptorConfig(5203), log)
-	_, err2 := NewConnectionAcceptor(newTestAcceptorConfig(5203), log)
+	_, err1 := newConnectionAcceptor(newTestAcceptorConfig(5203), log)
+	_, err2 := newConnectionAcceptor(newTestAcceptorConfig(5203), log)
 
 	assert.Nil(t, err1, "Server 1 should not have failed: %v", err1)
 	assert.True(
@@ -72,8 +72,8 @@ func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectConstructionReturnsInit
 
 func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStopDoesNotCrash(t *testing.T) {
 	log := logger.New(os.Stdout)
-	_, err1 := NewConnectionAcceptor(newTestAcceptorConfig(5204), log)
-	ca2, err2 := NewConnectionAcceptor(newTestAcceptorConfig(5204), log)
+	_, err1 := newConnectionAcceptor(newTestAcceptorConfig(5204), log)
+	ca2, err2 := newConnectionAcceptor(newTestAcceptorConfig(5204), log)
 
 	assert.Nil(t, err1, "Actual err: %v", err1)
 	assert.NotNil(t, err2, "Actual err: %v", err2)
@@ -84,7 +84,7 @@ func TestUnit_ConnectionAcceptor_WhenPortIsNotFree_ExpectStopDoesNotCrash(t *tes
 }
 
 func TestUnit_ConnectionAcceptor_WhenAcceptorIsStopped_ExpectConnectionToNotBeClosed(t *testing.T) {
-	ca, err := NewConnectionAcceptor(newTestAcceptorConfig(5205), logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(newTestAcceptorConfig(5205), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -98,7 +98,7 @@ func TestUnit_ConnectionAcceptor_WhenAcceptorIsStopped_ExpectConnectionToNotBeCl
 }
 
 func TestUnit_ConnectionAcceptor_ConnectDisconnect(t *testing.T) {
-	ca, err := NewConnectionAcceptor(newTestAcceptorConfig(5206), logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(newTestAcceptorConfig(5206), logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -118,7 +118,7 @@ func TestUnit_ConnectionAcceptor_OnConnect_ExpectCallbackNotified(t *testing.T) 
 		called++
 	}
 
-	ca, err := NewConnectionAcceptor(config, logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(config, logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -139,7 +139,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackSucceeds_ExpectConnectionT
 		called++
 	}
 
-	ca, err := NewConnectionAcceptor(config, logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(config, logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -159,7 +159,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectConnectionToBe
 		panic(errSample)
 	}
 
-	ca, err := NewConnectionAcceptor(config, logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(config, logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -188,7 +188,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectCallbackFails_ExpectAcceptorStillA
 		}
 	}
 
-	ca, err := NewConnectionAcceptor(config, logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(config, logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -217,7 +217,7 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 		called.Add(1)
 	}
 
-	ca, err := NewConnectionAcceptor(config, logger.New(os.Stdout))
+	ca, err := newConnectionAcceptor(config, logger.New(os.Stdout))
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg := asyncRunAcceptorAndWaitForItToBeUp(t, ca)
@@ -243,15 +243,15 @@ func TestUnit_ConnectionAcceptor_WhenOnConnectTakesLong_ExpectOtherConnectionsCa
 	assert.LessOrEqual(t, elapsed, 300*time.Millisecond)
 }
 
-func newTestAcceptorConfig(port uint16) AcceptorConfig {
-	return AcceptorConfig{
+func newTestAcceptorConfig(port uint16) acceptorConfig {
+	return acceptorConfig{
 		Port: port,
 	}
 }
 
 func asyncRunAcceptorAndWaitForItToBeUp(
 	t *testing.T,
-	ca ConnectionAcceptor,
+	ca connectionAcceptor,
 ) *sync.WaitGroup {
 	var wg sync.WaitGroup
 
@@ -272,7 +272,7 @@ func asyncRunAcceptorAndWaitForItToBeUp(
 	return &wg
 }
 
-func closeAcceptorAndAssertNoError(t *testing.T, ca ConnectionAcceptor, wg *sync.WaitGroup) {
+func closeAcceptorAndAssertNoError(t *testing.T, ca connectionAcceptor, wg *sync.WaitGroup) {
 	err := ca.Close()
 	wg.Wait()
 	assert.Nil(t, err, "Actual err: %v", err)
