@@ -21,7 +21,7 @@ type Server interface {
 type serverImpl struct {
 	log      logger.Logger
 	manager  connectionManager
-	acceptor ConnectionAcceptor
+	acceptor connectionAcceptor
 
 	running atomic.Bool
 	wg      sync.WaitGroup
@@ -40,7 +40,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 	}
 	s.manager = newConnectionManager(managerConfig, s.log)
 
-	acceptorConfig := AcceptorConfig{
+	acceptorConfig := acceptorConfig{
 		Port: config.Port,
 		Callbacks: ServerCallbacks{
 			ConnectCallback: func(conn net.Conn) {
@@ -49,7 +49,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 		},
 	}
 	var err error
-	s.acceptor, err = NewConnectionAcceptor(acceptorConfig, s.log)
+	s.acceptor, err = newConnectionAcceptor(acceptorConfig, s.log)
 
 	return &s, err
 }
