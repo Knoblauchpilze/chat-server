@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ConnectionManager interface {
+type connectionManager interface {
 	OnClientConnected(net.Conn)
 	Close()
 }
@@ -34,7 +34,7 @@ type managerImpl struct {
 	wg        sync.WaitGroup
 }
 
-func NewConnectionManager(config ManagerConfig, log logger.Logger) ConnectionManager {
+func newConnectionManager(config ManagerConfig, log logger.Logger) connectionManager {
 	m := &managerImpl{
 		log:         log,
 		readTimeout: config.ReadTimeout,

@@ -20,7 +20,7 @@ type Server interface {
 
 type serverImpl struct {
 	log      logger.Logger
-	manager  ConnectionManager
+	manager  connectionManager
 	acceptor ConnectionAcceptor
 
 	running atomic.Bool
@@ -38,7 +38,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 		ReadTimeout: connectionReadTimeout,
 		Callbacks:   config.Callbacks,
 	}
-	s.manager = NewConnectionManager(managerConfig, s.log)
+	s.manager = newConnectionManager(managerConfig, s.log)
 
 	acceptorConfig := AcceptorConfig{
 		Port: config.Port,
