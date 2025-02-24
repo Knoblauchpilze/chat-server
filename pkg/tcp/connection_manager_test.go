@@ -231,8 +231,8 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	assertConnectionIsClosed(t, client)
 }
 
-func newTestManagerConfig() ManagerConfig {
-	return ManagerConfig{
+func newTestManagerConfig() managerConfig {
+	return managerConfig{
 		ReadTimeout: reasonableReadTimeout,
 	}
 }

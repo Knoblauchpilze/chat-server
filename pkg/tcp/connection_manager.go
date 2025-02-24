@@ -34,7 +34,7 @@ type managerImpl struct {
 	wg        sync.WaitGroup
 }
 
-func newConnectionManager(config ManagerConfig, log logger.Logger) connectionManager {
+func newConnectionManager(config managerConfig, log logger.Logger) connectionManager {
 	m := &managerImpl{
 		log:         log,
 		readTimeout: config.ReadTimeout,

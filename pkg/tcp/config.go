@@ -11,7 +11,7 @@ type acceptorConfig struct {
 	Callbacks ServerCallbacks
 }
 
-type ManagerConfig struct {
+type managerConfig struct {
 	ReadTimeout time.Duration
 	Callbacks   clients.Callbacks
 }

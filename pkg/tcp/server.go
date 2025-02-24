@@ -34,7 +34,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 		log: log,
 	}
 
-	managerConfig := ManagerConfig{
+	managerConfig := managerConfig{
 		ReadTimeout: connectionReadTimeout,
 		Callbacks:   config.Callbacks,
 	}
