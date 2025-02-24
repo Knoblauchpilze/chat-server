@@ -16,7 +16,7 @@ import (
 const reasonableReadTimeout = 100 * time.Millisecond
 
 func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectClientConnectionToBeClosed(t *testing.T) {
-	cm := NewConnectionManager(newTestManagerConfig(), logger.New(os.Stdout))
+	cm := newConnectionManager(newTestManagerConfig(), logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5100)
 
@@ -32,7 +32,7 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectClientConnectionToBeClos
 }
 
 func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnConnectDeniesConnection(t *testing.T) {
-	cm := NewConnectionManager(newTestManagerConfig(), logger.New(os.Stdout))
+	cm := newConnectionManager(newTestManagerConfig(), logger.New(os.Stdout))
 	cm.Close()
 	client, server := newTestConnection(t, 5101)
 
@@ -50,7 +50,7 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOn
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
 		called++
 	}
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	_, server := newTestConnection(t, 5100)
 
@@ -70,7 +70,7 @@ func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *tes
 		called++
 		return true
 	}
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	_, server := newTestConnection(t, 5102)
 
@@ -90,7 +90,7 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 		return true
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5103)
 
@@ -113,7 +113,7 @@ func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionTo
 		return false
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5104)
 
@@ -134,7 +134,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 		return false
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5105)
 
@@ -162,7 +162,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 		called.Add(1)
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5105)
 
@@ -189,7 +189,7 @@ func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *
 		called++
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5106)
 
@@ -212,7 +212,7 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 		panic(errSample)
 	}
 
-	cm := NewConnectionManager(config, logger.New(os.Stdout))
+	cm := newConnectionManager(config, logger.New(os.Stdout))
 
 	client, server := newTestConnection(t, 5107)
 
