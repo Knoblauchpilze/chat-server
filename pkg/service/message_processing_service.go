@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 )
 
@@ -17,15 +18,17 @@ type MessageProcessingService interface {
 const timeoutForMessageProcessing = 1 * time.Second
 
 type messageProcessingServiceImpl struct {
-	queue messages.Queue
+	queue   messages.Queue
+	manager clients.Manager
 
 	running atomic.Bool
 	wg      sync.WaitGroup
 }
 
-func NewMessageProcessingService(queue messages.Queue) MessageProcessingService {
+func NewMessageProcessingService(queue messages.Queue, manager clients.Manager) MessageProcessingService {
 	return &messageProcessingServiceImpl{
-		queue: queue,
+		queue:   queue,
+		manager: manager,
 	}
 }
 
@@ -79,4 +82,5 @@ func (m *messageProcessingServiceImpl) waitForMessageOrTimeout() (messages.Messa
 
 func (m *messageProcessingServiceImpl) processMessage(msg messages.Message) {
 	fmt.Printf("received message %v\n", msg.Type())
+	m.manager.Broadcast(msg)
 }

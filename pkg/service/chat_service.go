@@ -23,11 +23,12 @@ type chatImpl struct {
 
 func NewChatService() Chat {
 	queue := make(messages.Queue, incomingMessagesBufferSize)
+	manager := clients.NewManager(queue)
 
 	return &chatImpl{
-		clientManager:            clients.NewManager(queue),
+		clientManager:            manager,
 		messageParser:            messages.NewParser(queue),
-		messageProcessingService: NewMessageProcessingService(queue),
+		messageProcessingService: NewMessageProcessingService(queue, manager),
 	}
 }
 
