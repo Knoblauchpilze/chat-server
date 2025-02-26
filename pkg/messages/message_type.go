@@ -1,6 +1,6 @@
 package messages
 
-type MessageType int
+type MessageType int32
 
 const (
 	CLIENT_CONNECTED MessageType = iota

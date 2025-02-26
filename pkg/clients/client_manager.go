@@ -42,7 +42,7 @@ func (m *managerImpl) OnConnect(id uuid.UUID, conn net.Conn) bool {
 		m.clients[id] = conn
 	}()
 
-	msg := messages.NewMessage(messages.CLIENT_CONNECTED)
+	msg := messages.NewClientConnectedMessage(id)
 	m.queue <- msg
 
 	return true
@@ -56,7 +56,7 @@ func (m *managerImpl) OnDisconnect(id uuid.UUID) {
 		delete(m.clients, id)
 	}()
 
-	msg := messages.NewMessage(messages.CLIENT_DISCONNECTED)
+	msg := messages.NewClientDisconnectedMessage(id)
 	m.queue <- msg
 }
 
@@ -68,7 +68,7 @@ func (m *managerImpl) OnReadError(id uuid.UUID, err error) {
 		delete(m.clients, id)
 	}()
 
-	msg := messages.NewMessage(messages.CLIENT_DISCONNECTED)
+	msg := messages.NewClientDisconnectedMessage(id)
 	m.queue <- msg
 }
 
