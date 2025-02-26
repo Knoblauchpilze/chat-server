@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -81,6 +80,5 @@ func (m *messageProcessingServiceImpl) waitForMessageOrTimeout() (messages.Messa
 }
 
 func (m *messageProcessingServiceImpl) processMessage(msg messages.Message) {
-	fmt.Printf("received message %v\n", msg.Type())
 	m.manager.Broadcast(msg)
 }

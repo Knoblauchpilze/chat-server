@@ -1,8 +1,7 @@
 package service
 
 import (
-	"fmt"
-
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 )
@@ -21,9 +20,9 @@ type chatImpl struct {
 	messageProcessingService MessageProcessingService
 }
 
-func NewChatService() Chat {
+func NewChatService(log logger.Logger) Chat {
 	queue := make(messages.Queue, incomingMessagesBufferSize)
-	manager := clients.NewManager(queue)
+	manager := clients.NewManager(queue, log)
 
 	return &chatImpl{
 		clientManager:            manager,
@@ -43,10 +42,8 @@ func (c *chatImpl) GenerateCallbacks() clients.Callbacks {
 
 func (c *chatImpl) Start() {
 	c.messageProcessingService.Start()
-	fmt.Printf("started\n")
 }
 
 func (c *chatImpl) Stop() {
 	c.messageProcessingService.Stop()
-	fmt.Printf("stopped\n")
 }
