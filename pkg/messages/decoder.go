@@ -3,8 +3,10 @@ package messages
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/google/uuid"
 )
 
 func Decode(data []byte) (Message, error) {
@@ -31,11 +33,23 @@ func Decode(data []byte) (Message, error) {
 }
 
 func decodeClientConnectedMessage(reader *bytes.Reader) (Message, error) {
-	return nil, errors.NotImplemented()
+	var clientId uuid.UUID
+	if err := tryDecodeDataAndWrapError(reader, &clientId); err != nil {
+		return nil, err
+	}
+
+	msg := NewClientConnectedMessage(clientId)
+	return msg, nil
 }
 
 func decodeClientDisconnectedMessage(reader *bytes.Reader) (Message, error) {
-	return nil, errors.NotImplemented()
+	var clientId uuid.UUID
+	if err := tryDecodeDataAndWrapError(reader, &clientId); err != nil {
+		return nil, err
+	}
+
+	msg := NewClientDisconnectedMessage(clientId)
+	return msg, nil
 }
 
 func decodeDirectMessageMessage(reader *bytes.Reader) (Message, error) {
@@ -44,4 +58,12 @@ func decodeDirectMessageMessage(reader *bytes.Reader) (Message, error) {
 
 func decodeRoomMessageMessage(reader *bytes.Reader) (Message, error) {
 	return nil, errors.NotImplemented()
+}
+
+func tryDecodeDataAndWrapError(reader io.Reader, data any) error {
+	if err := binary.Read(reader, binary.LittleEndian, data); err != nil {
+		return errors.WrapCode(err, ErrMessageDecodingFailed)
+	}
+
+	return nil
 }
