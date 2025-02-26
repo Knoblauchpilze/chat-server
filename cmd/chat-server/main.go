@@ -27,7 +27,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	chat := service.NewChatService()
+	chat := service.NewChatService(log)
 	conf.Callbacks = chat.GenerateCallbacks()
 
 	chat.Start()
