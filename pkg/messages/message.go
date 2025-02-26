@@ -1,13 +1,5 @@
 package messages
 
-type MessageType int
-
-const (
-	CLIENT_CONNECTED MessageType = iota
-	CLIENT_DISCONNECTED
-	DATA_RECEIVED
-)
-
 type Message interface {
 	Type() MessageType
 }
