@@ -5,7 +5,6 @@ type MessageType int
 const (
 	CLIENT_CONNECTED MessageType = iota
 	CLIENT_DISCONNECTED
-	DATA_RECEIVED
 	DIRECT_MESSAGE
 	ROOM_MESSAGE
 )
@@ -16,8 +15,6 @@ func (m MessageType) String() string {
 		return "CLIENT_CONNECTED"
 	case CLIENT_DISCONNECTED:
 		return "CLIENT_DISCONNECTED"
-	case DATA_RECEIVED:
-		return "DATA_RECEIVED"
 	case DIRECT_MESSAGE:
 		return "DIRECT_MESSAGE"
 	case ROOM_MESSAGE:
