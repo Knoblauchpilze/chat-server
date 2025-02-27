@@ -53,7 +53,26 @@ func decodeClientDisconnectedMessage(reader *bytes.Reader) (Message, error) {
 }
 
 func decodeDirectMessageMessage(reader *bytes.Reader) (Message, error) {
-	return nil, errors.NotImplemented()
+	var emitter, receiver uuid.UUID
+	if err := tryDecodeDataAndWrapError(reader, &emitter); err != nil {
+		return nil, err
+	}
+	if err := tryDecodeDataAndWrapError(reader, &receiver); err != nil {
+		return nil, err
+	}
+
+	var contentLength int32
+	if err := tryDecodeDataAndWrapError(reader, &contentLength); err != nil {
+		return nil, err
+	}
+
+	content := make([]byte, contentLength)
+	if err := tryDecodeDataAndWrapError(reader, content); err != nil {
+		return nil, err
+	}
+
+	msg := NewDirectMessage(emitter, receiver, string(content))
+	return msg, nil
 }
 
 func decodeRoomMessageMessage(reader *bytes.Reader) (Message, error) {

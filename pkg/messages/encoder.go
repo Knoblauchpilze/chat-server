@@ -21,9 +21,9 @@ func Encode(msg Message) ([]byte, error) {
 	case CLIENT_DISCONNECTED:
 		err = encodeClientDisconnectedMessage(msg, writer)
 	case DIRECT_MESSAGE:
-		err = encodeDirectMessageMessage(msg, writer)
+		err = encodeDirectMessage(msg, writer)
 	case ROOM_MESSAGE:
-		err = encodeRoomMessageMessage(msg, writer)
+		err = encodeRoomMessage(msg, writer)
 	}
 
 	if err != nil {
@@ -68,11 +68,32 @@ func encodeClientDisconnectedMessage(msg Message, writer io.Writer) error {
 	return nil
 }
 
-func encodeDirectMessageMessage(msg Message, writer io.Writer) error {
-	return errors.NotImplemented()
+func encodeDirectMessage(msg Message, writer io.Writer) error {
+	dMsg, ok := msg.(*directMessage)
+	if !ok {
+		return errors.NewCode(ErrUnrecognizedMessageImplementation)
+	}
+
+	if err := tryEncodeData(writer, DIRECT_MESSAGE); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, dMsg.emitter); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, dMsg.receiver); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, int32(len(dMsg.content))); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, []byte(dMsg.content)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func encodeRoomMessageMessage(msg Message, writer io.Writer) error {
+func encodeRoomMessage(msg Message, writer io.Writer) error {
 	return errors.NotImplemented()
 }
 
