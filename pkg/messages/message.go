@@ -33,3 +33,21 @@ func NewClientDisconnectedMessage(client uuid.UUID) Message {
 func (m *clientDisconnectedMessage) Type() MessageType {
 	return CLIENT_DISCONNECTED
 }
+
+type directMessage struct {
+	emitter  uuid.UUID
+	receiver uuid.UUID
+	content  string
+}
+
+func NewDirectMessage(emitter uuid.UUID, receiver uuid.UUID, content string) Message {
+	return &directMessage{
+		emitter:  emitter,
+		receiver: receiver,
+		content:  content,
+	}
+}
+
+func (m *directMessage) Type() MessageType {
+	return DIRECT_MESSAGE
+}
