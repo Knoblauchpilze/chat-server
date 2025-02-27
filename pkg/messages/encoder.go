@@ -10,76 +10,75 @@ import (
 )
 
 func Encode(msg Message) ([]byte, error) {
+
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+
+	var err error
 	switch msg.Type() {
 	case CLIENT_CONNECTED:
-		return encodeClientConnectedMessage(msg)
+		err = encodeClientConnectedMessage(msg, writer)
 	case CLIENT_DISCONNECTED:
-		return encodeClientDisconnectedMessage(msg)
+		err = encodeClientDisconnectedMessage(msg, writer)
 	case DIRECT_MESSAGE:
-		return encodeDirectMessageMessage(msg)
+		err = encodeDirectMessageMessage(msg, writer)
 	case ROOM_MESSAGE:
-		return encodeRoomMessageMessage(msg)
+		err = encodeRoomMessageMessage(msg, writer)
 	}
-	return nil, errors.NotImplemented()
+
+	if err != nil {
+		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
+	}
+	if err := finalizeMessageEncoding(writer); err != nil {
+		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
+	}
+
+	return out.Bytes(), nil
 }
 
-func encodeClientConnectedMessage(msg Message) ([]byte, error) {
+func encodeClientConnectedMessage(msg Message, writer io.Writer) error {
 	ccMsg, ok := msg.(*clientConnectedMessage)
 	if !ok {
-		return nil, errors.NewCode(ErrUnrecognizedMessageImplementation)
+		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
 
-	var out bytes.Buffer
-	writer := bufio.NewWriter(&out)
-
-	if err := tryEncodeDataAndWrapError(writer, CLIENT_CONNECTED); err != nil {
-		return nil, err
+	if err := tryEncodeData(writer, CLIENT_CONNECTED); err != nil {
+		return err
 	}
-	if err := tryEncodeDataAndWrapError(writer, ccMsg.client); err != nil {
-		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
+	if err := tryEncodeData(writer, ccMsg.client); err != nil {
+		return err
 	}
 
-	if err := finalizeMessageEncoding(writer); err != nil {
-		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
-	}
-
-	return out.Bytes(), nil
+	return nil
 }
 
-func encodeClientDisconnectedMessage(msg Message) ([]byte, error) {
+func encodeClientDisconnectedMessage(msg Message, writer io.Writer) error {
 	cdMsg, ok := msg.(*clientDisconnectedMessage)
 	if !ok {
-		return nil, errors.NewCode(ErrUnrecognizedMessageImplementation)
+		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
 
-	var out bytes.Buffer
-	writer := bufio.NewWriter(&out)
-
-	if err := tryEncodeDataAndWrapError(writer, CLIENT_DISCONNECTED); err != nil {
-		return nil, err
+	if err := tryEncodeData(writer, CLIENT_DISCONNECTED); err != nil {
+		return err
 	}
-	if err := tryEncodeDataAndWrapError(writer, cdMsg.client); err != nil {
-		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
+	if err := tryEncodeData(writer, cdMsg.client); err != nil {
+		return err
 	}
 
-	if err := finalizeMessageEncoding(writer); err != nil {
-		return nil, errors.WrapCode(err, ErrMessageEncodingFailed)
-	}
-
-	return out.Bytes(), nil
+	return nil
 }
 
-func encodeDirectMessageMessage(msg Message) ([]byte, error) {
-	return nil, errors.NotImplemented()
+func encodeDirectMessageMessage(msg Message, writer io.Writer) error {
+	return errors.NotImplemented()
 }
 
-func encodeRoomMessageMessage(msg Message) ([]byte, error) {
-	return nil, errors.NotImplemented()
+func encodeRoomMessageMessage(msg Message, writer io.Writer) error {
+	return errors.NotImplemented()
 }
 
-func tryEncodeDataAndWrapError(writer io.Writer, data any) error {
+func tryEncodeData(writer io.Writer, data any) error {
 	if err := binary.Write(writer, binary.LittleEndian, data); err != nil {
-		return errors.WrapCode(err, ErrMessageEncodingFailed)
+		return err
 	}
 
 	return nil
