@@ -36,8 +36,8 @@ func Encode(msg Message) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func encodeClientConnectedMessage(msg Message, writer io.Writer) error {
-	ccMsg, ok := msg.(*clientConnectedMessage)
+func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
+	msg, ok := inMsg.(*clientConnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -45,15 +45,15 @@ func encodeClientConnectedMessage(msg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, CLIENT_CONNECTED); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, ccMsg.client); err != nil {
+	if err := tryEncodeData(writer, msg.client); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func encodeClientDisconnectedMessage(msg Message, writer io.Writer) error {
-	cdMsg, ok := msg.(*clientDisconnectedMessage)
+func encodeClientDisconnectedMessage(inMsg Message, writer io.Writer) error {
+	msg, ok := inMsg.(*clientDisconnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -61,15 +61,15 @@ func encodeClientDisconnectedMessage(msg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, CLIENT_DISCONNECTED); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, cdMsg.client); err != nil {
+	if err := tryEncodeData(writer, msg.client); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func encodeDirectMessage(msg Message, writer io.Writer) error {
-	dMsg, ok := msg.(*directMessage)
+func encodeDirectMessage(inMsg Message, writer io.Writer) error {
+	msg, ok := inMsg.(*directMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -77,24 +77,45 @@ func encodeDirectMessage(msg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, DIRECT_MESSAGE); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, dMsg.emitter); err != nil {
+	if err := tryEncodeData(writer, msg.emitter); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, dMsg.receiver); err != nil {
+	if err := tryEncodeData(writer, msg.receiver); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, int32(len(dMsg.content))); err != nil {
+	if err := tryEncodeData(writer, int32(len(msg.content))); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, []byte(dMsg.content)); err != nil {
+	if err := tryEncodeData(writer, []byte(msg.content)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func encodeRoomMessage(msg Message, writer io.Writer) error {
-	return errors.NotImplemented()
+func encodeRoomMessage(inMsg Message, writer io.Writer) error {
+	msg, ok := inMsg.(*roomMessage)
+	if !ok {
+		return errors.NewCode(ErrUnrecognizedMessageImplementation)
+	}
+
+	if err := tryEncodeData(writer, ROOM_MESSAGE); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, msg.emitter); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, msg.room); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, int32(len(msg.content))); err != nil {
+		return err
+	}
+	if err := tryEncodeData(writer, []byte(msg.content)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func tryEncodeData(writer io.Writer, data any) error {

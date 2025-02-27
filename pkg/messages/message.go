@@ -51,3 +51,21 @@ func NewDirectMessage(emitter uuid.UUID, receiver uuid.UUID, content string) Mes
 func (m *directMessage) Type() MessageType {
 	return DIRECT_MESSAGE
 }
+
+type roomMessage struct {
+	emitter uuid.UUID
+	room    uuid.UUID
+	content string
+}
+
+func NewRoomMessage(emitter uuid.UUID, room uuid.UUID, content string) Message {
+	return &roomMessage{
+		emitter: emitter,
+		room:    room,
+		content: content,
+	}
+}
+
+func (m *roomMessage) Type() MessageType {
+	return ROOM_MESSAGE
+}
