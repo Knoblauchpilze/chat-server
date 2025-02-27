@@ -17,14 +17,14 @@ type MessageProcessingService interface {
 const timeoutForMessageProcessing = 1 * time.Second
 
 type messageProcessingServiceImpl struct {
-	queue   messages.Queue
+	queue   messages.IncomingQueue
 	manager clients.Manager
 
 	running atomic.Bool
 	wg      sync.WaitGroup
 }
 
-func NewMessageProcessingService(queue messages.Queue, manager clients.Manager) MessageProcessingService {
+func NewMessageProcessingService(queue messages.IncomingQueue, manager clients.Manager) MessageProcessingService {
 	return &messageProcessingServiceImpl{
 		queue:   queue,
 		manager: manager,

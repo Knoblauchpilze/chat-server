@@ -20,13 +20,13 @@ type Manager interface {
 
 type managerImpl struct {
 	log   logger.Logger
-	queue messages.Queue
+	queue messages.OutgoingQueue
 
 	lock    sync.RWMutex
 	clients map[uuid.UUID]net.Conn
 }
 
-func NewManager(queue messages.Queue, log logger.Logger) Manager {
+func NewManager(queue messages.OutgoingQueue, log logger.Logger) Manager {
 	return &managerImpl{
 		log:     log,
 		queue:   queue,

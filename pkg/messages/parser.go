@@ -11,10 +11,10 @@ type Parser interface {
 
 type parserImpl struct {
 	log   logger.Logger
-	queue Queue
+	queue OutgoingQueue
 }
 
-func NewParser(queue Queue, log logger.Logger) Parser {
+func NewParser(queue OutgoingQueue, log logger.Logger) Parser {
 	return &parserImpl{
 		log:   log,
 		queue: queue,
