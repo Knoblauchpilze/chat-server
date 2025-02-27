@@ -1,3 +1,5 @@
 package messages
 
-type Queue chan Message
+// https://gobyexample.com/channel-directions
+type OutgoingQueue chan<- Message
+type IncomingQueue <-chan Message
