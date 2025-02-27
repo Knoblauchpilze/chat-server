@@ -106,7 +106,7 @@ func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *tes
 }
 
 func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestServerConfig(7003)
+	config := newTestServerConfig(7005)
 	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called++
@@ -116,7 +116,7 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
-	conn, dialErr := net.Dial("tcp", ":7003")
+	conn, dialErr := net.Dial("tcp", ":7005")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
 
 	// Wait for connection to be processed.
@@ -131,7 +131,7 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 }
 
 func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestServerConfig(7004)
+	config := newTestServerConfig(7006)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
 		called++
@@ -141,7 +141,7 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 
 	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
-	conn, err := net.Dial("tcp", ":7004")
+	conn, err := net.Dial("tcp", ":7006")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	n, err := conn.Write(sampleData)
@@ -160,7 +160,7 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 }
 
 func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *testing.T) {
-	config := newTestServerConfig(7006)
+	config := newTestServerConfig(7007)
 	var called atomic.Int32
 	doPanic := true
 	var actual []byte
@@ -178,7 +178,7 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
 
 	// First attempt panics, the connection should be closed.
-	conn, err := net.Dial("tcp", ":7006")
+	conn, err := net.Dial("tcp", ":7007")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	n, err := conn.Write(sampleData)
@@ -191,7 +191,7 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	assertConnectionIsClosed(t, conn)
 
 	// The second attempt does not, expect to be able to write data.
-	conn, err = net.Dial("tcp", ":7006")
+	conn, err = net.Dial("tcp", ":7007")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	n, err = conn.Write(sampleData)
