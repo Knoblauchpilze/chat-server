@@ -54,7 +54,7 @@ func TestUnit_ClientManager_WhenReadErrorDetected_ExpectDisconnectMessageToBeSen
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
 }
 
-func TestUnit_ClientManager_WhenMessageIsBrodcast_ExpectMessagesToBeSent(t *testing.T) {
+func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *testing.T) {
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
@@ -88,7 +88,7 @@ func TestUnit_ClientManager_WhenMessageIsBrodcast_ExpectMessagesToBeSent(t *test
 	assert.Equal(t, expectedMessage, actual2)
 }
 
-func TestUnit_ClientManager_WhenMessageIsBrodcastExpectToOneClient_ExpectNothingReceivedForThisClient(t *testing.T) {
+func TestUnit_ClientManager_WhenMessageIsBroadcastExceptToOneClient_ExpectNothingReceivedForThisClient(t *testing.T) {
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
