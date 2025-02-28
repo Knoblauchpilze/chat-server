@@ -54,7 +54,7 @@ func TestUnit_ClientManager_WhenReadErrorDetected_ExpectDisconnectMessageToBeSen
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
 }
 
-func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *testing.T) {
+func TestUnit_ClientManager_WhenReadErrorDetected_ExpectMessageIsNotReceivedAnymore(t *testing.T) {
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
@@ -63,8 +63,27 @@ func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *tes
 	manager.OnConnect(client1, serverConn1)
 	<-queue
 
+	manager.OnReadError(client1, errSample)
+
+	msg := messages.NewClientConnectedMessage(sampleUuid)
+	manager.Broadcast(msg)
+
+	time.Sleep(100 * time.Millisecond)
+
+	assertNoDataReceived(t, clientConn1)
+}
+
+func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *testing.T) {
+	queue := make(chan messages.Message, 1)
+	manager := NewManager(queue, logger.New(os.Stdout))
+
+	client1 := uuid.New()
+	clientConn1, serverConn1 := newTestConnection(t, 7501)
+	manager.OnConnect(client1, serverConn1)
+	<-queue
+
 	client2 := uuid.New()
-	clientConn2, serverConn2 := newTestConnection(t, 7500)
+	clientConn2, serverConn2 := newTestConnection(t, 7501)
 	manager.OnConnect(client2, serverConn2)
 	<-queue
 
@@ -93,12 +112,12 @@ func TestUnit_ClientManager_WhenMessageIsBroadcastExceptToOneClient_ExpectNothin
 	manager := NewManager(queue, logger.New(os.Stdout))
 
 	client1 := uuid.New()
-	clientConn1, serverConn1 := newTestConnection(t, 7500)
+	clientConn1, serverConn1 := newTestConnection(t, 7502)
 	manager.OnConnect(client1, serverConn1)
 	<-queue
 
 	client2 := uuid.New()
-	clientConn2, serverConn2 := newTestConnection(t, 7500)
+	clientConn2, serverConn2 := newTestConnection(t, 7502)
 	manager.OnConnect(client2, serverConn2)
 	<-queue
 
@@ -124,7 +143,7 @@ func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectMessageIsSent(t *tes
 	manager := NewManager(queue, logger.New(os.Stdout))
 
 	client1 := uuid.New()
-	clientConn1, serverConn1 := newTestConnection(t, 7500)
+	clientConn1, serverConn1 := newTestConnection(t, 7503)
 	manager.OnConnect(client1, serverConn1)
 	<-queue
 
@@ -148,12 +167,12 @@ func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectNobodyElseReceivesIt
 	manager := NewManager(queue, logger.New(os.Stdout))
 
 	client1 := uuid.New()
-	_, serverConn1 := newTestConnection(t, 7500)
+	_, serverConn1 := newTestConnection(t, 7504)
 	manager.OnConnect(client1, serverConn1)
 	<-queue
 
 	client2 := uuid.New()
-	clientConn2, serverConn2 := newTestConnection(t, 7500)
+	clientConn2, serverConn2 := newTestConnection(t, 7504)
 	manager.OnConnect(client2, serverConn2)
 	<-queue
 
@@ -165,5 +184,21 @@ func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectNobodyElseReceivesIt
 	assertNoDataReceived(t, clientConn2)
 }
 
-// TODO: Add test to verify that the client is correctly removed from the internal
-// list when a read error occurs or a disconnect.
+func TestUnit_ClientManager_WhenClientDisconnects_ExpectMessageIsNotReceivedAnymore(t *testing.T) {
+	queue := make(chan messages.Message, 1)
+	manager := NewManager(queue, logger.New(os.Stdout))
+
+	client1 := uuid.New()
+	clientConn1, serverConn1 := newTestConnection(t, 7505)
+	manager.OnConnect(client1, serverConn1)
+	<-queue
+
+	manager.OnDisconnect(client1)
+
+	msg := messages.NewClientConnectedMessage(sampleUuid)
+	manager.Broadcast(msg)
+
+	time.Sleep(100 * time.Millisecond)
+
+	assertNoDataReceived(t, clientConn1)
+}
