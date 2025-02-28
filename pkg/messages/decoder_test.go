@@ -3,15 +3,32 @@ package messages
 import (
 	"testing"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUnit_Decode_WhenMessageTypeIsTruncated_ExpectError(t *testing.T) {
+	encoded := []byte{
+		// Partial CLIENT_CONNECTED
+		0x0, 0x0, 0x0,
+	}
+
+	_, err := Decode(encoded)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrUnrecognizedMessageFormat),
+		"Actual err: %v",
+		err,
+	)
+}
 
 func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
 	encoded := []byte{
 		// CLIENT_CONNECTED
 		0x0, 0x0, 0x0, 0x0,
-		// UUID
+		// Partial UUID
 		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
 	}
 
@@ -21,6 +38,24 @@ func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
 	actual, ok := msg.(*clientConnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, actual.client)
+}
+
+func TestUnit_Decode_WhenMessageIsIncomplete_ExpectError(t *testing.T) {
+	encoded := []byte{
+		// CLIENT_CONNECTED
+		0x0, 0x0, 0x0, 0x0,
+		// UUID
+		0x2d, 0xbf, 0x26, 0x22,
+	}
+
+	_, err := Decode(encoded)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrMessageDecodingFailed),
+		"Actual err: %v",
+		err,
+	)
 }
 
 func TestUnit_Decode_ClientDisconnectedMessage(t *testing.T) {
