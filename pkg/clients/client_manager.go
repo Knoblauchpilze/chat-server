@@ -15,6 +15,7 @@ type Manager interface {
 	OnReadError(id uuid.UUID, err error)
 
 	Broadcast(msg messages.Message)
+	BroadcastExcept(id uuid.UUID, msg messages.Message)
 	SendTo(id uuid.UUID, msg messages.Message)
 }
 
@@ -82,6 +83,24 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 	defer m.lock.RUnlock()
 
 	for _, conn := range m.clients {
+		conn.Write(encoded)
+	}
+}
+
+func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
+	encoded, err := messages.Encode(msg)
+	if err != nil {
+		m.log.Warnf("Failed to broadcast message %s: %v", msg.Type(), err)
+	}
+
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	for clientId, conn := range m.clients {
+		if clientId == id {
+			continue
+		}
+
 		conn.Write(encoded)
 	}
 }
