@@ -31,7 +31,9 @@ INSERT INTO room (id, name)
 	VALUES ($1, $2)
 	RETURNING updated_at`
 
-func (r *roomRepositoryImpl) Create(ctx context.Context, room persistence.Room) (persistence.Room, error) {
+func (r *roomRepositoryImpl) Create(
+	ctx context.Context, room persistence.Room,
+) (persistence.Room, error) {
 	updatedAt, err := db.QueryOne[time.Time](
 		ctx,
 		r.conn,
@@ -54,7 +56,9 @@ FROM
 WHERE
 	id = $1`
 
-func (r *roomRepositoryImpl) Get(ctx context.Context, id uuid.UUID) (persistence.Room, error) {
+func (r *roomRepositoryImpl) Get(
+	ctx context.Context, id uuid.UUID,
+) (persistence.Room, error) {
 	return db.QueryOne[persistence.Room](ctx, r.conn, getRoomSqlTemplate, id)
 }
 
@@ -64,7 +68,9 @@ DELETE FROM
 WHERE
 	id = $1`
 
-func (r *roomRepositoryImpl) Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error {
+func (r *roomRepositoryImpl) Delete(
+	ctx context.Context, tx db.Transaction, id uuid.UUID,
+) error {
 	_, err := tx.Exec(ctx, deleteRoomSqlTemplate, id)
 	return err
 }
