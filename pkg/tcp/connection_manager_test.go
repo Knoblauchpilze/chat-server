@@ -98,7 +98,7 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 
 	n, err := client.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg.Wait()
 
@@ -142,7 +142,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 
 	n, err := client.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
@@ -170,7 +170,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 
 	n, err := client.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
@@ -220,7 +220,7 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 
 	n, err := client.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	wg.Wait()
 	// Wait long enough for the read timeout to expire and connection

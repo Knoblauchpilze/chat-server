@@ -34,7 +34,7 @@ func TestUnit_ConnectionAcceptor_WhenStartedMultipleTimes_ExpectFailure(t *testi
 	go func() {
 		defer wg.Done()
 		err := ca.Accept()
-		assert.Nil(t, err)
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
 	// Wait a bit to be sure the first one is up.
