@@ -12,6 +12,7 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user persistence.User) (persistence.User, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.User, error)
+	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.User, error)
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
 }
 
@@ -63,6 +64,31 @@ func (r *userRepositoryImpl) Get(
 	ctx context.Context, id uuid.UUID,
 ) (persistence.User, error) {
 	return db.QueryOne[persistence.User](ctx, r.conn, getUserSqlTemplate, id)
+}
+
+const listUserByRoomSqlTemplate = `
+SELECT
+	cu.id,
+	cu.name,
+	cu.api_user,
+	cu.created_at,
+	cu.updated_at,
+	cu.version
+FROM
+	room_user AS ru
+	LEFT JOIN chat_user AS cu on ru.chat_user = cu.id
+WHERE
+	ru.room = $1`
+
+func (r *userRepositoryImpl) ListForRoom(
+	ctx context.Context, room uuid.UUID,
+) ([]persistence.User, error) {
+	return db.QueryAll[persistence.User](
+		ctx,
+		r.conn,
+		listUserByRoomSqlTemplate,
+		room,
+	)
 }
 
 const deleteUserSqlTemplate = `

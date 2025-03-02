@@ -25,7 +25,7 @@ func TestIT_UserRepository_Create(t *testing.T) {
 	}
 
 	actual, err := repo.Create(context.Background(), user)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "UpdatedAt"))
 	assert.True(t, actual.UpdatedAt.After(actual.CreatedAt))
@@ -59,7 +59,7 @@ func TestIT_UserRepository_Get(t *testing.T) {
 	user := insertTestUser(t, conn)
 
 	actual, err := repo.Get(context.Background(), user.Id)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, user))
 }
@@ -78,6 +78,30 @@ func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_UserRepository_ListForRoom(t *testing.T) {
+	repo, conn := newTestUserRepository(t)
+	room := insertTestRoom(t, conn)
+	user1 := insertTestUser(t, conn)
+	insertTestUser(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+
+	actual, err := repo.ListForRoom(context.Background(), room.Id)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Len(t, actual, 1)
+	assert.True(t, eassert.EqualsIgnoringFields(actual[0], user1))
+}
+
+func TestIT_UserRepository_ListForRoom_WhenNoPlayerRegistered_ReturnEmptySlice(t *testing.T) {
+	repo, conn := newTestUserRepository(t)
+	room := insertTestRoom(t, conn)
+
+	actual, err := repo.ListForRoom(context.Background(), room.Id)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, []persistence.User{}, actual)
+}
+
 func TestIT_UserRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestUserRepositoryAndTransaction(t)
 
@@ -86,7 +110,7 @@ func TestIT_UserRepository_Delete(t *testing.T) {
 	err := repo.Delete(context.Background(), tx, user.Id)
 	tx.Close(context.Background())
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assertUserDoesNotExist(t, conn, user.Id)
 }
 
@@ -100,7 +124,7 @@ func TestIT_UserRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	err := repo.Delete(context.Background(), tx, id)
 	tx.Close(context.Background())
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assertUserExists(t, conn, user.Id)
 }
 
@@ -112,7 +136,7 @@ func newTestUserRepository(t *testing.T) (UserRepository, db.Connection) {
 func newTestUserRepositoryAndTransaction(t *testing.T) (UserRepository, db.Connection, db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	return NewUserRepository(conn), conn, tx
 }
 
@@ -123,7 +147,7 @@ func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT id FROM chat_user WHERE id = $1",
 		id,
 	)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
 }
 
@@ -134,7 +158,7 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT COUNT(id) FROM chat_user WHERE id = $1",
 		id,
 	)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Zero(t, value)
 }
 
@@ -160,7 +184,7 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 		user.ApiUser,
 		user.CreatedAt,
 	)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	user.UpdatedAt = updatedAt
 
