@@ -25,6 +25,7 @@ func NewUserRepository(conn db.Connection) UserRepository {
 	}
 }
 
+// TODO: created_at should also be returned
 const createUserSqlTemplate = `
 INSERT INTO chat_user (id, name, api_user)
 	VALUES ($1, $2, $3)
