@@ -12,7 +12,6 @@ import (
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestIT_UserRepository_Create(t *testing.T) {
@@ -96,7 +95,7 @@ func TestIT_UserRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 
 	user := insertTestUser(t, conn)
 	id := uuid.New()
-	require.NotEqual(t, user.Id, id)
+	assert.NotEqual(t, user.Id, id)
 
 	err := repo.Delete(context.Background(), tx, id)
 	tx.Close(context.Background())
@@ -124,7 +123,7 @@ func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT id FROM chat_user WHERE id = $1",
 		id,
 	)
-	require.Nil(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, id, value)
 }
 
@@ -135,7 +134,7 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT COUNT(id) FROM chat_user WHERE id = $1",
 		id,
 	)
-	require.Nil(t, err)
+	assert.Nil(t, err)
 	assert.Zero(t, value)
 }
 
