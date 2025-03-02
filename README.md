@@ -47,7 +47,7 @@ The diagram below presents the architecture of the server and how it handles mes
 
 The clients are initially received by the `ConnectionAcceptor`, which forwards the connection request to the `ConnectionManager` which in turn forwards it to the `ClientManager`.
 
-The `ClientManager` is the central authority keeping track of the clients connected to a node of the chat server. It also performs the filtering to allow/dney connection requests from certain clients (typically if a client is banned).
+The `ClientManager` is the central authority keeping track of the clients connected to a node of the chat server. It also performs the filtering to allow/deny connection requests from certain clients (typically if a client is banned).
 
 It also handles the handshake with new clients: this means trying to communicate in a predefined way to establish that the conneciton is legit and that we have a genuine client trying to interact with the chat and not some attacker/bot probing the connection.
 
@@ -57,7 +57,7 @@ Each time such data is received, the `MessageParser` will be notified and will t
 
 The `InputMessageQueue`'s role is to dispatch the messages and to allow their processing. It's not doing any processing itself but rather acts as a synchronization mechanism bewteen the `ClientManager`/`MessageParser` and the `MessageProcessor`s.
 
-The `MessageProcessor`s are designed to be executed concurrently: they each listen on the message queue and grab messages as they appear. They handle the necessary processing for the message which includes:
+The `MessageProcessor`s are designed to be executed concurrently: they each listen to the message queue and grab messages as they appear. They handle the necessary processing for the message which includes:
 
 - persisting information to the database
 - creating new messages
