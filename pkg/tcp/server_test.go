@@ -38,7 +38,7 @@ func TestUnit_Server_WhenStartedMultipleTimes_ExpectFailure(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		err := s.Start(cancellable)
-		assert.Nil(t, err)
+		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
 	// Wait a bit to be sure the first one is up.

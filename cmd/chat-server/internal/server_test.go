@@ -74,7 +74,7 @@ func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testi
 
 	n, err := conn.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	conn.Close()
 
@@ -146,7 +146,7 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 
 	n, err := conn.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
@@ -183,7 +183,7 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 
 	n, err := conn.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
@@ -196,7 +196,7 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 
 	n, err = conn.Write(sampleData)
 	assert.Equal(t, n, len(sampleData))
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	time.Sleep(100 * time.Millisecond)
 	assertConnectionIsStillOpen(t, conn)

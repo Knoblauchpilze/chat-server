@@ -25,7 +25,7 @@ func TestIT_RoomRepository_Create(t *testing.T) {
 	}
 
 	actual, err := repo.Create(context.Background(), room)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, room, "UpdatedAt"))
 	assert.True(t, actual.UpdatedAt.After(actual.CreatedAt))
@@ -58,7 +58,7 @@ func TestIT_RoomRepository_Get(t *testing.T) {
 	room := insertTestRoom(t, conn)
 
 	actual, err := repo.Get(context.Background(), room.Id)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, room))
 }
@@ -85,7 +85,7 @@ func TestIT_RoomRepository_Delete(t *testing.T) {
 	err := repo.Delete(context.Background(), tx, room.Id)
 	tx.Close(context.Background())
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assertRoomDoesNotExist(t, conn, room.Id)
 }
 
@@ -99,7 +99,7 @@ func TestIT_RoomRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	err := repo.Delete(context.Background(), tx, id)
 	tx.Close(context.Background())
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assertRoomExists(t, conn, room.Id)
 }
 
@@ -111,7 +111,7 @@ func newTestRoomRepository(t *testing.T) (RoomRepository, db.Connection) {
 func newTestRoomRepositoryAndTransaction(t *testing.T) (RoomRepository, db.Connection, db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	return NewRoomRepository(conn), conn, tx
 }
 
@@ -157,7 +157,7 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 		room.Name,
 		room.CreatedAt,
 	)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	room.UpdatedAt = updatedAt
 

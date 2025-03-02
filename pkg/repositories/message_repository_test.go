@@ -30,7 +30,7 @@ func TestIT_MessageRepository_Create(t *testing.T) {
 	}
 
 	actual, err := repo.Create(context.Background(), msg)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, msg, "CreatedAt"))
 	assert.True(t, actual.CreatedAt.After(beforeInsertion))
@@ -95,6 +95,6 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT id FROM message WHERE id = $1",
 		id,
 	)
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
 }
