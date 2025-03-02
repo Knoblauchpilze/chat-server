@@ -83,6 +83,8 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 	defer m.lock.RUnlock()
 
 	for _, conn := range m.clients {
+		// TODO: We should probably have some synchronization mechanism here.
+		// Or at least check if this is already handled.
 		conn.Write(encoded)
 	}
 }
