@@ -6,45 +6,45 @@ type Message interface {
 	Type() MessageType
 }
 
-type clientConnectedMessage struct {
-	client uuid.UUID
+type ClientConnectedMessage struct {
+	Client uuid.UUID
 }
 
 func NewClientConnectedMessage(client uuid.UUID) Message {
-	return &clientConnectedMessage{
-		client: client,
+	return &ClientConnectedMessage{
+		Client: client,
 	}
 }
 
-func (m *clientConnectedMessage) Type() MessageType {
+func (m *ClientConnectedMessage) Type() MessageType {
 	return CLIENT_CONNECTED
 }
 
-type clientDisconnectedMessage struct {
-	client uuid.UUID
+type ClientDisconnectedMessage struct {
+	Client uuid.UUID
 }
 
 func NewClientDisconnectedMessage(client uuid.UUID) Message {
-	return &clientDisconnectedMessage{
-		client: client,
+	return &ClientDisconnectedMessage{
+		Client: client,
 	}
 }
 
-func (m *clientDisconnectedMessage) Type() MessageType {
+func (m *ClientDisconnectedMessage) Type() MessageType {
 	return CLIENT_DISCONNECTED
 }
 
 type directMessage struct {
-	emitter  uuid.UUID
-	receiver uuid.UUID
-	content  string
+	Emitter  uuid.UUID
+	Receiver uuid.UUID
+	Content  string
 }
 
 func NewDirectMessage(emitter uuid.UUID, receiver uuid.UUID, content string) Message {
 	return &directMessage{
-		emitter:  emitter,
-		receiver: receiver,
-		content:  content,
+		Emitter:  emitter,
+		Receiver: receiver,
+		Content:  content,
 	}
 }
 
@@ -53,16 +53,16 @@ func (m *directMessage) Type() MessageType {
 }
 
 type roomMessage struct {
-	emitter uuid.UUID
-	room    uuid.UUID
-	content string
+	Emitter uuid.UUID
+	Room    uuid.UUID
+	Content string
 }
 
 func NewRoomMessage(emitter uuid.UUID, room uuid.UUID, content string) Message {
 	return &roomMessage{
-		emitter: emitter,
-		room:    room,
-		content: content,
+		Emitter: emitter,
+		Room:    room,
+		Content: content,
 	}
 }
 

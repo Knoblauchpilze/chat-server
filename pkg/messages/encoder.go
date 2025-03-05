@@ -37,7 +37,7 @@ func Encode(msg Message) ([]byte, error) {
 }
 
 func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*clientConnectedMessage)
+	msg, ok := inMsg.(*ClientConnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -45,7 +45,7 @@ func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, CLIENT_CONNECTED); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.client); err != nil {
+	if err := tryEncodeData(writer, msg.Client); err != nil {
 		return err
 	}
 
@@ -53,7 +53,7 @@ func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
 }
 
 func encodeClientDisconnectedMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*clientDisconnectedMessage)
+	msg, ok := inMsg.(*ClientDisconnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -61,7 +61,7 @@ func encodeClientDisconnectedMessage(inMsg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, CLIENT_DISCONNECTED); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.client); err != nil {
+	if err := tryEncodeData(writer, msg.Client); err != nil {
 		return err
 	}
 
@@ -77,16 +77,16 @@ func encodeDirectMessage(inMsg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, DIRECT_MESSAGE); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.emitter); err != nil {
+	if err := tryEncodeData(writer, msg.Emitter); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.receiver); err != nil {
+	if err := tryEncodeData(writer, msg.Receiver); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, int32(len(msg.content))); err != nil {
+	if err := tryEncodeData(writer, int32(len(msg.Content))); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, []byte(msg.content)); err != nil {
+	if err := tryEncodeData(writer, []byte(msg.Content)); err != nil {
 		return err
 	}
 
@@ -102,16 +102,16 @@ func encodeRoomMessage(inMsg Message, writer io.Writer) error {
 	if err := tryEncodeData(writer, ROOM_MESSAGE); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.emitter); err != nil {
+	if err := tryEncodeData(writer, msg.Emitter); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, msg.room); err != nil {
+	if err := tryEncodeData(writer, msg.Room); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, int32(len(msg.content))); err != nil {
+	if err := tryEncodeData(writer, int32(len(msg.Content))); err != nil {
 		return err
 	}
-	if err := tryEncodeData(writer, []byte(msg.content)); err != nil {
+	if err := tryEncodeData(writer, []byte(msg.Content)); err != nil {
 		return err
 	}
 

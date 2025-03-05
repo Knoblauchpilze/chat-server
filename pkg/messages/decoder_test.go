@@ -35,9 +35,9 @@ func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*clientConnectedMessage)
+	actual, ok := msg.(*ClientConnectedMessage)
 	assert.True(t, ok)
-	assert.Equal(t, sampleUuid, actual.client)
+	assert.Equal(t, sampleUuid, actual.Client)
 }
 
 func TestUnit_Decode_WhenMessageIsIncomplete_ExpectError(t *testing.T) {
@@ -69,9 +69,9 @@ func TestUnit_Decode_ClientDisconnectedMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*clientDisconnectedMessage)
+	actual, ok := msg.(*ClientDisconnectedMessage)
 	assert.True(t, ok)
-	assert.Equal(t, sampleUuid, actual.client)
+	assert.Equal(t, sampleUuid, actual.Client)
 }
 
 func TestUnit_Decode_DirectMessage(t *testing.T) {
@@ -94,10 +94,10 @@ func TestUnit_Decode_DirectMessage(t *testing.T) {
 	actual, ok := msg.(*directMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
-	assert.Equal(t, expectedEmitter, actual.emitter)
+	assert.Equal(t, expectedEmitter, actual.Emitter)
 	expectedReceiver := uuid.MustParse("b29504fe-279e-4312-8a7e-3fc95ce0afa5")
-	assert.Equal(t, expectedReceiver, actual.receiver)
-	assert.Equal(t, "this is an awesome message!", actual.content)
+	assert.Equal(t, expectedReceiver, actual.Receiver)
+	assert.Equal(t, "this is an awesome message!", actual.Content)
 }
 
 func TestUnit_Decode_RoomMessage(t *testing.T) {
@@ -120,8 +120,8 @@ func TestUnit_Decode_RoomMessage(t *testing.T) {
 	actual, ok := msg.(*roomMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
-	assert.Equal(t, expectedEmitter, actual.emitter)
+	assert.Equal(t, expectedEmitter, actual.Emitter)
 	expectedRoom := uuid.MustParse("b29504fe-279e-4312-8a7e-3fc95ce0afa5")
-	assert.Equal(t, expectedRoom, actual.room)
-	assert.Equal(t, "18 another message?", actual.content)
+	assert.Equal(t, expectedRoom, actual.Room)
+	assert.Equal(t, "18 another message?", actual.Content)
 }
