@@ -16,19 +16,20 @@ import (
 
 func TestIT_UserRepository_Create(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	startTime := time.Now()
 
 	user := persistence.User{
-		Id:        uuid.New(),
-		Name:      "my-name-" + uuid.New().String(),
-		ApiUser:   uuid.New(),
-		CreatedAt: time.Now(),
+		Id:      uuid.New(),
+		Name:    "my-name-" + uuid.New().String(),
+		ApiUser: uuid.New(),
 	}
 
 	actual, err := repo.Create(context.Background(), user)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "UpdatedAt"))
-	assert.True(t, actual.UpdatedAt.After(actual.CreatedAt))
+	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "CreatedAt", "UpdatedAt"))
+	assert.Equal(t, actual.CreatedAt, actual.UpdatedAt)
+	assert.True(t, actual.CreatedAt.After(startTime))
 	assertUserExists(t, conn, user.Id)
 }
 

@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
@@ -26,16 +25,15 @@ func NewUserRepository(conn db.Connection) UserRepository {
 	}
 }
 
-// TODO: created_at should also be returned
 const createUserSqlTemplate = `
 INSERT INTO chat_user (id, name, api_user)
 	VALUES ($1, $2, $3)
-	RETURNING updated_at`
+	RETURNING created_at, updated_at`
 
 func (r *userRepositoryImpl) Create(
 	ctx context.Context, user persistence.User,
 ) (persistence.User, error) {
-	updatedAt, err := db.QueryOne[time.Time](
+	times, err := db.QueryOne[createdAtUpdatedAt](
 		ctx,
 		r.conn,
 		createUserSqlTemplate,
@@ -43,7 +41,8 @@ func (r *userRepositoryImpl) Create(
 		user.Name,
 		user.ApiUser,
 	)
-	user.UpdatedAt = updatedAt
+	user.CreatedAt = times.CreatedAt
+	user.UpdatedAt = times.UpdatedAt
 	return user, err
 }
 

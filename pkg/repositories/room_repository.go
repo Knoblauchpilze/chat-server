@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
@@ -25,23 +24,23 @@ func NewRoomRepository(conn db.Connection) RoomRepository {
 	}
 }
 
-// TODO: created_at should also be returned
 const createRoomSqlTemplate = `
 INSERT INTO room (id, name)
 	VALUES ($1, $2)
-	RETURNING updated_at`
+	RETURNING created_at, updated_at`
 
 func (r *roomRepositoryImpl) Create(
 	ctx context.Context, room persistence.Room,
 ) (persistence.Room, error) {
-	updatedAt, err := db.QueryOne[time.Time](
+	times, err := db.QueryOne[createdAtUpdatedAt](
 		ctx,
 		r.conn,
 		createRoomSqlTemplate,
 		room.Id,
 		room.Name,
 	)
-	room.UpdatedAt = updatedAt
+	room.CreatedAt = times.CreatedAt
+	room.UpdatedAt = times.UpdatedAt
 	return room, err
 }
 
