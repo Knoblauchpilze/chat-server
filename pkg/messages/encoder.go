@@ -37,7 +37,7 @@ func Encode(msg Message) ([]byte, error) {
 }
 
 func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*ClientConnectedMessage)
+	msg, ok := inMsg.(ClientConnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -53,7 +53,7 @@ func encodeClientConnectedMessage(inMsg Message, writer io.Writer) error {
 }
 
 func encodeClientDisconnectedMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*ClientDisconnectedMessage)
+	msg, ok := inMsg.(ClientDisconnectedMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -69,7 +69,7 @@ func encodeClientDisconnectedMessage(inMsg Message, writer io.Writer) error {
 }
 
 func encodeDirectMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*directMessage)
+	msg, ok := inMsg.(DirectMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}
@@ -94,7 +94,7 @@ func encodeDirectMessage(inMsg Message, writer io.Writer) error {
 }
 
 func encodeRoomMessage(inMsg Message, writer io.Writer) error {
-	msg, ok := inMsg.(*roomMessage)
+	msg, ok := inMsg.(RoomMessage)
 	if !ok {
 		return errors.NewCode(ErrUnrecognizedMessageImplementation)
 	}

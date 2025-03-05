@@ -80,7 +80,7 @@ func TestUnit_Parser_WhenReadSucceeds_ExpectMessageCorrectlyDecoded(t *testing.T
 	msg := <-queue
 
 	assert.Equal(t, CLIENT_CONNECTED, msg.Type())
-	inMsg, ok := msg.(*ClientConnectedMessage)
+	inMsg, ok := msg.(ClientConnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, inMsg.Client)
 }
