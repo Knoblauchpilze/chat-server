@@ -80,9 +80,9 @@ func TestUnit_Parser_WhenReadSucceeds_ExpectMessageCorrectlyDecoded(t *testing.T
 	msg := <-queue
 
 	assert.Equal(t, CLIENT_CONNECTED, msg.Type())
-	inMsg, ok := msg.(*clientConnectedMessage)
+	inMsg, ok := msg.(*ClientConnectedMessage)
 	assert.True(t, ok)
-	assert.Equal(t, sampleUuid, inMsg.client)
+	assert.Equal(t, sampleUuid, inMsg.Client)
 }
 
 func TestUnit_Parser_WhenQueueIsFull_ExpectReadBlocks(t *testing.T) {
