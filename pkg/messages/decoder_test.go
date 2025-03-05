@@ -35,7 +35,7 @@ func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*ClientConnectedMessage)
+	actual, ok := msg.(ClientConnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, actual.Client)
 }
@@ -69,7 +69,7 @@ func TestUnit_Decode_ClientDisconnectedMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*ClientDisconnectedMessage)
+	actual, ok := msg.(ClientDisconnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, actual.Client)
 }
@@ -91,7 +91,7 @@ func TestUnit_Decode_DirectMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*directMessage)
+	actual, ok := msg.(DirectMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
 	assert.Equal(t, expectedEmitter, actual.Emitter)
@@ -117,7 +117,7 @@ func TestUnit_Decode_RoomMessage(t *testing.T) {
 	msg, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	actual, ok := msg.(*roomMessage)
+	actual, ok := msg.(RoomMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
 	assert.Equal(t, expectedEmitter, actual.Emitter)
