@@ -17,41 +17,50 @@ func TestUnit_ClientManager_WhenClientConnects_ExpectMessageToBeSent(t *testing.
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
-	// TODO: Improve to test also the id
-	actual := manager.OnConnect(uuid.New(), nil)
+	clientId := uuid.New()
+	actual := manager.OnConnect(clientId, nil)
 
 	msg := <-queue
 
 	assert.True(t, actual)
+	connectMsg, ok := msg.(messages.ClientConnectedMessage)
+	assert.True(t, ok)
 	assert.Equal(t, messages.CLIENT_CONNECTED, msg.Type())
+	assert.Equal(t, clientId, connectMsg.Client)
 }
 
 func TestUnit_ClientManager_WhenClientDisconnects_ExpectMessageToBeSent(t *testing.T) {
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
-	id := uuid.New()
-	manager.OnConnect(id, nil)
+	clientId := uuid.New()
+	manager.OnConnect(clientId, nil)
 	<-queue
 
-	manager.OnDisconnect(id)
+	manager.OnDisconnect(clientId)
 	msg := <-queue
 
+	disconnectMsg, ok := msg.(messages.ClientDisconnectedMessage)
+	assert.True(t, ok)
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
+	assert.Equal(t, clientId, disconnectMsg.Client)
 }
 
 func TestUnit_ClientManager_WhenReadErrorDetected_ExpectDisconnectMessageToBeSent(t *testing.T) {
 	queue := make(chan messages.Message, 1)
 	manager := NewManager(queue, logger.New(os.Stdout))
 
-	id := uuid.New()
-	manager.OnConnect(id, nil)
+	clientId := uuid.New()
+	manager.OnConnect(clientId, nil)
 	<-queue
 
-	manager.OnReadError(id, errSample)
+	manager.OnReadError(clientId, errSample)
 	msg := <-queue
 
+	disconnectMsg, ok := msg.(messages.ClientDisconnectedMessage)
+	assert.True(t, ok)
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
+	assert.Equal(t, clientId, disconnectMsg.Client)
 }
 
 func TestUnit_ClientManager_WhenReadErrorDetected_ExpectMessageIsNotReceivedAnymore(t *testing.T) {
