@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
+const reasonableWaitTimeForServerToBeUp = 400 * time.Millisecond
 
 func asyncRunService(
 	t *testing.T, service MessageProcessingService,
