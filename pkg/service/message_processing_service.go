@@ -1,7 +1,6 @@
 package service
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +24,7 @@ type messageProcessingServiceImpl struct {
 	log logger.Logger
 
 	running atomic.Bool
-	wg      sync.WaitGroup
+	quit    chan struct{}
 }
 
 func NewMessageProcessingService(
@@ -37,6 +36,7 @@ func NewMessageProcessingService(
 		queue:   queue,
 		manager: manager,
 		log:     log,
+		quit:    make(chan struct{}, 1),
 	}
 }
 
@@ -44,8 +44,6 @@ func (m *messageProcessingServiceImpl) Start() {
 	if !m.running.CompareAndSwap(false, true) {
 		return
 	}
-
-	m.wg.Add(1)
 
 	go m.activeLoop()
 }
@@ -55,11 +53,13 @@ func (m *messageProcessingServiceImpl) Stop() {
 		return
 	}
 
-	m.wg.Wait()
+	<-m.quit
 }
 
 func (m *messageProcessingServiceImpl) activeLoop() {
-	defer m.wg.Done()
+	defer func() {
+		m.quit <- struct{}{}
+	}()
 
 	running := true
 	for running {
