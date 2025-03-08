@@ -27,7 +27,7 @@ func NewChatService(log logger.Logger) Chat {
 	return &chatImpl{
 		clientManager:            manager,
 		messageParser:            messages.NewParser(queue, log),
-		messageProcessingService: NewMessageProcessingService(queue, manager),
+		messageProcessingService: NewMessageProcessingService(queue, manager, log),
 	}
 }
 

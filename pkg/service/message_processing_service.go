@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 )
@@ -20,14 +22,21 @@ type messageProcessingServiceImpl struct {
 	queue   messages.IncomingQueue
 	manager clients.Manager
 
+	log logger.Logger
+
 	running atomic.Bool
 	wg      sync.WaitGroup
 }
 
-func NewMessageProcessingService(queue messages.IncomingQueue, manager clients.Manager) MessageProcessingService {
+func NewMessageProcessingService(
+	queue messages.IncomingQueue,
+	manager clients.Manager,
+	log logger.Logger,
+) MessageProcessingService {
 	return &messageProcessingServiceImpl{
 		queue:   queue,
 		manager: manager,
+		log:     log,
 	}
 }
 
@@ -80,5 +89,43 @@ func (m *messageProcessingServiceImpl) waitForMessageOrTimeout() (messages.Messa
 }
 
 func (m *messageProcessingServiceImpl) processMessage(msg messages.Message) {
-	m.manager.Broadcast(msg)
+	var err error
+
+	switch msg.Type() {
+	case messages.CLIENT_CONNECTED:
+		err = m.processClientConnectedMessage(msg)
+	case messages.CLIENT_DISCONNECTED:
+		m.manager.Broadcast(msg)
+	case messages.DIRECT_MESSAGE:
+		err = m.processDirectMessage(msg)
+	case messages.ROOM_MESSAGE:
+		// TODO: Handle room message, we need a list of participants first
+		err = errors.NotImplemented()
+	default:
+		err = errors.NewCode(UnrecognizedMessageType)
+	}
+
+	if err != nil {
+		m.log.Warnf("Failed to process message with type %v, err: %v", msg.Type(), err)
+	}
+}
+
+func (m *messageProcessingServiceImpl) processClientConnectedMessage(in messages.Message) error {
+	msg, err := messages.ToMessageStruct[messages.ClientConnectedMessage](in)
+	if err != nil {
+		return err
+	}
+
+	m.manager.BroadcastExcept(msg.Client, msg)
+	return nil
+}
+
+func (m *messageProcessingServiceImpl) processDirectMessage(in messages.Message) error {
+	msg, err := messages.ToMessageStruct[messages.DirectMessage](in)
+	if err != nil {
+		return err
+	}
+
+	m.manager.SendTo(msg.Receiver, msg)
+	return nil
 }
