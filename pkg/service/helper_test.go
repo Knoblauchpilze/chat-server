@@ -10,7 +10,7 @@ import (
 
 const reasonableWaitTimeForServerToBeUp = 400 * time.Millisecond
 
-func asyncRunService(
+func asyncRunMessageProcessingService(
 	t *testing.T, service MessageProcessingService,
 ) *sync.WaitGroup {
 	var wg sync.WaitGroup

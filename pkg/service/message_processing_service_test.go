@@ -26,7 +26,7 @@ func TestUnit_MessageProcessingService_StartStop(t *testing.T) {
 	var manager clients.Manager
 	service := NewMessageProcessingService(queue, manager, logger.New(os.Stdout))
 
-	wg := asyncRunService(t, service)
+	wg := asyncRunMessageProcessingService(t, service)
 
 	service.Stop()
 	wg.Wait()
@@ -38,7 +38,7 @@ func TestUnit_MessageProcessingService_WhenClientConnectedMessageReceived_Expect
 	managerMock := &clientManagerMock{}
 	service := NewMessageProcessingService(queue, managerMock, log)
 
-	wg := asyncRunService(t, service)
+	wg := asyncRunMessageProcessingService(t, service)
 
 	clientId := uuid.New()
 	msg := messages.NewClientConnectedMessage(clientId)
@@ -61,7 +61,7 @@ func TestUnit_MessageProcessingService_WhenClientDisonnectedMessageReceived_Expe
 	managerMock := &clientManagerMock{}
 	service := NewMessageProcessingService(queue, managerMock, log)
 
-	wg := asyncRunService(t, service)
+	wg := asyncRunMessageProcessingService(t, service)
 
 	clientId := uuid.New()
 	msg := messages.NewClientDisconnectedMessage(clientId)
@@ -82,7 +82,7 @@ func TestUnit_MessageProcessingService_WhenDirectMessageReceived_ExpectBroadcast
 	managerMock := &clientManagerMock{}
 	service := NewMessageProcessingService(queue, managerMock, log)
 
-	wg := asyncRunService(t, service)
+	wg := asyncRunMessageProcessingService(t, service)
 
 	client1Id := uuid.New()
 	client2Id := uuid.New()
