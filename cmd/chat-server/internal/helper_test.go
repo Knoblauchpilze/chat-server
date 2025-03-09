@@ -12,6 +12,8 @@ import (
 )
 
 const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
+const reasonableReadTimeout = 100 * time.Millisecond
+const reasonableReadSizeInBytes = 1024
 
 var errSample = fmt.Errorf("some error")
 var sampleData = []byte("hello\n")
@@ -43,4 +45,44 @@ func assertConnectionIsStillOpen(t *testing.T, conn net.Conn) {
 	if ok {
 		assert.True(t, opErr.Timeout())
 	}
+}
+
+func readFromConnection(t *testing.T, conn net.Conn) []byte {
+	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
+
+	out := make([]byte, reasonableReadSizeInBytes)
+	n, err := conn.Read(out)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	return out[:n]
+}
+
+func assertNoDataReceived(t *testing.T, conn net.Conn) {
+	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
+
+	oneByte := make([]byte, 1)
+	_, err := conn.Read(oneByte)
+
+	assert.True(t, isTimeout(err), "Actual err: %v", err)
+}
+
+func drainConnection(t *testing.T, conn net.Conn) []byte {
+	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
+
+	out := make([]byte, reasonableReadSizeInBytes)
+	n, err := conn.Read(out)
+	if err != nil && err != io.EOF && !isTimeout(err) {
+		assert.Nil(t, err, "Actual err: %v", err)
+	}
+
+	return out[:n]
+}
+
+func isTimeout(err error) bool {
+	opErr, ok := err.(*net.OpError)
+	if !ok {
+		return false
+	}
+
+	return opErr.Timeout()
 }
