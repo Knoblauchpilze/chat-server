@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,15 +18,15 @@ func TestUnit_ListenAndServe_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(100*time.Millisecond, cancel)
 
-	err := ListenAndServe(cancellable, newTestServerConfig(7000), logger.New(os.Stdout))
+	err := listenAndServe(cancellable, newTestConfig(7000), logger.New(os.Stdout))
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func TestUnit_ListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestServerConfig(7001)
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	config := newTestConfig(7001)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7001")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -37,7 +38,7 @@ func TestUnit_ListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClose
 }
 
 func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
-	config := newTestServerConfig(7002)
+	config := newTestConfig(7002)
 	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called++
@@ -45,7 +46,7 @@ func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testin
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7002")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
@@ -59,7 +60,7 @@ func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testin
 }
 
 func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
-	config := newTestServerConfig(7003)
+	config := newTestConfig(7003)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
 		called++
@@ -67,7 +68,7 @@ func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testi
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7003")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -85,14 +86,14 @@ func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testi
 }
 
 func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
-	config := newTestServerConfig(7004)
+	config := newTestConfig(7004)
 	var called int
 	config.Callbacks.DisconnectCallback = func(uuid.UUID) {
 		called++
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7004")
 	assert.Nil(t, err, "Unexpected dial error: %v", err)
@@ -106,7 +107,7 @@ func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *tes
 }
 
 func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestServerConfig(7005)
+	config := newTestConfig(7005)
 	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called++
@@ -114,7 +115,7 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, dialErr := net.Dial("tcp", ":7005")
 	assert.Nil(t, dialErr, "Actual err: %v", dialErr)
@@ -131,7 +132,7 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 }
 
 func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestServerConfig(7006)
+	config := newTestConfig(7006)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
 		called++
@@ -139,7 +140,7 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7006")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -160,7 +161,7 @@ func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_E
 }
 
 func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *testing.T) {
-	config := newTestServerConfig(7007)
+	config := newTestConfig(7007)
 	var called atomic.Int32
 	doPanic := true
 	var actual []byte
@@ -175,7 +176,7 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncRunServerAndWaitForItToBeUp(t, config, cancellable)
+	wg := asyncListenAndServe(t, config, cancellable)
 
 	// First attempt panics, the connection should be closed.
 	conn, err := net.Dial("tcp", ":7007")
@@ -209,8 +210,33 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	assert.Equal(t, sampleData, actual)
 }
 
-func newTestServerConfig(port uint16) Configuration {
+func newTestConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Port = port
 	return conf
+}
+
+func asyncListenAndServe(
+	t *testing.T,
+	config Configuration,
+	ctx context.Context,
+) *sync.WaitGroup {
+	var err error
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if panicErr := recover(); panicErr != nil {
+				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
+			}
+		}()
+		err = listenAndServe(ctx, config, logger.New(os.Stdout))
+		assert.Nil(t, err, "Actual err: %v", err)
+	}()
+
+	time.Sleep(reasonableWaitTimeForServerToBeUp)
+
+	return &wg
 }

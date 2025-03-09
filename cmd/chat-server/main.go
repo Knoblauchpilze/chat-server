@@ -7,7 +7,6 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/config"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/cmd/chat-server/internal"
-	"github.com/Knoblauchpilze/chat-server/pkg/service"
 )
 
 func determineConfigName() string {
@@ -27,14 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	chat := service.NewChatService(log)
-	conf.Callbacks = chat.GenerateCallbacks()
-
-	chat.Start()
-	defer chat.Stop()
-
-	err = internal.ListenAndServe(context.Background(), conf, log)
-	if err != nil {
+	if err := internal.RunServer(context.Background(), conf, log); err != nil {
 		log.Errorf("Error while serving TCP: %+v", err)
 		os.Exit(1)
 	}
