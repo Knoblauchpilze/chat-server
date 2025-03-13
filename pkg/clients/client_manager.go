@@ -82,10 +82,16 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
-	for _, conn := range m.clients {
+	for id, conn := range m.clients {
 		// TODO: We should probably have some synchronization mechanism here.
 		// Or at least check if this is already handled.
-		conn.Write(encoded)
+		n, err := conn.Write(encoded)
+		if n != len(encoded) {
+			m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), id)
+		}
+		if err != nil {
+			m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), id, err)
+		}
 	}
 }
 
@@ -103,7 +109,13 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 			continue
 		}
 
-		conn.Write(encoded)
+		n, err := conn.Write(encoded)
+		if n != len(encoded) {
+			m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), clientId)
+		}
+		if err != nil {
+			m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), clientId, err)
+		}
 	}
 }
 
@@ -121,5 +133,11 @@ func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 		return
 	}
 
-	conn.Write(encoded)
+	n, err := conn.Write(encoded)
+	if n != len(encoded) {
+		m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), id)
+	}
+	if err != nil {
+		m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), id, err)
+	}
 }
