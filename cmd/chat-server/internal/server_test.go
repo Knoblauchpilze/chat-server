@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,6 +114,64 @@ func TestUnit_RunServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	msg, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
+
+	cancel()
+	wg.Wait()
+}
+
+func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestConfig(7105)
+
+	wg := asyncRunServer(t, config, cancellable)
+
+	// Connect client 1
+	conn1, err := net.Dial("tcp", ":7105")
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	time.Sleep(reasonableTimeForConnectionToBeProcessed)
+
+	// Connect client 2
+	conn2, err := net.Dial("tcp", ":7105")
+	assert.Nil(t, err, "Actual err: %v", err)
+	time.Sleep(reasonableTimeForConnectionToBeProcessed)
+
+	// Fetch id of client 2
+	data := readFromConnection(t, conn1)
+	msg, err := messages.Decode(data)
+	assert.Nil(t, err, "Actual err: %v", err)
+	connected, err := messages.ToMessageStruct[messages.ClientConnectedMessage](msg)
+	assert.Nil(t, err, "Actual err: %v", err)
+	clientId2 := connected.Client
+
+	assertNoDataReceived(t, conn2)
+
+	// Send message to client 2 from client 1's connection
+	dummyIdForClient1 := uuid.New()
+	msg = messages.NewDirectMessage(dummyIdForClient1, clientId2, "Hello, client 2")
+	out, err := messages.Encode(msg)
+	// TODO: Should this be added when encoding? Also this is not robust as we
+	// can still run in the situation where the message is not terminated when
+	// the read timeout happens.
+	out = append(out, '\n')
+
+	fmt.Printf("sending %d byte(s) to server: \"%s\"\n", len(out), string(out))
+	assert.Nil(t, err, "Actual err: %v", err)
+	n, err := conn1.Write(out)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(out), n)
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Read message from client 2
+	data = readFromConnection(t, conn2)
+	msg, err = messages.Decode(data)
+	assert.Nil(t, err, "Actual err: %v", err)
+	actual, err := messages.ToMessageStruct[messages.DirectMessage](msg)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, dummyIdForClient1, actual.Emitter)
+	assert.Equal(t, clientId2, actual.Receiver)
+	assert.Equal(t, "Hello, client 2", actual.Content)
 
 	cancel()
 	wg.Wait()
