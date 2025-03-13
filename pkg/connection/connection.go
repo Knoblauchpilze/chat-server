@@ -53,6 +53,14 @@ func (c *connectionImpl) Read() ([]byte, error) {
 	if err == io.EOF {
 		return nil, errors.NewCode(ErrClientDisconnected)
 	} else if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+		// TODO: We could return nil. This is important in case we receive data
+		// that is not terminated by a newline. In such cases the next read will
+		// not return any data but it might be that combining both would be
+		// helpful.
+		// Maybe we could keep an internal buffer of data that was read but not
+		// returned to the caller.
+		// Additionally we should have some protection to not just keep adding
+		// more buffered data if the client is not sending any newline.
 		return bytes, errors.NewCode(ErrReadTimeout)
 	}
 
