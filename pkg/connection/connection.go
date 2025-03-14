@@ -9,6 +9,9 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 )
 
+// This represents 1 MB
+const reasonableIncompleteMessageSizeInBytes = 1024 * 1024
+
 type connection interface {
 	Read() ([]byte, error)
 	Write(b []byte) (int, error)
@@ -16,13 +19,24 @@ type connection interface {
 }
 
 type connectionOptions struct {
-	ReadTimeout time.Duration
+	ReadTimeout                  time.Duration
+	IncompleteMessageSizeInBytes int
 }
 
 type connectionImpl struct {
 	conn        net.Conn
 	reader      *bufio.Reader
 	readTimeout time.Duration
+
+	incompleteMessageSizeInBytes int
+	incompleteData               []byte
+}
+
+func WithReadTimeout(timeout time.Duration) connectionOptions {
+	return connectionOptions{
+		ReadTimeout:                  timeout,
+		IncompleteMessageSizeInBytes: reasonableIncompleteMessageSizeInBytes,
+	}
 }
 
 func Wrap(conn net.Conn) connection {
@@ -31,9 +45,10 @@ func Wrap(conn net.Conn) connection {
 
 func WithOptions(conn net.Conn, options connectionOptions) connection {
 	c := &connectionImpl{
-		conn:        conn,
-		reader:      bufio.NewReader(conn),
-		readTimeout: options.ReadTimeout,
+		conn:                         conn,
+		reader:                       bufio.NewReader(conn),
+		readTimeout:                  options.ReadTimeout,
+		incompleteMessageSizeInBytes: options.IncompleteMessageSizeInBytes,
 	}
 
 	return c
@@ -47,21 +62,19 @@ func (c *connectionImpl) Read() ([]byte, error) {
 
 	bytes, err := c.reader.ReadBytes(byte('\n'))
 	if err == nil {
+		bytes = append(c.incompleteData, bytes...)
+		c.incompleteData = []byte{}
 		return bytes, nil
 	}
 
 	if err == io.EOF {
 		return nil, errors.NewCode(ErrClientDisconnected)
 	} else if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-		// TODO: We could return nil. This is important in case we receive data
-		// that is not terminated by a newline. In such cases the next read will
-		// not return any data but it might be that combining both would be
-		// helpful.
-		// Maybe we could keep an internal buffer of data that was read but not
-		// returned to the caller.
-		// Additionally we should have some protection to not just keep adding
-		// more buffered data if the client is not sending any newline.
-		return bytes, errors.NewCode(ErrReadTimeout)
+		if err := c.accumulateIncompleteData(bytes); err != nil {
+			return []byte{}, err
+		}
+
+		return []byte{}, errors.NewCode(ErrReadTimeout)
 	}
 
 	return nil, err
@@ -73,4 +86,13 @@ func (c *connectionImpl) Write(data []byte) (int, error) {
 
 func (c *connectionImpl) Close() error {
 	return c.conn.Close()
+}
+
+func (c *connectionImpl) accumulateIncompleteData(data []byte) error {
+	c.incompleteData = append(c.incompleteData, data...)
+	if len(c.incompleteData) > c.incompleteMessageSizeInBytes {
+		return errors.NewCode(ErrTooLargeIncompleteData)
+	}
+
+	return nil
 }

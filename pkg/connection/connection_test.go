@@ -35,6 +35,54 @@ func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *test
 	assert.Equal(t, []byte{}, actual)
 }
 
+func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceived_ReturnsNoData(t *testing.T) {
+	client, server := newTestConnection(t, 1602)
+	opts := WithReadTimeout(150 * time.Millisecond)
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
+	data, err := conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, []byte{}, data)
+}
+
+func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceivedIsTooBig_ExpectError(t *testing.T) {
+	client, server := newTestConnection(t, 1602)
+	opts := connectionOptions{
+		ReadTimeout:                  150 * time.Millisecond,
+		IncompleteMessageSizeInBytes: 2,
+	}
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
+	data, err := conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrTooLargeIncompleteData), "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, []byte{}, data)
+}
+
+func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceivedAndMoreDataAfterwards_ExpectReturnsCompleteData(t *testing.T) {
+	client, server := newTestConnection(t, 1602)
+	opts := WithReadTimeout(150 * time.Millisecond)
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hel"))
+	data, err := conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	assert.Equal(t, []byte{}, data)
+	wg.Wait()
+
+	wg = asyncWriteDataToConnection(t, client, []byte("lo\n"))
+	data, err = conn.Read()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, []byte("hello\n"), data)
+}
+
 func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	client, server := newTestConnection(t, 1602)
 	opts := connectionOptions{
