@@ -69,6 +69,21 @@ func asyncWriteSampleDataToConnectionWithDelay(t *testing.T, conn net.Conn, dela
 	return &wg
 }
 
+func asyncWriteDataToConnection(t *testing.T, conn net.Conn, data []byte) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	var err error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		_, err = conn.Write(data)
+		assert.Nil(t, err, "Actual err: %v", err)
+	}()
+
+	return &wg
+}
+
 type readResult struct {
 	data []byte
 	size int
