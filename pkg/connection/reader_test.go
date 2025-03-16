@@ -53,11 +53,10 @@ func TestUnit_ReadFromConnection_ReadWithCallback(t *testing.T) {
 	var actualId uuid.UUID
 	var actualData []byte
 	callbacks := Callbacks{
-		ReadDataCallbacks: []OnReadData{
-			func(id uuid.UUID, data []byte) {
-				actualId = id
-				actualData = data
-			},
+		ReadDataCallback: func(id uuid.UUID, data []byte) int {
+			actualId = id
+			actualData = data
+			return 0
 		},
 	}
 	timeout, err := readFromConnection(sampleUuid, conn, callbacks)
@@ -76,10 +75,8 @@ func TestUnit_ReadFromConnection_DisconnectWithCallback(t *testing.T) {
 
 	var actualId uuid.UUID
 	callbacks := Callbacks{
-		DisconnectCallbacks: []OnDisconnect{
-			func(id uuid.UUID) {
-				actualId = id
-			},
+		DisconnectCallback: func(id uuid.UUID) {
+			actualId = id
 		},
 	}
 	timeout, err := readFromConnection(sampleUuid, conn, callbacks)
