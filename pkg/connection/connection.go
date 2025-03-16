@@ -16,6 +16,7 @@ const readSizeInBytes = 512
 
 type connection interface {
 	Read() ([]byte, error)
+	DiscardBytes(n int)
 	Write(b []byte) (int, error)
 	Close() error
 }
@@ -76,6 +77,7 @@ func (c *connectionImpl) Read() ([]byte, error) {
 	}
 
 	received, readErr := c.conn.Read(c.tmp)
+
 	if err := c.accumulateIncomingData(c.tmp[:received]); err != nil {
 		return []byte{}, err
 	}
@@ -87,6 +89,14 @@ func (c *connectionImpl) Read() ([]byte, error) {
 	}
 
 	return c.data, readErr
+}
+
+func (c *connectionImpl) DiscardBytes(n int) {
+	if n >= len(c.data) {
+		c.data = []byte{}
+	} else {
+		c.data = c.data[n:]
+	}
 }
 
 func (c *connectionImpl) Write(data []byte) (int, error) {

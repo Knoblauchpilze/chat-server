@@ -48,8 +48,25 @@ func TestUnit_Connection_ReadWithTimeout_WhenDataReceived_ReturnsData(t *testing
 	assert.Equal(t, []byte("hello"), data)
 }
 
+func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedAndNoDiscard_ExpectDataToStillBeAvailable(t *testing.T) {
+	client, server := newTestConnection(t, 1603)
+	opts := WithReadTimeout(150 * time.Millisecond)
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
+	wg.Wait()
+
+	data, err := conn.Read()
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []byte("hello"), data)
+
+	data, err = conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	assert.Equal(t, []byte("hello"), data)
+}
+
 func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedIsTooBig_ExpectError(t *testing.T) {
-	client, server := newTestConnection(t, 1602)
+	client, server := newTestConnection(t, 1604)
 	opts := connectionOptions{
 		ReadTimeout:               150 * time.Millisecond,
 		MaximumMessageSizeInBytes: 2,
@@ -65,7 +82,7 @@ func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedIsTooBig_ExpectError(t 
 }
 
 func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedAndMoreDataAfterwards_ExpectReturnsAllData(t *testing.T) {
-	client, server := newTestConnection(t, 1602)
+	client, server := newTestConnection(t, 1605)
 	opts := WithReadTimeout(150 * time.Millisecond)
 	conn := WithOptions(server, opts)
 
@@ -84,7 +101,7 @@ func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedAndMoreDataAfterwards_E
 }
 
 func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
-	client, server := newTestConnection(t, 1602)
+	client, server := newTestConnection(t, 1606)
 	opts := connectionOptions{
 		// 2 reads will be over the delay we set for the client connection.
 		ReadTimeout:               150 * time.Millisecond,
@@ -106,7 +123,7 @@ func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 }
 
 func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) {
-	client, server := newTestConnection(t, 1603)
+	client, server := newTestConnection(t, 1607)
 	conn := Wrap(server)
 
 	err := client.Close()
@@ -117,8 +134,58 @@ func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) 
 	assert.Nil(t, actual)
 }
 
+func TestUnit_Connection_DiscardBytes_WhenNoBytes_ExpectNoError(t *testing.T) {
+	_, server := newTestConnection(t, 1608)
+	conn := Wrap(server)
+
+	assert.NotPanics(
+		t,
+		func() {
+			conn.DiscardBytes(10)
+		},
+	)
+}
+
+func TestUnit_Connection_DiscardBytes_WhenSomeBytes_ExpectDiscardAsRequested(t *testing.T) {
+	client, server := newTestConnection(t, 1609)
+	opts := WithReadTimeout(150 * time.Millisecond)
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
+	wg.Wait()
+
+	data, err := conn.Read()
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []byte("hello"), data)
+
+	conn.DiscardBytes(2)
+
+	data, err = conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	assert.Equal(t, []byte("llo"), data)
+}
+
+func TestUnit_Connection_DiscardBytes_WhenAllBytesDiscarded_ExpectNoDataLeft(t *testing.T) {
+	client, server := newTestConnection(t, 1609)
+	opts := WithReadTimeout(150 * time.Millisecond)
+	conn := WithOptions(server, opts)
+
+	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
+	wg.Wait()
+
+	data, err := conn.Read()
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []byte("hello"), data)
+
+	conn.DiscardBytes(5)
+
+	data, err = conn.Read()
+	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	assert.Equal(t, []byte{}, data)
+}
+
 func TestUnit_Connection_Write(t *testing.T) {
-	client, server := newTestConnection(t, 1604)
+	client, server := newTestConnection(t, 1610)
 	conn := Wrap(server)
 
 	wg, actual := asyncReadDataFromConnection(t, client)
@@ -133,7 +200,7 @@ func TestUnit_Connection_Write(t *testing.T) {
 func TestUnit_Connection_Write_WhenDisconnect_ReturnsNoError(t *testing.T) {
 	// This topic indicates that no error is returned when writing to a closed connection
 	// https://groups.google.com/g/golang-nuts/c/MRIOQ-82ofM
-	client, server := newTestConnection(t, 1605)
+	client, server := newTestConnection(t, 1611)
 	conn := Wrap(server)
 
 	err := client.Close()
