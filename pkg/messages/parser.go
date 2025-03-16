@@ -6,7 +6,7 @@ import (
 )
 
 type Parser interface {
-	OnReadData(id uuid.UUID, data []byte) bool
+	OnReadData(id uuid.UUID, data []byte) (int, bool)
 }
 
 type parserImpl struct {
@@ -21,14 +21,14 @@ func NewParser(queue OutgoingQueue, log logger.Logger) Parser {
 	}
 }
 
-func (p *parserImpl) OnReadData(id uuid.UUID, data []byte) bool {
-	msg, err := Decode(data)
+func (p *parserImpl) OnReadData(id uuid.UUID, data []byte) (int, bool) {
+	msg, processed, err := Decode(data)
 	if err != nil {
 		p.log.Warnf("Unable to decode %d byte(s) received from %v: %v", len(data), id, err)
 		// Still return true as it can be that the data is just incomplete.
-		return true
+		return processed, true
 	}
 
 	p.queue <- msg
-	return true
+	return processed, true
 }

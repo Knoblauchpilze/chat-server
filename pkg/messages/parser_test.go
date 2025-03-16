@@ -24,10 +24,18 @@ func TestUnit_Parser_WhenReadFails_ExpectRequestToStayAlive(t *testing.T) {
 	var queue OutgoingQueue
 	parser := NewParser(queue, logger.New(os.Stdout))
 
-	// Should hang in case the queue is used as the queue is unbuffered.
-	actual := parser.OnReadData(uuid.New(), []byte("not-a-message"))
+	_, actual := parser.OnReadData(uuid.New(), []byte("not-a-message"))
 
 	assert.True(t, actual)
+}
+
+func TestUnit_Parser_WhenReadFails_ExpectNoBytesProcessed(t *testing.T) {
+	var queue OutgoingQueue
+	parser := NewParser(queue, logger.New(os.Stdout))
+
+	actual, _ := parser.OnReadData(uuid.New(), []byte("not-a-message"))
+
+	assert.Equal(t, 0, actual)
 }
 
 func TestUnit_Parser_WhenReadSucceeds_ExpectMessagePushedToTheQueue(t *testing.T) {
@@ -58,9 +66,25 @@ func TestUnit_Parser_WhenReadSucceeds_ExpectConnectionToStayOpen(t *testing.T) {
 	queue := make(OutgoingQueue, 1)
 	parser := NewParser(queue, logger.New(os.Stdout))
 
-	actual := parser.OnReadData(uuid.New(), encoded)
+	_, actual := parser.OnReadData(uuid.New(), encoded)
 
 	assert.True(t, actual)
+}
+
+func TestUnit_Parser_WhenReadSucceeds_ExpectSomeBytesToBeProcessed(t *testing.T) {
+	encoded := []byte{
+		// CLIENT_CONNECTED
+		0x0, 0x0, 0x0, 0x0,
+		// UUID
+		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
+	}
+
+	queue := make(OutgoingQueue, 1)
+	parser := NewParser(queue, logger.New(os.Stdout))
+
+	actual, _ := parser.OnReadData(uuid.New(), encoded)
+
+	assert.Equal(t, len(encoded), actual)
 }
 
 func TestUnit_Parser_WhenReadSucceeds_ExpectMessageCorrectlyDecoded(t *testing.T) {
@@ -74,8 +98,9 @@ func TestUnit_Parser_WhenReadSucceeds_ExpectMessageCorrectlyDecoded(t *testing.T
 	queue := make(chan Message, 1)
 	parser := NewParser(queue, logger.New(os.Stdout))
 
-	actual := parser.OnReadData(uuid.New(), encoded)
-	assert.True(t, actual)
+	processed, keepAlive := parser.OnReadData(uuid.New(), encoded)
+	assert.Equal(t, len(encoded), processed)
+	assert.True(t, keepAlive)
 
 	msg := <-queue
 
@@ -104,8 +129,10 @@ func TestUnit_Parser_WhenQueueIsFull_ExpectReadBlocks(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		defer done.Store(true)
-		actual := parser.OnReadData(uuid.New(), encoded)
-		assert.True(t, actual)
+
+		processed, keepAlive := parser.OnReadData(uuid.New(), encoded)
+		assert.Equal(t, len(encoded), processed)
+		assert.True(t, keepAlive)
 	}()
 
 	time.Sleep(300 * time.Millisecond)
