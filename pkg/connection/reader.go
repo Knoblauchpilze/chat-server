@@ -11,6 +11,7 @@ func readFromConnection(id uuid.UUID, conn connection, callbacks Callbacks) (tim
 	data, err = conn.Read()
 
 	if err == nil {
+		// TODO: Change this to notify the connection that data has been processed
 		callbacks.OnReadData(id, data)
 	} else if bterr.IsErrorWithCode(err, ErrClientDisconnected) {
 		callbacks.OnDisconnect(id)
