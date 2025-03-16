@@ -84,10 +84,10 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 	var called int
 	var wg sync.WaitGroup
 	wg.Add(1)
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		defer wg.Done()
 		called++
-		return true
+		return 0, true
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -129,9 +129,9 @@ func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionTo
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
 	var called atomic.Int32
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called.Add(1)
-		return false
+		return 0, false
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -154,8 +154,8 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectDisconnectCallbackIsCalled(t *testing.T) {
 	config := newTestManagerConfig()
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		return false
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		return 0, false
 	}
 	var called atomic.Int32
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
@@ -206,7 +206,7 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	var called int
 	var wg sync.WaitGroup
 	wg.Add(1)
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		defer wg.Done()
 		called++
 		panic(errSample)
