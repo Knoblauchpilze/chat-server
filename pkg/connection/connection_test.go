@@ -35,24 +35,24 @@ func TestUnit_Connection_ReadWithTimeout_WhenNoDataWritten_ReturnsNoData(t *test
 	assert.Equal(t, []byte{}, actual)
 }
 
-func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceived_ReturnsNoData(t *testing.T) {
+func TestUnit_Connection_ReadWithTimeout_WhenDataReceived_ReturnsData(t *testing.T) {
 	client, server := newTestConnection(t, 1602)
 	opts := WithReadTimeout(150 * time.Millisecond)
 	conn := WithOptions(server, opts)
 
 	wg := asyncWriteDataToConnection(t, client, []byte("hello"))
 	data, err := conn.Read()
-	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assert.Equal(t, []byte{}, data)
+	assert.Equal(t, []byte("hello"), data)
 }
 
-func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceivedIsTooBig_ExpectError(t *testing.T) {
+func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedIsTooBig_ExpectError(t *testing.T) {
 	client, server := newTestConnection(t, 1602)
 	opts := connectionOptions{
-		ReadTimeout:                  150 * time.Millisecond,
-		IncompleteMessageSizeInBytes: 2,
+		ReadTimeout:               150 * time.Millisecond,
+		MaximumMessageSizeInBytes: 2,
 	}
 	conn := WithOptions(server, opts)
 
@@ -64,30 +64,31 @@ func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceivedIsTooBig_ExpectE
 	assert.Equal(t, []byte{}, data)
 }
 
-func TestUnit_Connection_ReadWithTimeout_WhenPartialDataReceivedAndMoreDataAfterwards_ExpectReturnsCompleteData(t *testing.T) {
+func TestUnit_Connection_ReadWithTimeout_WhenDataReceivedAndMoreDataAfterwards_ExpectReturnsAllData(t *testing.T) {
 	client, server := newTestConnection(t, 1602)
 	opts := WithReadTimeout(150 * time.Millisecond)
 	conn := WithOptions(server, opts)
 
 	wg := asyncWriteDataToConnection(t, client, []byte("hel"))
 	data, err := conn.Read()
-	assert.True(t, errors.IsErrorWithCode(err, ErrReadTimeout), "Actual err: %v", err)
-	assert.Equal(t, []byte{}, data)
+	assert.Nil(t, err, "Actual err: %v\n", err)
+	assert.Equal(t, []byte("hel"), data)
 	wg.Wait()
 
-	wg = asyncWriteDataToConnection(t, client, []byte("lo\n"))
+	wg = asyncWriteDataToConnection(t, client, []byte("lo"))
 	data, err = conn.Read()
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assert.Equal(t, []byte("hello\n"), data)
+	assert.Equal(t, []byte("hello"), data)
 }
 
 func TestUnit_Connection_ReadWithTimeout(t *testing.T) {
 	client, server := newTestConnection(t, 1602)
 	opts := connectionOptions{
 		// 2 reads will be over the delay we set for the client connection.
-		ReadTimeout: 150 * time.Millisecond,
+		ReadTimeout:               150 * time.Millisecond,
+		MaximumMessageSizeInBytes: 100,
 	}
 	conn := WithOptions(server, opts)
 

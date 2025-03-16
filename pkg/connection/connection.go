@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"bufio"
 	"io"
 	"net"
 	"time"
@@ -9,8 +8,11 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 )
 
-// This represents 1 MB
-const reasonableIncompleteMessageSizeInBytes = 1024 * 1024
+// This is used as the maximum size of a message that can be received
+// by our system. If a message is larger than this, we will not wait
+// to process it and terminate the connection.
+const maxMessageSizeInBytes = 1024
+const readSizeInBytes = 512
 
 type connection interface {
 	Read() ([]byte, error)
@@ -19,36 +21,49 @@ type connection interface {
 }
 
 type connectionOptions struct {
-	ReadTimeout                  time.Duration
-	IncompleteMessageSizeInBytes int
+	ReadTimeout               time.Duration
+	MaximumMessageSizeInBytes int
 }
 
 type connectionImpl struct {
 	conn        net.Conn
-	reader      *bufio.Reader
 	readTimeout time.Duration
 
-	incompleteMessageSizeInBytes int
-	incompleteData               []byte
+	maximumMessageSizeInBytes int
+
+	// The data waiting to be processed. This is used to accumulate
+	// incoming data until some of it is processed. We only allow
+	// to accumulate up to `maximumMessageSizeInBytes` bytes.
+	data []byte
+
+	// A temporary buffer to read incoming data to. This avoids
+	// allocating a new buffer every time we read data.
+	tmp []byte
 }
 
 func WithReadTimeout(timeout time.Duration) connectionOptions {
 	return connectionOptions{
-		ReadTimeout:                  timeout,
-		IncompleteMessageSizeInBytes: reasonableIncompleteMessageSizeInBytes,
+		ReadTimeout:               timeout,
+		MaximumMessageSizeInBytes: maxMessageSizeInBytes,
 	}
 }
 
+// Wrap wraps a connection with a default maximum message size which
+// should be suited for most cases.
 func Wrap(conn net.Conn) connection {
-	return WithOptions(conn, connectionOptions{})
+	opts := connectionOptions{
+		MaximumMessageSizeInBytes: maxMessageSizeInBytes,
+	}
+	return WithOptions(conn, opts)
 }
 
 func WithOptions(conn net.Conn, options connectionOptions) connection {
 	c := &connectionImpl{
-		conn:                         conn,
-		reader:                       bufio.NewReader(conn),
-		readTimeout:                  options.ReadTimeout,
-		incompleteMessageSizeInBytes: options.IncompleteMessageSizeInBytes,
+		conn:                      conn,
+		readTimeout:               options.ReadTimeout,
+		maximumMessageSizeInBytes: options.MaximumMessageSizeInBytes,
+		data:                      make([]byte, 0),
+		tmp:                       make([]byte, readSizeInBytes),
 	}
 
 	return c
@@ -60,24 +75,18 @@ func (c *connectionImpl) Read() ([]byte, error) {
 		c.conn.SetReadDeadline(timeout)
 	}
 
-	bytes, err := c.reader.ReadBytes(byte('\n'))
-	if err == nil {
-		bytes = append(c.incompleteData, bytes...)
-		c.incompleteData = []byte{}
-		return bytes, nil
+	received, readErr := c.conn.Read(c.tmp)
+	if err := c.accumulateIncomingData(c.tmp[:received]); err != nil {
+		return []byte{}, err
 	}
 
-	if err == io.EOF {
+	if readErr == io.EOF {
 		return nil, errors.NewCode(ErrClientDisconnected)
-	} else if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-		if err := c.accumulateIncompleteData(bytes); err != nil {
-			return []byte{}, err
-		}
-
-		return []byte{}, errors.NewCode(ErrReadTimeout)
+	} else if opErr, ok := readErr.(*net.OpError); ok && opErr.Timeout() {
+		return c.data, errors.NewCode(ErrReadTimeout)
 	}
 
-	return nil, err
+	return c.data, readErr
 }
 
 func (c *connectionImpl) Write(data []byte) (int, error) {
@@ -88,9 +97,9 @@ func (c *connectionImpl) Close() error {
 	return c.conn.Close()
 }
 
-func (c *connectionImpl) accumulateIncompleteData(data []byte) error {
-	c.incompleteData = append(c.incompleteData, data...)
-	if len(c.incompleteData) > c.incompleteMessageSizeInBytes {
+func (c *connectionImpl) accumulateIncomingData(data []byte) error {
+	c.data = append(c.data, data...)
+	if len(c.data) > c.maximumMessageSizeInBytes {
 		return errors.NewCode(ErrTooLargeIncompleteData)
 	}
 
