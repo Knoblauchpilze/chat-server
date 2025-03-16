@@ -25,7 +25,8 @@ func (p *parserImpl) OnReadData(id uuid.UUID, data []byte) bool {
 	msg, err := Decode(data)
 	if err != nil {
 		p.log.Warnf("Unable to decode %d byte(s) received from %v: %v", len(data), id, err)
-		return false
+		// Still return true as it can be that the data is just incomplete.
+		return true
 	}
 
 	p.queue <- msg

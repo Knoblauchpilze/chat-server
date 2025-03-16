@@ -20,14 +20,14 @@ func TestUnit_Parser_WhenReadFails_ExpectNothingPublishedToTheQueue(t *testing.T
 	parser.OnReadData(uuid.New(), []byte("not-a-message"))
 }
 
-func TestUnit_Parser_WhenReadFails_ExpectRequestToDisconnect(t *testing.T) {
+func TestUnit_Parser_WhenReadFails_ExpectRequestToStayAlive(t *testing.T) {
 	var queue OutgoingQueue
 	parser := NewParser(queue, logger.New(os.Stdout))
 
 	// Should hang in case the queue is used as the queue is unbuffered.
 	actual := parser.OnReadData(uuid.New(), []byte("not-a-message"))
 
-	assert.False(t, actual)
+	assert.True(t, actual)
 }
 
 func TestUnit_Parser_WhenReadSucceeds_ExpectMessagePushedToTheQueue(t *testing.T) {
