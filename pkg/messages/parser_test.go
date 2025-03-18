@@ -87,6 +87,26 @@ func TestUnit_Parser_WhenReadSucceeds_ExpectSomeBytesToBeProcessed(t *testing.T)
 	assert.Equal(t, len(encoded), actual)
 }
 
+func TestUnit_Parser_WhenMoreDataThanOneMessage_ExpectNotAllBytesToBeProcessed(t *testing.T) {
+	encoded := []byte{
+		// CLIENT_CONNECTED
+		0x0, 0x0, 0x0, 0x0,
+		// UUID
+		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
+		// Additional garbage data
+		0x45, 0x23, 0x12, 0x78,
+	}
+
+	queue := make(OutgoingQueue, 1)
+	parser := NewParser(queue, logger.New(os.Stdout))
+
+	actual, _ := parser.OnReadData(uuid.New(), encoded)
+
+	// 4 additional bytes of garbage
+	expectedProcessed := len(encoded) - 4
+	assert.Equal(t, expectedProcessed, actual)
+}
+
 func TestUnit_Parser_WhenReadSucceeds_ExpectMessageCorrectlyDecoded(t *testing.T) {
 	encoded := []byte{
 		// CLIENT_CONNECTED
