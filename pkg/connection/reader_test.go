@@ -14,8 +14,9 @@ func TestUnit_ReadFromConnection_NoError(t *testing.T) {
 	conn := Wrap(client)
 	asyncWriteSampleDataToConnection(t, server)
 
-	timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
+	processed, timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
 
+	assert.Equal(t, 0, processed)
 	assert.False(t, timeout)
 	assert.Nil(t, err, "Actual err: %v", err)
 }
@@ -27,8 +28,9 @@ func TestUnit_ReadFromConnection_ReadTimeout(t *testing.T) {
 	}
 	conn := WithOptions(client, opts)
 
-	timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
+	processed, timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
 
+	assert.Equal(t, 0, processed)
 	assert.True(t, timeout)
 	assert.Nil(t, err, "Actual err: %v", err)
 }
@@ -39,8 +41,9 @@ func TestUnit_ReadFromConnection_Disconnect(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 	conn := Wrap(client)
 
-	timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
+	processed, timeout, err := readFromConnection(sampleUuid, conn, Callbacks{})
 
+	assert.Equal(t, 0, processed)
 	assert.False(t, timeout)
 	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
 }
@@ -56,11 +59,12 @@ func TestUnit_ReadFromConnection_ReadWithCallback(t *testing.T) {
 		ReadDataCallback: func(id uuid.UUID, data []byte) int {
 			actualId = id
 			actualData = data
-			return 0
+			return 15
 		},
 	}
-	timeout, err := readFromConnection(sampleUuid, conn, callbacks)
+	processed, timeout, err := readFromConnection(sampleUuid, conn, callbacks)
 
+	assert.Equal(t, 15, processed)
 	assert.False(t, timeout)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, sampleUuid, actualId)
@@ -79,8 +83,9 @@ func TestUnit_ReadFromConnection_DisconnectWithCallback(t *testing.T) {
 			actualId = id
 		},
 	}
-	timeout, err := readFromConnection(sampleUuid, conn, callbacks)
+	processed, timeout, err := readFromConnection(sampleUuid, conn, callbacks)
 
+	assert.Equal(t, 0, processed)
 	assert.False(t, timeout)
 	assert.True(t, errors.IsErrorWithCode(err, ErrClientDisconnected), "Actual err: %v", err)
 	assert.Equal(t, sampleUuid, actualId)

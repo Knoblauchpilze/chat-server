@@ -71,7 +71,7 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackNotified(t *testing.T) {
 		Callbacks: Callbacks{
 			ReadDataCallback: func(id uuid.UUID, data []byte) int {
 				called++
-				return 0
+				return len(data)
 			},
 		},
 	}
@@ -132,6 +132,39 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectData(t *tes
 	listener.Close()
 
 	assert.Equal(t, sampleData, actualData)
+}
+
+func TestUnit_Listener_WhenDataReceivedAndProcessed_ExpectDataToBeDiscarded(t *testing.T) {
+	client, server := newTestConnection(t, 1213)
+
+	var receivedData [][]byte
+	var called int
+
+	opts := ListenerOptions{
+		ReadTimeout: 50 * time.Millisecond,
+		Callbacks: Callbacks{
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				called++
+				receivedData = append(receivedData, data)
+				return 5
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	data := []byte("123456789")
+	_, err := client.Write(data)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Start the listener and wait for it to process the data. We
+	// need to wait for a bit over twice the timeout to pass.
+	listener.Start()
+	time.Sleep(120 * time.Millisecond)
+
+	listener.Close()
+
+	assert.Equal(t, 2, called)
+	assert.Equal(t, [][]byte{[]byte("123456789"), []byte("6789")}, receivedData)
 }
 
 func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
@@ -240,7 +273,7 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 			ReadDataCallback: func(id uuid.UUID, data []byte) int {
 				called++
 				actualData = data
-				return 0
+				return len(data)
 			},
 		},
 	}
