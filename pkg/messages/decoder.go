@@ -9,27 +9,36 @@ import (
 	"github.com/google/uuid"
 )
 
-func Decode(data []byte) (Message, error) {
+func Decode(data []byte) (Message, int, error) {
 	reader := bytes.NewReader(data)
+	initialSize := reader.Len()
 
 	var msgType MessageType
 	err := binary.Read(reader, binary.LittleEndian, &msgType)
 	if err != nil {
-		return nil, errors.WrapCode(err, ErrUnrecognizedMessageFormat)
+		return nil, 0, errors.WrapCode(err, ErrUnrecognizedMessageFormat)
 	}
+
+	var msg Message
 
 	switch msgType {
 	case CLIENT_CONNECTED:
-		return decodeClientConnectedMessage(reader)
+		msg, err = decodeClientConnectedMessage(reader)
 	case CLIENT_DISCONNECTED:
-		return decodeClientDisconnectedMessage(reader)
+		msg, err = decodeClientDisconnectedMessage(reader)
 	case DIRECT_MESSAGE:
-		return decodeDirectMessageMessage(reader)
+		msg, err = decodeDirectMessageMessage(reader)
 	case ROOM_MESSAGE:
-		return decodeRoomMessageMessage(reader)
+		msg, err = decodeRoomMessageMessage(reader)
+	default:
+		err = errors.NewCode(ErrUnsupportedMessageType)
 	}
 
-	return nil, errors.NewCode(ErrUnsupportedMessageType)
+	var readSize int
+	if err == nil {
+		readSize = initialSize - reader.Len()
+	}
+	return msg, readSize, err
 }
 
 func decodeClientConnectedMessage(reader *bytes.Reader) (Message, error) {

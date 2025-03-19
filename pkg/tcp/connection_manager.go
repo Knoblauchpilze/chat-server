@@ -93,20 +93,14 @@ func (m *managerImpl) prepareListenerOptions() connection.ListenerOptions {
 	return connection.ListenerOptions{
 		ReadTimeout: m.readTimeout,
 		Callbacks: connection.Callbacks{
-			DisconnectCallbacks: []connection.OnDisconnect{
-				func(id uuid.UUID) {
-					m.onClientDisconnected(id)
-				},
+			DisconnectCallback: func(id uuid.UUID) {
+				m.onClientDisconnected(id)
 			},
-			ReadErrorCallbacks: []connection.OnReadError{
-				func(id uuid.UUID, err error) {
-					m.onReadError(id, err)
-				},
+			ReadErrorCallback: func(id uuid.UUID, err error) {
+				m.onReadError(id, err)
 			},
-			ReadDataCallbacks: []connection.OnReadData{
-				func(id uuid.UUID, data []byte) {
-					m.onReadData(id, data)
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				return m.onReadData(id, data)
 			},
 		},
 	}
@@ -160,11 +154,12 @@ func (m *managerImpl) onReadError(id uuid.UUID, err error) {
 	m.closeConnection(id, true)
 }
 
-func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
+func (m *managerImpl) onReadData(id uuid.UUID, data []byte) int {
+	var processed int
 	var keepAlive bool
 
 	cb := func() {
-		keepAlive = m.callbacks.OnReadData(id, data)
+		processed, keepAlive = m.callbacks.OnReadData(id, data)
 	}
 	err := m.callCallbackAndLogError(cb, "OnReadData", id)
 
@@ -176,6 +171,8 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) {
 		m.log.Errorf("OnRead: %v generated an error (err: %v)", id, err)
 		m.closeConnection(id, true)
 	}
+
+	return processed
 }
 
 func (m *managerImpl) closeConnection(id uuid.UUID, triggerDisconnect bool) {

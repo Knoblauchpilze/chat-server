@@ -3,8 +3,6 @@ package tcp
 import (
 	"net"
 	"os"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,9 +63,11 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOn
 
 func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
+	called := make(chan struct{}, 1)
 	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
-		called++
+		defer func() {
+			called <- struct{}{}
+		}()
 		return true
 	}
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -76,18 +76,17 @@ func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *tes
 
 	cm.OnClientConnected(server)
 
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
-	var wg sync.WaitGroup
-	wg.Add(1)
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		defer wg.Done()
-		called++
-		return true
+	called := make(chan struct{}, 1)
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		defer func() {
+			called <- struct{}{}
+		}()
+		return 0, true
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -100,16 +99,16 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	wg.Wait()
-
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
+	called := make(chan struct{}, 1)
 	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
-		called++
+		defer func() {
+			called <- struct{}{}
+		}()
 		return false
 	}
 
@@ -119,19 +118,19 @@ func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionTo
 
 	cm.OnClientConnected(server)
 
-	// Wait for connection to be processed.
-	time.Sleep(50 * time.Millisecond)
+	<-called
 
-	assert.Equal(t, 1, called)
 	assertConnectionIsClosed(t, client)
 }
 
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
-	var called atomic.Int32
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		called.Add(1)
-		return false
+	called := make(chan struct{}, 1)
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		defer func() {
+			called <- struct{}{}
+		}()
+		return len(data), false
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -144,22 +143,22 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err, "Actual err: %v", err)
 
+	<-called
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, int32(1), called.Load())
 	assertConnectionIsClosed(t, client)
 }
 
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectDisconnectCallbackIsCalled(t *testing.T) {
 	config := newTestManagerConfig()
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		return false
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		return len(data), false
 	}
-	var called atomic.Int32
+	called := make(chan struct{}, 1)
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
-		called.Add(1)
+		called <- struct{}{}
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -172,21 +171,14 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	// Wait long enough for the read timeout to expire and connection
-	// to be effectively closed.
-	time.Sleep(200 * time.Millisecond)
-
-	assert.Equal(t, int32(1), called.Load())
+	<-called
 }
 
 func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
-	var wg sync.WaitGroup
-	wg.Add(1)
+	called := make(chan struct{}, 1)
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
-		defer wg.Done()
-		called++
+		called <- struct{}{}
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -196,19 +188,16 @@ func TestUnit_ConnectionManager_WhenClientDisconnects_ExpectCallbackNotified(t *
 	cm.OnClientConnected(server)
 	client.Close()
 
-	wg.Wait()
-
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
-	var called int
-	var wg sync.WaitGroup
-	wg.Add(1)
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
-		defer wg.Done()
-		called++
+	called := make(chan struct{}, 1)
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		defer func() {
+			called <- struct{}{}
+		}()
 		panic(errSample)
 	}
 
@@ -222,12 +211,11 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	assert.Equal(t, n, len(sampleData))
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	wg.Wait()
+	<-called
 	// Wait long enough for the read timeout to expire and connection
 	// to be effectively closed.
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, 1, called)
 	assertConnectionIsClosed(t, client)
 }
 

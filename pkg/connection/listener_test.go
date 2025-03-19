@@ -69,10 +69,9 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackNotified(t *testing.T) {
 	opts := ListenerOptions{
 		ReadTimeout: sampleReadTimeout,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					called++
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				called++
+				return len(data)
 			},
 		},
 	}
@@ -94,10 +93,9 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectId(t *testi
 	opts := ListenerOptions{
 		ReadTimeout: sampleReadTimeout,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					actualId = id
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				actualId = id
+				return 0
 			},
 		},
 	}
@@ -119,10 +117,9 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectData(t *tes
 	opts := ListenerOptions{
 		ReadTimeout: sampleReadTimeout,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					actualData = data
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				actualData = data
+				return 0
 			},
 		},
 	}
@@ -137,16 +134,47 @@ func TestUnit_Listener_WhenDataReceived_ExpectCallbackReceivesCorrectData(t *tes
 	assert.Equal(t, sampleData, actualData)
 }
 
+func TestUnit_Listener_WhenDataReceivedAndProcessed_ExpectDataToBeDiscarded(t *testing.T) {
+	client, server := newTestConnection(t, 1213)
+
+	var receivedData [][]byte
+	var called int
+
+	opts := ListenerOptions{
+		ReadTimeout: 50 * time.Millisecond,
+		Callbacks: Callbacks{
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				called++
+				receivedData = append(receivedData, data)
+				return 5
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	data := []byte("123456789")
+	_, err := client.Write(data)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Start the listener and wait for it to process the data. We
+	// need to wait for a bit over twice the timeout to pass.
+	listener.Start()
+	time.Sleep(120 * time.Millisecond)
+
+	listener.Close()
+
+	assert.Equal(t, 2, called)
+	assert.Equal(t, [][]byte{[]byte("123456789"), []byte("6789")}, receivedData)
+}
+
 func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
 	client, server := newTestConnection(t, 1208)
 
 	var called int
 	opts := ListenerOptions{
 		Callbacks: Callbacks{
-			DisconnectCallbacks: []OnDisconnect{
-				func(id uuid.UUID) {
-					called++
-				},
+			DisconnectCallback: func(id uuid.UUID) {
+				called++
 			},
 		},
 	}
@@ -165,10 +193,8 @@ func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackReceivesCorrectId(t *
 	var actualId uuid.UUID
 	opts := ListenerOptions{
 		Callbacks: Callbacks{
-			DisconnectCallbacks: []OnDisconnect{
-				func(id uuid.UUID) {
-					actualId = id
-				},
+			DisconnectCallback: func(id uuid.UUID) {
+				actualId = id
 			},
 		},
 	}
@@ -189,16 +215,12 @@ func TestUnit_Listener_WhenReadDataPanics_ExpectErrorCallbackNotified(t *testing
 	opts := ListenerOptions{
 		ReadTimeout: sampleReadTimeout,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					panic(errSample)
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				panic(errSample)
 			},
-			ReadErrorCallbacks: []OnReadError{
-				func(id uuid.UUID, err error) {
-					called++
-					actualErr = err
-				},
+			ReadErrorCallback: func(id uuid.UUID, err error) {
+				called++
+				actualErr = err
 			},
 		},
 	}
@@ -214,22 +236,18 @@ func TestUnit_Listener_WhenReadDataPanics_ExpectErrorCallbackNotified(t *testing
 	assert.Equal(t, errSample, actualErr)
 }
 
-func TestUnit_Listener_WhenReadDataErrors_ExpectCallbackReceivesCorrectId(t *testing.T) {
+func TestUnit_Listener_WhenReadDataPanics_ExpectCallbackReceivesCorrectId(t *testing.T) {
 	client, server := newTestConnection(t, 1211)
 
 	var actualId uuid.UUID
 	opts := ListenerOptions{
 		ReadTimeout: sampleReadTimeout,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					panic(errSample)
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				panic(errSample)
 			},
-			ReadErrorCallbacks: []OnReadError{
-				func(id uuid.UUID, err error) {
-					actualId = id
-				},
+			ReadErrorCallback: func(id uuid.UUID, err error) {
+				actualId = id
 			},
 		},
 	}
@@ -252,11 +270,10 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 	opts := ListenerOptions{
 		ReadTimeout: 100 * time.Millisecond,
 		Callbacks: Callbacks{
-			ReadDataCallbacks: []OnReadData{
-				func(id uuid.UUID, data []byte) {
-					called++
-					actualData = data
-				},
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				called++
+				actualData = data
+				return len(data)
 			},
 		},
 	}

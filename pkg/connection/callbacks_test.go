@@ -15,25 +15,18 @@ func TestUnit_Callbacks_OnDisconnect_WhenUnset_ExpectNoFatalFailure(t *testing.T
 	}
 	assert.NotPanics(t, callback)
 }
-
-func TestUnit_Callbacks_OnDisconnect_CallsAllCallbacks(t *testing.T) {
-	var called1, called2 int
+func TestUnit_Callbacks_OnDisconnect_ExpectCallbackIsCalled(t *testing.T) {
+	var called int
 
 	callbacks := Callbacks{
-		DisconnectCallbacks: []OnDisconnect{
-			func(id uuid.UUID) {
-				called1++
-			},
-			func(id uuid.UUID) {
-				called2++
-			},
+		DisconnectCallback: func(id uuid.UUID) {
+			called++
 		},
 	}
 
 	callbacks.OnDisconnect(uuid.New())
 
-	assert.Equal(t, 1, called1)
-	assert.Equal(t, 1, called2)
+	assert.Equal(t, 1, called)
 }
 
 func TestUnit_Callbacks_OnReadError_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
@@ -45,24 +38,18 @@ func TestUnit_Callbacks_OnReadError_WhenUnset_ExpectNoFatalFailure(t *testing.T)
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_ConnectionCallbacks_OnReadError_CallsAllCallbacks(t *testing.T) {
-	var called1, called2 int
+func TestUnit_Callbacks_OnReadError_ExpectCallbackIsCalled(t *testing.T) {
+	var called int
 
 	callbacks := Callbacks{
-		ReadErrorCallbacks: []OnReadError{
-			func(id uuid.UUID, err error) {
-				called1++
-			},
-			func(id uuid.UUID, err error) {
-				called2++
-			},
+		ReadErrorCallback: func(id uuid.UUID, err error) {
+			called++
 		},
 	}
 
 	callbacks.OnReadError(uuid.New(), errSample)
 
-	assert.Equal(t, 1, called1)
-	assert.Equal(t, 1, called2)
+	assert.Equal(t, 1, called)
 }
 
 func TestUnit_Callbacks_OnReadData_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
@@ -74,22 +61,26 @@ func TestUnit_Callbacks_OnReadData_WhenUnset_ExpectNoFatalFailure(t *testing.T) 
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_ConnectionCallbacks_OnReadData_CallsAllCallbacks(t *testing.T) {
-	var called1, called2 int
+func TestUnit_Callbacks_OnReadData_ExpectCallbackIsCalled(t *testing.T) {
+	var called int
 
 	callbacks := Callbacks{
-		ReadDataCallbacks: []OnReadData{
-			func(id uuid.UUID, data []byte) {
-				called1++
-			},
-			func(id uuid.UUID, data []byte) {
-				called2++
-			},
+		ReadDataCallback: func(id uuid.UUID, data []byte) int {
+			called++
+			return 0
 		},
 	}
 
-	callbacks.OnReadData(uuid.New(), []byte{})
+	processed := callbacks.OnReadData(uuid.New(), []byte{})
 
-	assert.Equal(t, 1, called1)
-	assert.Equal(t, 1, called2)
+	assert.Equal(t, 1, called)
+	assert.Equal(t, 0, processed)
+}
+
+func TestUnit_Callbacks_OnReadData_WhenUnset_ExpectNoBytesProcessed(t *testing.T) {
+	var callbacks Callbacks
+
+	processed := callbacks.OnReadData(sampleUuid, []byte{})
+
+	assert.Equal(t, 0, processed)
 }

@@ -32,9 +32,7 @@ type listenerImpl struct {
 }
 
 func New(conn net.Conn, opts ListenerOptions) Listener {
-	connOpts := connectionOptions{
-		ReadTimeout: opts.ReadTimeout,
-	}
+	connOpts := WithReadTimeout(opts.ReadTimeout)
 
 	l := &listenerImpl{
 		id:        uuid.New(),
@@ -80,16 +78,19 @@ func (l *listenerImpl) activeLoop() {
 
 	running := true
 	for running {
+		var processed int
 		var timeout bool
 		var err error
 
 		readPanic := errors.SafeRunSync(func() {
-			timeout, err = readFromConnection(l.id, l.conn, l.callbacks)
+			processed, timeout, err = readFromConnection(l.id, l.conn, l.callbacks)
 		})
 
 		if timeout {
 			running = l.running.Load()
 		}
+
+		l.conn.DiscardBytes(processed)
 
 		if readPanic != nil {
 			l.callbacks.OnReadError(l.id, readPanic)
