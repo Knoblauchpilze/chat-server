@@ -131,7 +131,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 	var called atomic.Int32
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called.Add(1)
-		return 0, false
+		return len(data), false
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -155,7 +155,7 @@ func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnectio
 func TestUnit_ConnectionManager_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectDisconnectCallbackIsCalled(t *testing.T) {
 	config := newTestManagerConfig()
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
-		return 0, false
+		return len(data), false
 	}
 	var called atomic.Int32
 	config.Callbacks.DisconnectCallback = func(id uuid.UUID) {
@@ -227,7 +227,9 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 	// to be effectively closed.
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, 1, called)
+	// The callback can be called multiple times because we don't report any
+	// data processed as it's panicking.
+	assert.GreaterOrEqual(t, called, 1)
 	assertConnectionIsClosed(t, client)
 }
 
