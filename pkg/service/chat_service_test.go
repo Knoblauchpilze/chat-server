@@ -31,8 +31,9 @@ func TestUnit_ChatService_OnConnect_SendsMessagesToOthers(t *testing.T) {
 	assert.True(t, accepted)
 
 	data := readFromConnection(t, client1)
-	msg, err := messages.Decode(data)
+	msg, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	actual, ok := msg.(messages.ClientConnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, client2Id, actual.Client)
@@ -85,8 +86,9 @@ func TestUnit_ChatService_OnDisconnect_SendsMessagesToOthers(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	data := readFromConnection(t, client2)
-	msg, err := messages.Decode(data)
+	msg, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	actual, ok := msg.(messages.ClientDisconnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, client1Id, actual.Client)
@@ -129,8 +131,9 @@ func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testin
 	time.Sleep(100 * time.Millisecond)
 
 	data := readFromConnection(t, client2)
-	actual, err := messages.Decode(data)
+	actual, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	assert.Equal(t, msg, actual)
 
 	assertNoDataReceived(t, client3)

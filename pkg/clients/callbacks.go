@@ -12,8 +12,9 @@ type OnConnect func(id uuid.UUID, conn net.Conn) bool
 // The connection will automatically be closed after this callback is triggered.
 type OnDisconnect func(id uuid.UUID)
 
-// The return value should indicate whether or not the connection should stay open.
-type OnReadData func(id uuid.UUID, data []byte) bool
+// The return value should indicate whether or not the connection should stay open
+// and how many bytes were processed.
+type OnReadData func(id uuid.UUID, data []byte) (int, bool)
 
 // The connection will automatically be closed after this callback is triggered.
 type OnReadError func(id uuid.UUID, err error)
@@ -38,9 +39,9 @@ func (c Callbacks) OnDisconnect(id uuid.UUID) {
 	}
 }
 
-func (c Callbacks) OnReadData(id uuid.UUID, data []byte) bool {
+func (c Callbacks) OnReadData(id uuid.UUID, data []byte) (int, bool) {
 	if c.ReadDataCallback == nil {
-		return true
+		return 0, true
 	}
 	return c.ReadDataCallback(id, data)
 }

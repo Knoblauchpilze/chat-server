@@ -14,7 +14,7 @@ func TestUnit_Decode_WhenMessageTypeIsTruncated_ExpectError(t *testing.T) {
 		0x0, 0x0, 0x0,
 	}
 
-	_, err := Decode(encoded)
+	_, processed, err := Decode(encoded)
 
 	assert.True(
 		t,
@@ -22,6 +22,7 @@ func TestUnit_Decode_WhenMessageTypeIsTruncated_ExpectError(t *testing.T) {
 		"Actual err: %v",
 		err,
 	)
+	assert.Equal(t, 0, processed)
 }
 
 func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
@@ -32,9 +33,10 @@ func TestUnit_Decode_ClientConnectedMessage(t *testing.T) {
 		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
 	}
 
-	msg, err := Decode(encoded)
+	msg, processed, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(encoded), processed)
 	actual, ok := msg.(ClientConnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, actual.Client)
@@ -48,7 +50,7 @@ func TestUnit_Decode_WhenMessageIsIncomplete_ExpectError(t *testing.T) {
 		0x2d, 0xbf, 0x26, 0x22,
 	}
 
-	_, err := Decode(encoded)
+	_, processed, err := Decode(encoded)
 
 	assert.True(
 		t,
@@ -56,6 +58,7 @@ func TestUnit_Decode_WhenMessageIsIncomplete_ExpectError(t *testing.T) {
 		"Actual err: %v",
 		err,
 	)
+	assert.Equal(t, 0, processed)
 }
 
 func TestUnit_Decode_ClientDisconnectedMessage(t *testing.T) {
@@ -66,9 +69,10 @@ func TestUnit_Decode_ClientDisconnectedMessage(t *testing.T) {
 		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
 	}
 
-	msg, err := Decode(encoded)
+	msg, processed, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(encoded), processed)
 	actual, ok := msg.(ClientDisconnectedMessage)
 	assert.True(t, ok)
 	assert.Equal(t, sampleUuid, actual.Client)
@@ -88,9 +92,10 @@ func TestUnit_Decode_DirectMessage(t *testing.T) {
 		0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x61, 0x6e, 0x20, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x20, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x21,
 	}
 
-	msg, err := Decode(encoded)
+	msg, processed, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(encoded), processed)
 	actual, ok := msg.(DirectMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
@@ -114,9 +119,11 @@ func TestUnit_Decode_RoomMessage(t *testing.T) {
 		0x31, 0x38, 0x20, 0x61, 0x6e, 0x6f, 0x74, 0x68, 0x65, 0x72, 0x20, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x3f,
 	}
 
-	msg, err := Decode(encoded)
+	msg, processed, err := Decode(encoded)
 
 	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, len(encoded), processed)
 	actual, ok := msg.(RoomMessage)
 	assert.True(t, ok)
 	expectedEmitter := uuid.MustParse("9cd13f28-c560-4add-83de-eb6c473dea05")
@@ -124,4 +131,25 @@ func TestUnit_Decode_RoomMessage(t *testing.T) {
 	expectedRoom := uuid.MustParse("b29504fe-279e-4312-8a7e-3fc95ce0afa5")
 	assert.Equal(t, expectedRoom, actual.Room)
 	assert.Equal(t, "18 another message?", actual.Content)
+}
+
+func TestUnit_Decode_WhenDataContainsMoreThanASingleMessage_ExpectProcessedStopsAfterMessage(t *testing.T) {
+	encoded := []byte{
+		// CLIENT_CONNECTED
+		0x0, 0x0, 0x0, 0x0,
+		// Partial UUID
+		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
+		// Additional garbage data
+		0x45, 0x23, 0x12, 0x78,
+	}
+
+	msg, processed, err := Decode(encoded)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	// 4 additional bytes of garbage
+	expectedProcessed := len(encoded) - 4
+	assert.Equal(t, expectedProcessed, processed)
+	actual, ok := msg.(ClientConnectedMessage)
+	assert.True(t, ok)
+	assert.Equal(t, sampleUuid, actual.Client)
 }

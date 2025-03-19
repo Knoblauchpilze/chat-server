@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -62,9 +63,9 @@ func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testin
 func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	config := newTestConfig(7003)
 	var called int
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called++
-		return true
+		return len(data), true
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -134,9 +135,9 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestConfig(7006)
 	var called int
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called++
-		return false
+		return len(data), false
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -165,14 +166,14 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	var called atomic.Int32
 	doPanic := true
 	var actual []byte
-	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) bool {
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called.Add(1)
 		if doPanic {
 			doPanic = !doPanic
 			panic(errSample)
 		}
 		actual = data
-		return true
+		return len(data), true
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -208,6 +209,66 @@ func TestUnit_ListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash
 	wg.Wait()
 
 	assert.Equal(t, sampleData, actual)
+}
+
+func TestUnit_ListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorrectlyBeReceived(t *testing.T) {
+	config := newTestConfig(7008)
+	var called atomic.Int32
+	var receivedMessage messages.Message
+	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
+		called.Add(1)
+
+		msg, n, err := messages.Decode(data)
+		if err != nil {
+			return 0, true
+		}
+
+		receivedMessage = msg
+		return n, true
+	}
+	cancellable, cancel := context.WithCancel(context.Background())
+
+	wg := asyncListenAndServe(t, config, cancellable)
+
+	conn, err := net.Dial("tcp", ":7008")
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	clientId1 := uuid.New()
+	clientId2 := uuid.New()
+	msg := messages.NewDirectMessage(clientId1, clientId2, "hello")
+	data, err := messages.Encode(msg)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Send first 10 bytes of the message
+	assert.Greater(t, len(data), 10)
+	n, err := conn.Write(data[:10])
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 10, n)
+
+	// Wait for the callback to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Send the rest of the data
+	n, err = conn.Write(data[10:])
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data)-10, n)
+
+	// Wait for the callback to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	assertConnectionIsStillOpen(t, conn)
+
+	conn.Close()
+
+	cancel()
+	wg.Wait()
+
+	assert.GreaterOrEqual(t, called.Load(), int32(2))
+	actual, err := messages.ToMessageStruct[messages.DirectMessage](receivedMessage)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, clientId1, actual.Emitter)
+	assert.Equal(t, clientId2, actual.Receiver)
+	assert.Equal(t, "hello", actual.Content)
 }
 
 func newTestConfig(port uint16) Configuration {
