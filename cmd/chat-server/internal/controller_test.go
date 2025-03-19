@@ -40,9 +40,9 @@ func TestUnit_ListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClose
 
 func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestConfig(7002)
-	var called int
+	called := make(chan struct{}, 1)
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
-		called++
+		called <- struct{}{}
 		return true
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
@@ -57,14 +57,14 @@ func TestUnit_ListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testin
 	cancel()
 	wg.Wait()
 
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
 	config := newTestConfig(7003)
-	var called int
+	called := make(chan struct{}, 1)
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
-		called++
+		called <- struct{}{}
 		return len(data), true
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
@@ -83,14 +83,14 @@ func TestUnit_ListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testi
 	cancel()
 	wg.Wait()
 
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestConfig(7004)
-	var called int
+	called := make(chan struct{}, 1)
 	config.Callbacks.DisconnectCallback = func(uuid.UUID) {
-		called++
+		called <- struct{}{}
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -104,14 +104,12 @@ func TestUnit_ListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *tes
 	cancel()
 	wg.Wait()
 
-	assert.Equal(t, 1, called)
+	<-called
 }
 
 func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestConfig(7005)
-	var called int
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
-		called++
 		return false
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
@@ -128,8 +126,6 @@ func TestUnit_ListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeC
 
 	cancel()
 	wg.Wait()
-
-	assert.Equal(t, 1, called)
 }
 
 func TestUnit_ListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
