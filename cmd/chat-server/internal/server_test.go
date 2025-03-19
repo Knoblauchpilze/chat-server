@@ -83,8 +83,9 @@ func TestUnit_RunServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	data := readFromConnection(t, conn1)
-	msg, err := messages.Decode(data)
+	msg, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	assert.Equal(t, messages.CLIENT_CONNECTED, msg.Type())
 	assertNoDataReceived(t, conn2)
 
@@ -111,8 +112,9 @@ func TestUnit_RunServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
 	data := readFromConnection(t, conn2)
-	msg, err := messages.Decode(data)
+	msg, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	assert.Equal(t, messages.CLIENT_DISCONNECTED, msg.Type())
 
 	cancel()
@@ -138,8 +140,9 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 
 	// Fetch id of client 2
 	data := readFromConnection(t, conn1)
-	msg, err := messages.Decode(data)
+	msg, decoded, err := messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	connected, err := messages.ToMessageStruct[messages.ClientConnectedMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
 	clientId2 := connected.Client
@@ -150,10 +153,6 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 	dummyIdForClient1 := uuid.New()
 	msg = messages.NewDirectMessage(dummyIdForClient1, clientId2, "Hello, client 2")
 	out, err := messages.Encode(msg)
-	// TODO: Should this be added when encoding? Also this is not robust as we
-	// can still run in the situation where the message is not terminated when
-	// the read timeout happens.
-	out = append(out, '\n')
 
 	fmt.Printf("sending %d byte(s) to server: \"%s\"\n", len(out), string(out))
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -165,8 +164,9 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 
 	// Read message from client 2
 	data = readFromConnection(t, conn2)
-	msg, err = messages.Decode(data)
+	msg, decoded, err = messages.Decode(data)
 	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(data), decoded)
 	actual, err := messages.ToMessageStruct[messages.DirectMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, dummyIdForClient1, actual.Emitter)
