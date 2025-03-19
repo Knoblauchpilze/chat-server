@@ -2,9 +2,9 @@ package internal
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -45,27 +45,6 @@ func TestUnit_RunServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T
 	cancel()
 	wg.Wait()
 	assertConnectionIsClosed(t, conn)
-}
-
-func TestUnit_RunServer_WhenSendingGarbage_ExpectConnectionToBeClosed(t *testing.T) {
-	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7102)
-
-	wg := asyncRunServer(t, config, cancellable)
-
-	conn, err := net.Dial("tcp", ":7102")
-	assert.Nil(t, err, "Actual err: %v", err)
-	_, err = conn.Write(sampleData)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	// Wait long enough for the read timeout to be reached and for
-	// the connection to be closed
-	time.Sleep(2 * time.Second)
-
-	assertConnectionIsClosed(t, conn)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestUnit_RunServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
@@ -154,7 +133,6 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 	msg = messages.NewDirectMessage(dummyIdForClient1, clientId2, "Hello, client 2")
 	out, err := messages.Encode(msg)
 
-	fmt.Printf("sending %d byte(s) to server: \"%s\"\n", len(out), string(out))
 	assert.Nil(t, err, "Actual err: %v", err)
 	n, err := conn1.Write(out)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -172,6 +150,54 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 	assert.Equal(t, dummyIdForClient1, actual.Emitter)
 	assert.Equal(t, clientId2, actual.Receiver)
 	assert.Equal(t, "Hello, client 2", actual.Content)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestUnit_RunServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestConfig(7102)
+
+	wg := asyncRunServer(t, config, cancellable)
+
+	conn, err := net.Dial("tcp", ":7102")
+	assert.Nil(t, err, "Actual err: %v", err)
+	_, err = conn.Write([]byte("garbage"))
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait long enough for the read timeout to expire and connection
+	// to be effectively closed if it does terminate.
+	time.Sleep(2 * time.Second)
+
+	assertConnectionIsStillOpen(t, conn)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestUnit_RunServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTestConfig(7106)
+
+	wg := asyncRunServer(t, config, cancellable)
+
+	conn, err := net.Dial("tcp", ":7106")
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	time.Sleep(reasonableTimeForConnectionToBeProcessed)
+
+	// Generate a garbage string that can't be interpreted as a valid message.
+	out := []byte(strings.Repeat("abc123def456ghi789kl", 60))
+
+	n, err := conn.Write(out)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(out), n)
+
+	// Wait long enough for the connection to be terminated.
+	time.Sleep(200 * time.Millisecond)
+
+	assertConnectionIsClosed(t, conn)
 
 	cancel()
 	wg.Wait()

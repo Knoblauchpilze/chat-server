@@ -30,8 +30,7 @@ func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
 
 	oneByte := make([]byte, 1)
 	_, err := conn.Read(oneByte)
-
-	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, io.EOF, err, "Actual err: %v", err)
 }
 
 func assertConnectionIsStillOpen(t *testing.T, conn net.Conn) {
