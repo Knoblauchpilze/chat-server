@@ -21,7 +21,7 @@ const (
 	failure = "ERROR"
 )
 
-func TestUnit_HttpListenAndServer_StartAndStopWithContext(t *testing.T) {
+func TestIT_HttpListenAndServer_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(200*time.Millisecond, cancel)
 
@@ -35,7 +35,7 @@ func TestUnit_HttpListenAndServer_StartAndStopWithContext(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestUnit_HttpListenAndServer_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
+func TestIT_HttpListenAndServer_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	dbConn := newTestDbConnection(t)
