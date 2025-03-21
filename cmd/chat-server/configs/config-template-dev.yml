@@ -1,1 +1,6 @@
-Port: 49152
+Server:
+  Port: 60001
+TcpPort: 49152
+Database:
+  User: chat_server_manager
+  Password: DB_PASSWORD
