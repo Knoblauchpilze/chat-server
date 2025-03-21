@@ -19,14 +19,14 @@ func TestUnit_TcpListenAndServe_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(100*time.Millisecond, cancel)
 
-	err := tcpListenAndServe(cancellable, newTestConfig(7000), logger.New(os.Stdout))
+	err := tcpListenAndServe(cancellable, newTcpTestConfig(7000), logger.New(os.Stdout))
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func TestUnit_TcpListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7001)
+	config := newTcpTestConfig(7001)
 	wg := asyncTcpListenAndServe(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7001")
@@ -39,7 +39,7 @@ func TestUnit_TcpListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeCl
 }
 
 func TestUnit_TcpListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
-	config := newTestConfig(7002)
+	config := newTcpTestConfig(7002)
 	called := make(chan struct{}, 1)
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		called <- struct{}{}
@@ -61,7 +61,7 @@ func TestUnit_TcpListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *tes
 }
 
 func TestUnit_TcpListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *testing.T) {
-	config := newTestConfig(7003)
+	config := newTcpTestConfig(7003)
 	called := make(chan struct{}, 1)
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called <- struct{}{}
@@ -87,7 +87,7 @@ func TestUnit_TcpListenAndServe_WhenClientSendsData_ExpectCallbackNotified(t *te
 }
 
 func TestUnit_TcpListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T) {
-	config := newTestConfig(7004)
+	config := newTcpTestConfig(7004)
 	called := make(chan struct{}, 1)
 	config.Callbacks.DisconnectCallback = func(uuid.UUID) {
 		called <- struct{}{}
@@ -108,7 +108,7 @@ func TestUnit_TcpListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *
 }
 
 func TestUnit_TcpListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestConfig(7005)
+	config := newTcpTestConfig(7005)
 	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
 		return false
 	}
@@ -129,7 +129,7 @@ func TestUnit_TcpListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionTo
 }
 
 func TestUnit_TcpListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnection_ExpectConnectionToBeClosed(t *testing.T) {
-	config := newTestConfig(7006)
+	config := newTcpTestConfig(7006)
 	var called int
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
 		called++
@@ -158,7 +158,7 @@ func TestUnit_TcpListenAndServe_WhenReadDataCallbackIndicatesToCloseTheConnectio
 }
 
 func TestUnit_TcpListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCrash(t *testing.T) {
-	config := newTestConfig(7007)
+	config := newTcpTestConfig(7007)
 	var called atomic.Int32
 	doPanic := true
 	var actual []byte
@@ -208,7 +208,7 @@ func TestUnit_TcpListenAndServe_WhenDataReadCallbackPanics_ExpectServerDoesNotCr
 }
 
 func TestUnit_TcpListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorrectlyBeReceived(t *testing.T) {
-	config := newTestConfig(7008)
+	config := newTcpTestConfig(7008)
 	var called atomic.Int32
 	var receivedMessage messages.Message
 	config.Callbacks.ReadDataCallback = func(id uuid.UUID, data []byte) (int, bool) {
@@ -267,9 +267,9 @@ func TestUnit_TcpListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorr
 	assert.Equal(t, "hello", actual.Content)
 }
 
-func newTestConfig(port uint16) Configuration {
+func newTcpTestConfig(port uint16) Configuration {
 	conf := DefaultConfig()
-	conf.Port = port
+	conf.TcpPort = port
 	return conf
 }
 

@@ -19,7 +19,7 @@ const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
 
 func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7100)
+	config := newTcpTestConfig(7100)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -35,7 +35,7 @@ func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 
 func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7101)
+	config := newTcpTestConfig(7101)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -49,7 +49,7 @@ func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testin
 
 func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7103)
+	config := newTcpTestConfig(7103)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -74,7 +74,7 @@ func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 
 func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7104)
+	config := newTcpTestConfig(7104)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -102,7 +102,7 @@ func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 
 func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7105)
+	config := newTcpTestConfig(7105)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -157,7 +157,7 @@ func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *
 
 func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7102)
+	config := newTcpTestConfig(7102)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 
@@ -178,7 +178,7 @@ func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *test
 
 func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
-	config := newTestConfig(7106)
+	config := newTcpTestConfig(7106)
 
 	wg := asyncRunTcpServer(t, config, cancellable)
 

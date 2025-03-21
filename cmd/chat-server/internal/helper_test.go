@@ -8,7 +8,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var dbTestConfig = postgresql.NewConfigForLocalhost(
+	"db_chat_server",
+	"chat_server_manager",
+	"manager_password",
 )
 
 const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
@@ -62,7 +71,7 @@ func assertNoDataReceived(t *testing.T, conn net.Conn) {
 	oneByte := make([]byte, 1)
 	_, err := conn.Read(oneByte)
 
-	assert.True(t, isTimeout(err), "Actual err: %v", err)
+	assert.True(t, isTimeoutError(err), "Actual err: %v", err)
 }
 
 func drainConnection(t *testing.T, conn net.Conn) []byte {
@@ -70,18 +79,24 @@ func drainConnection(t *testing.T, conn net.Conn) []byte {
 
 	out := make([]byte, reasonableReadSizeInBytes)
 	n, err := conn.Read(out)
-	if err != nil && err != io.EOF && !isTimeout(err) {
+	if err != nil && err != io.EOF && !isTimeoutError(err) {
 		assert.Nil(t, err, "Actual err: %v", err)
 	}
 
 	return out[:n]
 }
 
-func isTimeout(err error) bool {
+func isTimeoutError(err error) bool {
 	opErr, ok := err.(*net.OpError)
 	if !ok {
 		return false
 	}
 
 	return opErr.Timeout()
+}
+
+func newTestDbConnection(t *testing.T) db.Connection {
+	conn, err := db.New(context.Background(), dbTestConfig)
+	require.Nil(t, err)
+	return conn
 }
