@@ -14,5 +14,5 @@ func RunTcpServer(ctx context.Context, conf Configuration, log logger.Logger) er
 	chat.Start()
 	defer chat.Stop()
 
-	return listenAndServe(ctx, conf, log)
+	return tcpListenAndServe(ctx, conf, log)
 }

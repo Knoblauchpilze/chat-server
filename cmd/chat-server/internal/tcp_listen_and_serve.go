@@ -7,7 +7,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
 
-func listenAndServe(ctx context.Context,
+func tcpListenAndServe(ctx context.Context,
 	config Configuration, log logger.Logger) error {
 	tcpConfig := tcp.ServerConfiguration{
 		Port:      config.Port,
