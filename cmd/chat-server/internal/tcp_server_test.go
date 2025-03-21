@@ -17,11 +17,11 @@ import (
 
 const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
 
-func TestUnit_RunServer_OnConnect_ShouldBeAccepted(t *testing.T) {
+func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7100)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7100")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -33,11 +33,11 @@ func TestUnit_RunServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
+func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7101)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7101")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -47,11 +47,11 @@ func TestUnit_RunServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T
 	assertConnectionIsClosed(t, conn)
 }
 
-func TestUnit_RunServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
+func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7103)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn1, err := net.Dial("tcp", ":7103")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -72,11 +72,11 @@ func TestUnit_RunServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
+func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7104)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn1, err := net.Dial("tcp", ":7104")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -100,11 +100,11 @@ func TestUnit_RunServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
+func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7105)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	// Connect client 1
 	conn1, err := net.Dial("tcp", ":7105")
@@ -155,11 +155,11 @@ func TestUnit_RunServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *tes
 	wg.Wait()
 }
 
-func TestUnit_RunServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
+func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7102)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7102")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -176,11 +176,11 @@ func TestUnit_RunServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing
 	wg.Wait()
 }
 
-func TestUnit_RunServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
+func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTestConfig(7106)
 
-	wg := asyncRunServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, cancellable)
 
 	conn, err := net.Dial("tcp", ":7106")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -203,7 +203,7 @@ func TestUnit_RunServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *
 	wg.Wait()
 }
 
-func asyncRunServer(
+func asyncRunTcpServer(
 	t *testing.T,
 	config Configuration,
 	ctx context.Context,
@@ -220,7 +220,7 @@ func asyncRunServer(
 			}
 		}()
 
-		err = RunServer(ctx, config, logger.New(os.Stdout))
+		err = RunTcpServer(ctx, config, logger.New(os.Stdout))
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 

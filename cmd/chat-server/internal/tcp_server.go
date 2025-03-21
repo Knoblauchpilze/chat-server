@@ -7,7 +7,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/service"
 )
 
-func RunServer(ctx context.Context, conf Configuration, log logger.Logger) error {
+func RunTcpServer(ctx context.Context, conf Configuration, log logger.Logger) error {
 	chat := service.NewChatService(log)
 	conf.Callbacks = chat.GenerateCallbacks()
 
