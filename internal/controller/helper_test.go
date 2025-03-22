@@ -9,7 +9,7 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 var dbTestConfig = postgresql.NewConfigForLocalhost(
@@ -18,9 +18,9 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestConnection(t *testing.T) db.Connection {
+func newTestDbConnection(t *testing.T) db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
-	require.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
