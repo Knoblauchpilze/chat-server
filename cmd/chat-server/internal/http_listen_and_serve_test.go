@@ -13,6 +13,8 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,29 +23,29 @@ const (
 	failure = "ERROR"
 )
 
-func TestIT_HttpListenAndServer_StartAndStopWithContext(t *testing.T) {
+func TestIT_HttpListenAndServe_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(200*time.Millisecond, cancel)
 
-	conn := newTestDbConnection(t)
-	defer conn.Close(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	conf := newHttpTestConfig(7200)
+	props := newTestHttpProps(7200, dbConn)
 
-	err := httpListenAndServe(cancellable, conf, conn, logger.New(os.Stdout))
+	err := httpListenAndServe(cancellable, props)
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestIT_HttpListenAndServer_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
+func TestIT_HttpListenAndServe_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 
-	conf := newHttpTestConfig(7201)
+	props := newTestHttpProps(7201, dbConn)
 
-	wg := asyncHttpListenAndServe(t, conf, dbConn, cancellable)
+	wg := asyncHttpListenAndServe(t, props, cancellable)
 
 	client := &http.Client{}
 	url := "http://localhost:7201/v1/chats/healthcheck"
@@ -68,12 +70,12 @@ func (m *mockDbConn) Ping(ctx context.Context) error {
 	return errSample
 }
 
-func TestUnit_HttpListenAndServer_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
+func TestUnit_HttpListenAndServe_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	conf := newHttpTestConfig(7202)
+	props := newTestHttpProps(7202, &mockDbConn{})
 
-	wg := asyncHttpListenAndServe(t, conf, &mockDbConn{}, cancellable)
+	wg := asyncHttpListenAndServe(t, props, cancellable)
 
 	client := &http.Client{}
 	url := "http://localhost:7202/v1/chats/healthcheck"
@@ -90,16 +92,27 @@ func TestUnit_HttpListenAndServer_WhenDbConnectionFails_ExpectHealthcheckFails(t
 	assertResponseContainsDetails(t, rw, failure, "{}")
 }
 
-func newHttpTestConfig(port uint16) Configuration {
+func newTestHttpConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Server.Port = port
 	return conf
 }
 
+func newTestHttpProps(port uint16, dbConn db.Connection) HttpServerProps {
+	log := logger.New(os.Stdout)
+	repos := repositories.New(dbConn)
+
+	return HttpServerProps{
+		Config:   newTestHttpConfig(port),
+		DbConn:   dbConn,
+		Services: service.New(dbConn, repos, log),
+		Log:      log,
+	}
+}
+
 func asyncHttpListenAndServe(
 	t *testing.T,
-	config Configuration,
-	conn db.Connection,
+	props HttpServerProps,
 	ctx context.Context,
 ) *sync.WaitGroup {
 	var err error
@@ -113,7 +126,7 @@ func asyncHttpListenAndServe(
 				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
 			}
 		}()
-		err = httpListenAndServe(ctx, config, conn, logger.New(os.Stdout))
+		err = httpListenAndServe(ctx, props)
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 
