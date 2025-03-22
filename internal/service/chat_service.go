@@ -6,7 +6,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 )
 
-type ChatService interface {
+type Chat interface {
 	GenerateCallbacks() clients.Callbacks
 	Start()
 	Stop()
@@ -20,7 +20,7 @@ type chatImpl struct {
 	messageProcessingService messages.ProcessingService
 }
 
-func NewChatService(log logger.Logger) ChatService {
+func NewChat(log logger.Logger) Chat {
 	queue := make(chan messages.Message, incomingMessagesBufferSize)
 	manager := clients.NewManager(queue, log)
 

@@ -15,7 +15,7 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestConnection(t *testing.T) db.Connection {
+func newTestDbConnection(t *testing.T) db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
