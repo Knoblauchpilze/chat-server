@@ -17,7 +17,7 @@ const incomingMessagesBufferSize = 5
 type chatImpl struct {
 	clientManager            clients.Manager
 	messageParser            messages.Parser
-	messageProcessingService MessageProcessingService
+	messageProcessingService messages.ProcessingService
 }
 
 func NewChatService(log logger.Logger) ChatService {
@@ -27,7 +27,7 @@ func NewChatService(log logger.Logger) ChatService {
 	return &chatImpl{
 		clientManager:            manager,
 		messageParser:            messages.NewParser(queue, log),
-		messageProcessingService: NewMessageProcessingService(queue, manager, log),
+		messageProcessingService: messages.NewProcessingService(queue, manager, log),
 	}
 }
 

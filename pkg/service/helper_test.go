@@ -15,27 +15,6 @@ const reasonableWaitTimeForServiceToBeUp = 50 * time.Millisecond
 const reasonableReadTimeout = 100 * time.Millisecond
 const reasonableReadSizeInBytes = 1024
 
-func asyncRunMessageProcessingService(
-	t *testing.T, service MessageProcessingService,
-) *sync.WaitGroup {
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			if panicErr := recover(); panicErr != nil {
-				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
-			}
-		}()
-		service.Start()
-	}()
-
-	time.Sleep(reasonableWaitTimeForServiceToBeUp)
-
-	return &wg
-}
-
 func asyncRunChatService(
 	t *testing.T, service ChatService,
 ) *sync.WaitGroup {

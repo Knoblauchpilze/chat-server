@@ -14,9 +14,7 @@ type Manager interface {
 	OnDisconnect(id uuid.UUID)
 	OnReadError(id uuid.UUID, err error)
 
-	Broadcast(msg messages.Message)
-	BroadcastExcept(id uuid.UUID, msg messages.Message)
-	SendTo(id uuid.UUID, msg messages.Message)
+	messages.Dispatcher
 }
 
 type managerImpl struct {
