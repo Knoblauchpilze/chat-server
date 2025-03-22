@@ -12,7 +12,6 @@ import (
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestIT_RoomRepository_Create(t *testing.T) {
@@ -122,7 +121,7 @@ func assertRoomExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT id FROM room WHERE id = $1",
 		id,
 	)
-	require.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
 }
 
@@ -133,7 +132,7 @@ func assertRoomDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 		"SELECT COUNT(id) FROM room WHERE id = $1",
 		id,
 	)
-	require.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Zero(t, value)
 }
 

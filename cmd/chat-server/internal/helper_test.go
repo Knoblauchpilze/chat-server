@@ -11,7 +11,6 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var dbTestConfig = postgresql.NewConfigForLocalhost(
@@ -97,6 +96,6 @@ func isTimeoutError(err error) bool {
 
 func newTestDbConnection(t *testing.T) db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
-	require.Nil(t, err)
+	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
