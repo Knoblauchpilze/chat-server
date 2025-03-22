@@ -23,11 +23,11 @@ const (
 	reasonableReadSizeInBytes                          = 1024
 )
 
-func TestUnit_Chat_OnConnect_SendsMessagesToOthers(t *testing.T) {
-	service, callbacks := newTestChat()
+func TestUnit_ChatService_OnConnect_SendsMessagesToOthers(t *testing.T) {
+	service, callbacks := newTestChatService()
 	client1, server1 := newTestConnection(t, 6000)
 	_, server2 := newTestConnection(t, 6000)
-	wg := asyncRunChat(t, service)
+	wg := asyncRunChatService(t, service)
 
 	client1Id := uuid.New()
 	accepted := callbacks.OnConnect(client1Id, server1)
@@ -51,11 +51,11 @@ func TestUnit_Chat_OnConnect_SendsMessagesToOthers(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_Chat_OnConnect_DoesNotSendMessageToSelf(t *testing.T) {
-	service, callbacks := newTestChat()
+func TestUnit_ChatService_OnConnect_DoesNotSendMessageToSelf(t *testing.T) {
+	service, callbacks := newTestChatService()
 	_, server1 := newTestConnection(t, 6001)
 	client2, server2 := newTestConnection(t, 6001)
-	wg := asyncRunChat(t, service)
+	wg := asyncRunChatService(t, service)
 
 	client1Id := uuid.New()
 	accepted := callbacks.OnConnect(client1Id, server1)
@@ -73,11 +73,11 @@ func TestUnit_Chat_OnConnect_DoesNotSendMessageToSelf(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_Chat_OnDisconnect_SendsMessagesToOthers(t *testing.T) {
-	service, callbacks := newTestChat()
+func TestUnit_ChatService_OnDisconnect_SendsMessagesToOthers(t *testing.T) {
+	service, callbacks := newTestChatService()
 	_, server1 := newTestConnection(t, 6001)
 	client2, server2 := newTestConnection(t, 6001)
-	wg := asyncRunChat(t, service)
+	wg := asyncRunChatService(t, service)
 
 	client1Id := uuid.New()
 	accepted := callbacks.OnConnect(client1Id, server1)
@@ -106,12 +106,12 @@ func TestUnit_Chat_OnDisconnect_SendsMessagesToOthers(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_Chat_OnDirectMessage_RoutesMessageToCorrectClient(t *testing.T) {
-	service, callbacks := newTestChat()
+func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testing.T) {
+	service, callbacks := newTestChatService()
 	client1, server1 := newTestConnection(t, 6002)
 	client2, server2 := newTestConnection(t, 6002)
 	client3, server3 := newTestConnection(t, 6002)
-	wg := asyncRunChat(t, service)
+	wg := asyncRunChatService(t, service)
 
 	client1Id := uuid.New()
 	accepted := callbacks.OnConnect(client1Id, server1)
@@ -151,13 +151,13 @@ func TestUnit_Chat_OnDirectMessage_RoutesMessageToCorrectClient(t *testing.T) {
 	wg.Wait()
 }
 
-func newTestChat() (Chat, clients.Callbacks) {
-	service := NewChat(logger.New(os.Stdout))
+func newTestChatService() (ChatService, clients.Callbacks) {
+	service := NewChatService(logger.New(os.Stdout))
 	return service, service.GenerateCallbacks()
 }
 
-func asyncRunChat(
-	t *testing.T, service Chat,
+func asyncRunChatService(
+	t *testing.T, service ChatService,
 ) *sync.WaitGroup {
 	var wg sync.WaitGroup
 
