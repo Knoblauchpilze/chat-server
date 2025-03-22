@@ -10,7 +10,7 @@ import (
 )
 
 func TestIT_HealthcheckController(t *testing.T) {
-	conn := newTestConnection(t)
+	conn := newTestDbConnection(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
@@ -23,7 +23,7 @@ func TestIT_HealthcheckController(t *testing.T) {
 }
 
 func TestIT_HealthcheckController_WhenConnectionClosed_ExpectServiceUnavailable(t *testing.T) {
-	conn := newTestConnection(t)
+	conn := newTestDbConnection(t)
 	conn.Close(context.Background())
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
