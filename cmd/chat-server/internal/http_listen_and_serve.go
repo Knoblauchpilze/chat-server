@@ -2,22 +2,34 @@ package internal
 
 import (
 	"context"
-	"os"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/Knoblauchpilze/chat-server/internal/controller"
+	"github.com/Knoblauchpilze/chat-server/internal/service"
 )
 
-func httpListenAndServe(
-	ctx context.Context, config Configuration, conn db.Connection, log logger.Logger) error {
-	s := server.NewWithLogger(config.Server, log)
+type HttpServerProps struct {
+	Config   Configuration
+	DbConn   db.Connection
+	Services service.Services
+	Log      logger.Logger
+}
 
-	for _, route := range controller.HealthCheckEndpoints(conn) {
+func httpListenAndServe(
+	ctx context.Context, props HttpServerProps) error {
+	s := server.NewWithLogger(props.Config.Server, props.Log)
+
+	for _, route := range controller.HealthCheckEndpoints(props.DbConn) {
 		if err := s.AddRoute(route); err != nil {
-			log.Errorf("Failed to register route %v: %v", route.Path(), err)
-			os.Exit(1)
+			return err
+		}
+	}
+
+	for _, route := range controller.RoomEndpoints(props.Services.Room) {
+		if err := s.AddRoute(route); err != nil {
+			return err
 		}
 	}
 
