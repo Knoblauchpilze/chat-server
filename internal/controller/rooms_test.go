@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnit_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+func TestIT_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-room-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
@@ -40,7 +40,7 @@ func TestUnit_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(
 	)
 }
 
-func TestUnit_RoomController_CreateRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *testing.T) {
+func TestIT_RoomController_CreateRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
 	requestDto := communication.RoomDtoRequest{
 		Name: "",
@@ -141,7 +141,7 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 	)
 }
 
-func TestUnit_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
 	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
