@@ -104,7 +104,7 @@ func TestIT_RoomService_Delete_WhenRoomDoesNotExist_ExpectSuccess(t *testing.T) 
 }
 
 func newTestRoomRepository(t *testing.T) (RoomService, db.Connection) {
-	conn := newTestConnection(t)
+	conn := newTestDbConnection(t)
 
 	repos := repositories.Repositories{
 		Room: repositories.NewRoomRepository(conn),
