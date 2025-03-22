@@ -8,4 +8,5 @@ const (
 	ErrMessageDecodingFailed             errors.ErrorCode = 302
 	ErrUnrecognizedMessageImplementation errors.ErrorCode = 303
 	ErrMessageEncodingFailed             errors.ErrorCode = 304
+	UnrecognizedMessageType              errors.ErrorCode = 305
 )
