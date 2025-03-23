@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_HttpListenAndServe_StartAndStopWithContext(t *testing.T) {
+func TestIT_RunHttpServer_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(200*time.Millisecond, cancel)
 
@@ -29,12 +29,12 @@ func TestIT_HttpListenAndServe_StartAndStopWithContext(t *testing.T) {
 
 	props := newTestHttpProps(7200, dbConn)
 
-	err := httpListenAndServe(cancellable, props)
+	err := RunHttpServer(cancellable, props)
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestIT_HttpListenAndServe_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
+func TestIT_RunHttpServer_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	dbConn := newTestDbConnection(t)
@@ -42,7 +42,7 @@ func TestIT_HttpListenAndServe_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t
 
 	props := newTestHttpProps(7201, dbConn)
 
-	wg := asyncHttpListenAndServe(t, props, cancellable)
+	wg := asyncRunHttpServer(t, props, cancellable)
 
 	url := "http://localhost:7201/v1/chats/healthcheck"
 	rw := doRequest(t, http.MethodGet, url)
@@ -62,12 +62,12 @@ func (m *mockDbConn) Ping(ctx context.Context) error {
 	return errSample
 }
 
-func TestUnit_HttpListenAndServe_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
+func TestUnit_RunHttpServer_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	props := newTestHttpProps(7202, &mockDbConn{})
 
-	wg := asyncHttpListenAndServe(t, props, cancellable)
+	wg := asyncRunHttpServer(t, props, cancellable)
 
 	url := "http://localhost:7202/v1/chats/healthcheck"
 	rw := doRequest(t, http.MethodGet, url)
@@ -79,13 +79,13 @@ func TestUnit_HttpListenAndServe_WhenDbConnectionFails_ExpectHealthcheckFails(t 
 	assertResponseContainsDetails(t, rw, failure, "{}")
 }
 
-func TestIT_HttpListenAndServe_Room_CreateGetDeleteWorkflow(t *testing.T) {
+func TestIT_RunHttpServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	props := newTestHttpProps(7203, dbConn)
 
-	wg := asyncHttpListenAndServe(t, props, cancellable)
+	wg := asyncRunHttpServer(t, props, cancellable)
 
 	// Create a new room
 	requestDto := communication.RoomDtoRequest{
@@ -147,7 +147,7 @@ func newTestHttpProps(port uint16, dbConn db.Connection) HttpServerProps {
 	}
 }
 
-func asyncHttpListenAndServe(
+func asyncRunHttpServer(
 	t *testing.T,
 	props HttpServerProps,
 	ctx context.Context,
@@ -163,7 +163,7 @@ func asyncHttpListenAndServe(
 				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
 			}
 		}()
-		err = httpListenAndServe(ctx, props)
+		err = RunHttpServer(ctx, props)
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 

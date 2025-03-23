@@ -17,7 +17,7 @@ type HttpServerProps struct {
 	Log      logger.Logger
 }
 
-func httpListenAndServe(
+func RunHttpServer(
 	ctx context.Context, props HttpServerProps) error {
 	s := server.NewWithLogger(props.Config.Server, props.Log)
 
