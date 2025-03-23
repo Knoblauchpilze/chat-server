@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
@@ -16,8 +15,7 @@ import (
 func RunServer(ctx context.Context, config Configuration, log logger.Logger) error {
 	dbConn, err := db.New(ctx, config.Database)
 	if err != nil {
-		log.Errorf("Failed to create db connection: %v", err)
-		os.Exit(1)
+		return err
 	}
 	defer dbConn.Close(ctx)
 
