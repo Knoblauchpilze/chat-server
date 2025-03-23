@@ -1,10 +1,13 @@
 package internal
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
@@ -13,15 +16,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	success = "SUCCESS"
+	failure = "ERROR"
+)
+
+const (
+	reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
+	reasonableReadTimeout             = 100 * time.Millisecond
+	reasonableReadSizeInBytes         = 1024
+)
+
 var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"db_chat_server",
 	"chat_server_manager",
 	"manager_password",
 )
-
-const reasonableWaitTimeForServerToBeUp = 200 * time.Millisecond
-const reasonableReadTimeout = 100 * time.Millisecond
-const reasonableReadSizeInBytes = 1024
 
 var errSample = fmt.Errorf("some error")
 var sampleData = []byte("hello\n")
@@ -98,4 +108,62 @@ func newTestDbConnection(t *testing.T) db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
+}
+
+func doRequest(
+	t *testing.T, method string, url string,
+) *http.Response {
+	return doRequestWithBody(t, method, url, nil)
+}
+
+func doRequestWithData[T any](
+	t *testing.T, method string, url string, data T,
+) *http.Response {
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(data)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	return doRequestWithBody(t, method, url, body.Bytes())
+}
+
+func doRequestWithBody(
+	t *testing.T, method string, url string, body []byte,
+) *http.Response {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	rw, err := client.Do(req)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	return rw
+}
+
+func assertResponseAndExtractDetails[T any](
+	t *testing.T, rw *http.Response, status string,
+) T {
+	type response struct {
+		Status  string          `json:"status"`
+		Details json.RawMessage `json:"details"`
+	}
+
+	data, err := io.ReadAll(rw.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseData response
+	err = json.Unmarshal(data, &responseData)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, status, responseData.Status)
+
+	var out T
+	err = json.Unmarshal(responseData.Details, &out)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	return out
 }
