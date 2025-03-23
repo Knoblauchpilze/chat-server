@@ -17,15 +17,15 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	var out rest.Routes
 
 	postHandler := createComponentAwareHttpHandler(createRoom, service)
-	post := rest.NewRoute(http.MethodPost, "", postHandler)
+	post := rest.NewRoute(http.MethodPost, "/rooms", postHandler)
 	out = append(out, post)
 
 	getHandler := createComponentAwareHttpHandler(getRoom, service)
-	get := rest.NewRoute(http.MethodGet, ":id", getHandler)
+	get := rest.NewRoute(http.MethodGet, "/rooms/:id", getHandler)
 	out = append(out, get)
 
 	deleteHandler := createComponentAwareHttpHandler(deleteRoom, service)
-	delete := rest.NewRoute(http.MethodDelete, ":id", deleteHandler)
+	delete := rest.NewRoute(http.MethodDelete, "/rooms/:id", deleteHandler)
 	out = append(out, delete)
 
 	return out

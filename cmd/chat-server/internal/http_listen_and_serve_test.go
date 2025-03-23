@@ -14,13 +14,10 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-)
-
-const (
-	success = "SUCCESS"
-	failure = "ERROR"
 )
 
 func TestIT_HttpListenAndServe_StartAndStopWithContext(t *testing.T) {
@@ -47,13 +44,8 @@ func TestIT_HttpListenAndServe_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t
 
 	wg := asyncHttpListenAndServe(t, props, cancellable)
 
-	client := &http.Client{}
 	url := "http://localhost:7201/v1/chats/healthcheck"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	rw, err := client.Do(req)
-	assert.Nil(t, err, "Actual err: %v", err)
+	rw := doRequest(t, http.MethodGet, url)
 
 	cancel()
 	wg.Wait()
@@ -77,19 +69,64 @@ func TestUnit_HttpListenAndServe_WhenDbConnectionFails_ExpectHealthcheckFails(t 
 
 	wg := asyncHttpListenAndServe(t, props, cancellable)
 
-	client := &http.Client{}
 	url := "http://localhost:7202/v1/chats/healthcheck"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	rw, err := client.Do(req)
-	assert.Nil(t, err, "Actual err: %v", err)
+	rw := doRequest(t, http.MethodGet, url)
 
 	cancel()
 	wg.Wait()
 
 	assert.Equal(t, http.StatusServiceUnavailable, rw.StatusCode)
 	assertResponseContainsDetails(t, rw, failure, "{}")
+}
+
+func TestIT_HttpListenAndServe_Room_CreateGetDeleteWorkflow(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+	props := newTestHttpProps(7203, dbConn)
+
+	wg := asyncHttpListenAndServe(t, props, cancellable)
+
+	// Create a new room
+	requestDto := communication.RoomDtoRequest{
+		Name: fmt.Sprintf("my-room-%v", uuid.New()),
+	}
+
+	url := "http://localhost:7203/v1/chats/rooms"
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	responseDto := assertResponseAndExtractDetails[communication.RoomDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusCreated, rw.StatusCode)
+	assert.Equal(t, requestDto.Name, responseDto.Name)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[communication.RoomDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, responseDto, getResponseDto)
+
+	// Delete it
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodDelete, url)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Get it again
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	assert.Equal(t, http.StatusNotFound, rw.StatusCode)
+
+	cancel()
+	wg.Wait()
 }
 
 func newTestHttpConfig(port uint16) Configuration {
