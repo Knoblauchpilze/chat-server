@@ -152,6 +152,103 @@ jobs:
           push: ${{ github.actor != 'dependabot[bot]' }}
           tags: totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
 
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [build-and-push-docker-image, extract-service-tag]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+      - name: Install migrate tool
+        run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - name: Setup chats database
+        run: |
+          psql \
+            postgresql://postgres@localhost \
+            -v admin_password=$ADMIN_PASSWORD \
+            -v manager_password=$MANAGER_PASSWORD \
+            -v user_password=$USER_PASSWORD \
+            -f chats/db_user_create.sql
+          psql \
+            postgresql://postgres@localhost \
+            -f chats/db_create.sql
+        working-directory: ./database
+        env:
+          PGPASSWORD: postgres
+          ADMIN_PASSWORD: admin_password
+          MANAGER_PASSWORD: manager_password
+          USER_PASSWORD: user_password
+      - name: Migrate schema up
+        run: |
+          migrate \
+            -path chats/migrations \
+            -database postgresql://chat_server_admin@localhost/db_chat_server?sslmode=disable \
+            up
+        working-directory: ./database
+        env:
+          PGPASSWORD: admin_password
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pull latest docker image
+        run: |
+          docker pull totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
+      - name: Test docker image
+        # https://superuser.com/questions/272265/getting-curl-to-output-http-status-code
+        # https://stackoverflow.com/questions/24254064/how-to-get-curl-to-output-only-http-response-body-json-and-no-other-headers-et
+        # https://docs.github.com/en/actions/use-cases-and-examples/using-containerized-services/about-service-containers#running-jobs-on-the-runner-machine
+        run: |
+          docker run \
+            -d \
+            --name chat-server-test \
+            -e ENV_SERVER_PORT=$PORT \
+            -e ENV_DATABASE_PASSWORD=$DATABASE_PASSWORD \
+            -p 1234:1234 \
+            totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
+          echo "status_code=$(curl -s -o /dev/null -w %{http_code} localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
+          echo "response_body=$(curl -s localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
+          docker stop user-service-test
+        id: test-results
+        env:
+          PORT: 1234
+          DATABASE_PASSWORD: manager_password
+      - name: Print test results
+        run: |
+          echo ${{ steps.test-results.outputs.status_code }}
+          echo ${{ steps.test-results.outputs.response_body }}
+      - name: Verify status code
+        run: |
+          if [[ ${{ steps.test-results.outputs.status_code }} != '200' ]]; then
+            echo "::error ::Expected http status code to be 200 but it was ${{ steps.test-results.outputs.status_code }}!"
+            exit 1
+          fi
+      - name: Verify response body
+        # https://stackoverflow.com/questions/58862864/github-actions-ci-conditional-regex
+        # https://stackoverflow.com/questions/4542732/how-do-i-negate-a-test-with-regular-expressions-in-a-bash-script
+        run: |
+          if ! [[ '${{ steps.test-results.outputs.response_body }}' =~ ^\{\"requestId\":\"[0-9a-f-]+\",\"status\":\"SUCCESS\",\"details\":\"OK\"}$ ]]; then
+            echo "::error ::Expected http response to match expected syntax but it did not: ${{ steps.test-results.outputs.response_body }}!"
+            exit 1
+          fi
+
   update-deployment:
     runs-on: ubuntu-latest
     needs: [extract-service-tag, build-and-push-docker-image]
