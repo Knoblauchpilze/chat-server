@@ -60,7 +60,6 @@ func (s *userServiceImpl) Get(
 	return out, nil
 }
 
-// TODO: Add tests for this function
 func (s *userServiceImpl) ListForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]communication.UserDtoResponse, error) {
@@ -69,7 +68,7 @@ func (s *userServiceImpl) ListForRoom(
 		return []communication.UserDtoResponse{}, err
 	}
 
-	var out []communication.UserDtoResponse
+	out := make([]communication.UserDtoResponse, 0)
 	for _, user := range users {
 		dto := communication.ToUserDtoResponse(user)
 		out = append(out, dto)

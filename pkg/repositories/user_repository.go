@@ -75,7 +75,7 @@ SELECT
 	cu.version
 FROM
 	room_user AS ru
-	LEFT JOIN chat_user AS cu on ru.chat_user = cu.id
+	LEFT JOIN chat_user AS cu ON ru.chat_user = cu.id
 WHERE
 	ru.room = $1`
 

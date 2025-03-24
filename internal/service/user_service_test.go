@@ -91,6 +91,36 @@ func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_UserServier_ListForRoom_WhenNobodyInRoom_ExpectEmptyList(t *testing.T) {
+	service, _ := newTestUserService(t)
+
+	actual, err := service.ListForRoom(context.Background(), uuid.New())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []communication.UserDtoResponse{}, actual)
+}
+
+func TestIT_UserServier_ListForRoom(t *testing.T) {
+	service, conn := newTestUserService(t)
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	insertTestUser(t, conn)
+
+	room := insertTestRoom(t, conn)
+
+	insertUserInRoom(t, conn, user1.Id, room.Id)
+	insertUserInRoom(t, conn, user2.Id, room.Id)
+
+	actual, err := service.ListForRoom(context.Background(), room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user1),
+		communication.ToUserDtoResponse(user2),
+	}
+	assert.Equal(t, expected, actual)
+}
+
 func TestIT_UserService_Delete(t *testing.T) {
 	service, conn := newTestUserService(t)
 	user := insertTestUser(t, conn)
@@ -158,4 +188,17 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Zero(t, value)
+}
+
+func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
+
+	count, err := conn.Exec(
+		context.Background(),
+		sqlQuery,
+		room,
+		user,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, int64(1), count)
 }
