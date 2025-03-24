@@ -129,6 +129,56 @@ func TestIT_RunHttpServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
+func TestIT_RunHttpServer_User_CreateGetDeleteWorkflow(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+	props := newTestHttpProps(7203, dbConn)
+
+	wg := asyncRunHttpServer(t, props, cancellable)
+
+	// Create a new user
+	requestDto := communication.UserDtoRequest{
+		Name: fmt.Sprintf("my-user-%v", uuid.New()),
+	}
+
+	url := "http://localhost:7203/v1/chats/users"
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	responseDto := assertResponseAndExtractDetails[communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusCreated, rw.StatusCode)
+	assert.Equal(t, requestDto.Name, responseDto.Name)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, responseDto, getResponseDto)
+
+	// Delete it
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodDelete, url)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Get it again
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	assert.Equal(t, http.StatusNotFound, rw.StatusCode)
+
+	cancel()
+	wg.Wait()
+}
+
 func newTestHttpConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Server.Port = port

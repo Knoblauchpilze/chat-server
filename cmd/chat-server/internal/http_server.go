@@ -33,5 +33,11 @@ func RunHttpServer(
 		}
 	}
 
+	for _, route := range controller.UserEndpoints(props.Services.User) {
+		if err := s.AddRoute(route); err != nil {
+			return err
+		}
+	}
+
 	return s.Start(ctx)
 }
