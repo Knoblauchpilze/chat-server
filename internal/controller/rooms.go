@@ -24,6 +24,10 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	get := rest.NewRoute(http.MethodGet, "/rooms/:id", getHandler)
 	out = append(out, get)
 
+	listForRoomHandler := createComponentAwareHttpHandler(listForRoom, service)
+	listForRoom := rest.NewRoute(http.MethodGet, "/rooms/:id/users", listForRoomHandler)
+	out = append(out, listForRoom)
+
 	deleteHandler := createComponentAwareHttpHandler(deleteRoom, service)
 	delete := rest.NewRoute(http.MethodDelete, "/rooms/:id", deleteHandler)
 	out = append(out, delete)
@@ -70,6 +74,30 @@ func getRoom(c echo.Context, s service.RoomService) error {
 	}
 
 	return c.JSON(http.StatusOK, out)
+}
+
+func listForRoom(c echo.Context, s service.RoomService) error {
+	maybeId := c.Param("id")
+	id, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
+	users, err := s.ListForRoom(c.Request().Context(), id)
+	if err != nil {
+		if errors.IsErrorWithCode(err, db.NoMatchingRows) {
+			return c.JSON(http.StatusNotFound, "No such room")
+		}
+
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	out, err := marshalNilToEmptySlice(users)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSONBlob(http.StatusOK, out)
 }
 
 func deleteRoom(c echo.Context, s service.RoomService) error {
