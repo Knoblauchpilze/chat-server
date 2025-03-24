@@ -22,7 +22,7 @@ func TestIT_RoomService_Create(t *testing.T) {
 		Name: fmt.Sprintf("my-room-%s", id),
 	}
 
-	service, conn := newTestRoomRepository(t)
+	service, conn := newTestRoomService(t)
 	out, err := service.Create(context.Background(), roomDtoRequest)
 
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -36,7 +36,7 @@ func TestIT_RoomService_Create_InvalidName(t *testing.T) {
 		Name: "",
 	}
 
-	service, _ := newTestRoomRepository(t)
+	service, _ := newTestRoomService(t)
 	_, err := service.Create(context.Background(), roomDtoRequest)
 
 	assert.True(
@@ -48,7 +48,7 @@ func TestIT_RoomService_Create_InvalidName(t *testing.T) {
 }
 
 func TestIT_RoomService_Create_WhenRoomWithSameNameAlreadyExists_ExpectFailure(t *testing.T) {
-	service, conn := newTestRoomRepository(t)
+	service, conn := newTestRoomService(t)
 	room := insertTestRoom(t, conn)
 	roomDtoRequest := communication.RoomDtoRequest{
 		Name: room.Name,
@@ -56,11 +56,16 @@ func TestIT_RoomService_Create_WhenRoomWithSameNameAlreadyExists_ExpectFailure(t
 
 	_, err := service.Create(context.Background(), roomDtoRequest)
 
-	assert.True(t, errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation), "Actual err: %v", err)
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
+		"Actual err: %v",
+		err,
+	)
 }
 
 func TestIT_RoomService_Get(t *testing.T) {
-	service, conn := newTestRoomRepository(t)
+	service, conn := newTestRoomService(t)
 	room := insertTestRoom(t, conn)
 
 	actual, err := service.Get(context.Background(), room.Id)
@@ -73,7 +78,7 @@ func TestIT_RoomService_Get(t *testing.T) {
 func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestRoomRepository(t)
+	service, _ := newTestRoomService(t)
 	_, err := service.Get(context.Background(), nonExistingId)
 
 	assert.True(
@@ -85,7 +90,7 @@ func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 }
 
 func TestIT_RoomService_Delete(t *testing.T) {
-	service, conn := newTestRoomRepository(t)
+	service, conn := newTestRoomService(t)
 	room := insertTestRoom(t, conn)
 
 	err := service.Delete(context.Background(), room.Id)
@@ -97,13 +102,13 @@ func TestIT_RoomService_Delete(t *testing.T) {
 func TestIT_RoomService_Delete_WhenRoomDoesNotExist_ExpectSuccess(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestRoomRepository(t)
+	service, _ := newTestRoomService(t)
 	err := service.Delete(context.Background(), nonExistingId)
 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func newTestRoomRepository(t *testing.T) (RoomService, db.Connection) {
+func newTestRoomService(t *testing.T) (RoomService, db.Connection) {
 	conn := newTestDbConnection(t)
 
 	repos := repositories.Repositories{
