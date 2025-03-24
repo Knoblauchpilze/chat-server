@@ -1,0 +1,241 @@
+package controller
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	eassert "github.com/Knoblauchpilze/easy-assert/assert"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestIT_UserController_CreateUser_WhenUserHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestUserService(t)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-user-dto-request"))
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := createUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Invalid user syntax\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_UserController_CreateUser_WhenUserHasEmptyName_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestUserService(t)
+	requestDto := communication.UserDtoRequest{
+		Name:    "",
+		ApiUser: uuid.New(),
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(requestDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", &body)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err = createUser(ctx, service)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Invalid user name\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_UserController_CreateUser(t *testing.T) {
+	service, dbConn := newTestUserService(t)
+	requestDto := communication.UserDtoRequest{
+		Name:    fmt.Sprintf("my-user-%s", uuid.NewString()),
+		ApiUser: uuid.New(),
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(requestDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", &body)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err = createUser(ctx, service)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusCreated, rw.Code)
+	assert.Equal(t, requestDto.Name, responseDto.Name)
+	assertUserExists(t, dbConn, responseDto.Id)
+}
+
+func TestIT_UserController_GetUser(t *testing.T) {
+	service, dbConn := newTestUserService(t)
+	user := insertTestUser(t, dbConn)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(user.Id.String())
+
+	err := getUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, user.Id, responseDto.Id)
+	assert.Equal(t, user.Name, responseDto.Name)
+	assert.Equal(t, user.ApiUser, responseDto.ApiUser)
+	safetyMargin := 1 * time.Second
+	assert.True(t, eassert.AreTimeCloserThan(user.CreatedAt, responseDto.CreatedAt, safetyMargin))
+}
+
+func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testing.T) {
+	service, _ := newTestUserService(t)
+
+	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(nonExistingId.String())
+
+	err := getUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusNotFound, rw.Code)
+	expectedBody := []byte("\"No such user\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_UserController_DeleteUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestUserService(t)
+	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := deleteUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_UserController_DeleteUser(t *testing.T) {
+	service, dbConn := newTestUserService(t)
+	user := insertTestUser(t, dbConn)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(user.Id.String())
+
+	err := deleteUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assertUserDoesNotExist(t, dbConn, user.Id)
+}
+
+func TestIT_UserController_DeleteUser_WhenUserDoesNotExist_ExpectSuccess(t *testing.T) {
+	service, _ := newTestUserService(t)
+
+	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(nonExistingId.String())
+
+	err := deleteUser(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusNoContent, rw.Code)
+}
+
+func newTestUserService(t *testing.T) (service.UserService, db.Connection) {
+	dbConn := newTestDbConnection(t)
+	repos := repositories.New(dbConn)
+	return service.NewUserService(dbConn, repos), dbConn
+}
+
+func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+	repo := repositories.NewUserRepository(conn)
+
+	id := uuid.New()
+	user := persistence.User{
+		Id:        id,
+		Name:      fmt.Sprintf("my-user-%s", id),
+		ApiUser:   uuid.New(),
+		CreatedAt: time.Now(),
+	}
+	out, err := repo.Create(context.Background(), user)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserExists(t, conn, out.Id)
+
+	return out
+}
+
+func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+	value, err := db.QueryOne[uuid.UUID](
+		context.Background(),
+		dbConn,
+		"SELECT id FROM chat_user WHERE id = $1",
+		id,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, id, value)
+}
+
+func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		"SELECT COUNT(id) FROM chat_user WHERE id = $1",
+		id,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Zero(t, value)
+}
