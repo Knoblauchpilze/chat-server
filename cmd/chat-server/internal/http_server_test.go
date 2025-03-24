@@ -179,6 +179,35 @@ func TestIT_RunHttpServer_User_CreateGetDeleteWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
+func TestIT_RunHttpServer_ListForRoom(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+	props := newTestHttpProps(7203, dbConn)
+
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
+
+	wg := asyncRunHttpServer(t, props, cancellable)
+
+	url := fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s/users", room.Id)
+	rw := doRequest(t, http.MethodGet, url)
+
+	responseDto := assertResponseAndExtractDetails[[]communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user),
+	}
+	assert.Equal(t, expected, responseDto)
+
+	cancel()
+	wg.Wait()
+}
+
 func newTestHttpConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Server.Port = port
