@@ -15,7 +15,7 @@ type RoomDtoResponse struct {
 	Id   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func FromRoomDtoRequest(room RoomDtoRequest) persistence.Room {

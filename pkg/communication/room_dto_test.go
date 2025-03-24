@@ -55,7 +55,7 @@ func TestUnit_RoomDtoResponse_MarshalsToCamelCase(t *testing.T) {
 	{
 		"id": "a590b448-d3cd-4dbc-a9e3-8d642b1a5814",
 		"name": "my-room",
-		"createdAt": "2024-11-12T19:09:36Z"
+		"created_at": "2024-11-12T19:09:36Z"
 	}`
 	assert.JSONEq(t, expectedJson, string(out))
 }
