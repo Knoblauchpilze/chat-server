@@ -8,6 +8,7 @@ import (
 
 type Services struct {
 	Room RoomService
+	User UserService
 	Chat ChatService
 }
 
@@ -16,6 +17,7 @@ func New(
 ) Services {
 	return Services{
 		Room: NewRoomService(conn, repos),
+		User: NewUserService(conn, repos),
 		Chat: NewChatService(log),
 	}
 }
