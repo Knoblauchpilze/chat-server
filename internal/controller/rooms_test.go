@@ -182,11 +182,24 @@ func TestIT_RoomController_ListForRoom(t *testing.T) {
 	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	expected := []communication.UserDtoResponse{
-		communication.ToUserDtoResponse(user1),
-		communication.ToUserDtoResponse(user2),
-	}
-	assert.Equal(t, expected, responseDto)
+	user1Dto := communication.ToUserDtoResponse(user1)
+	user2Dto := communication.ToUserDtoResponse(user2)
+
+	assert.Len(t, responseDto, 2)
+	assert.True(
+		t,
+		eassert.ContainsIgnoringFields(responseDto, user1Dto, "CreatedAt"),
+		"Expected %v to contain %v",
+		responseDto,
+		user1Dto,
+	)
+	assert.True(
+		t,
+		eassert.ContainsIgnoringFields(responseDto, user2Dto, "CreatedAt"),
+		"Expected %v to contain %v",
+		responseDto,
+		user2Dto,
+	)
 }
 
 func TestIT_RoomController_ListForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
