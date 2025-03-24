@@ -16,6 +16,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -199,10 +200,15 @@ func TestIT_RunHttpServer_ListForRoom(t *testing.T) {
 	)
 
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
-	expected := []communication.UserDtoResponse{
-		communication.ToUserDtoResponse(user),
-	}
-	assert.Equal(t, expected, responseDto)
+	assert.Len(t, responseDto, 1)
+	expected := communication.ToUserDtoResponse(user)
+	assert.True(
+		t,
+		eassert.EqualsIgnoringFields(expected, responseDto[0]),
+		"Expected: %v, actual: %v",
+		expected,
+		responseDto,
+	)
 
 	cancel()
 	wg.Wait()
