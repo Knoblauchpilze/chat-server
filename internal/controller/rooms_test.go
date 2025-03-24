@@ -141,6 +141,73 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 	)
 }
 
+func TestIT_RoomController_ListForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestRoomService(t)
+	req := httptest.NewRequest(http.MethodGet, "/not-a-uuid/users", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_RoomController_ListForRoom(t *testing.T) {
+	service, dbConn := newTestRoomService(t)
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	insertTestUser(t, dbConn)
+
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err := listForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user1),
+		communication.ToUserDtoResponse(user2),
+	}
+	assert.Equal(t, expected, responseDto)
+}
+
+func TestIT_RoomController_ListForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
+	service, dbConn := newTestRoomService(t)
+	room := insertTestRoom(t, dbConn)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err := listForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
+}
+
 func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
 	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
