@@ -89,6 +89,36 @@ func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_RoomService_ListForRoom_WhenNobodyInRoom_ExpectEmptyList(t *testing.T) {
+	service, _ := newTestRoomService(t)
+
+	actual, err := service.ListForRoom(context.Background(), uuid.New())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []communication.UserDtoResponse{}, actual)
+}
+
+func TestIT_RoomService_ListForRoom(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	insertTestUser(t, conn)
+
+	room := insertTestRoom(t, conn)
+
+	insertUserInRoom(t, conn, user1.Id, room.Id)
+	insertUserInRoom(t, conn, user2.Id, room.Id)
+
+	actual, err := service.ListForRoom(context.Background(), room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user1),
+		communication.ToUserDtoResponse(user2),
+	}
+	assert.Equal(t, expected, actual)
+}
+
 func TestIT_RoomService_Delete(t *testing.T) {
 	service, conn := newTestRoomService(t)
 	room := insertTestRoom(t, conn)
@@ -113,6 +143,7 @@ func newTestRoomService(t *testing.T) (RoomService, db.Connection) {
 
 	repos := repositories.Repositories{
 		Room: repositories.NewRoomRepository(conn),
+		User: repositories.NewUserRepository(conn),
 	}
 
 	return NewRoomService(conn, repos), conn
