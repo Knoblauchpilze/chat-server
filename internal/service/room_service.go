@@ -13,6 +13,7 @@ import (
 type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
+	ListForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -20,12 +21,14 @@ type roomServiceImpl struct {
 	conn db.Connection
 
 	roomRepo repositories.RoomRepository
+	userRepo repositories.UserRepository
 }
 
 func NewRoomService(conn db.Connection, repos repositories.Repositories) RoomService {
 	return &roomServiceImpl{
 		conn:     conn,
 		roomRepo: repos.Room,
+		userRepo: repos.User,
 	}
 }
 
@@ -56,6 +59,23 @@ func (s *roomServiceImpl) Get(
 	}
 
 	out := communication.ToRoomDtoResponse(room)
+	return out, nil
+}
+
+func (s *roomServiceImpl) ListForRoom(
+	ctx context.Context, room uuid.UUID,
+) ([]communication.UserDtoResponse, error) {
+	users, err := s.userRepo.ListForRoom(ctx, room)
+	if err != nil {
+		return []communication.UserDtoResponse{}, err
+	}
+
+	out := make([]communication.UserDtoResponse, 0)
+	for _, user := range users {
+		dto := communication.ToUserDtoResponse(user)
+		out = append(out, dto)
+	}
+
 	return out, nil
 }
 
