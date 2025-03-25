@@ -93,7 +93,7 @@ func TestIT_UserRepository_ListForRoom(t *testing.T) {
 	assert.True(t, eassert.EqualsIgnoringFields(actual[0], user1))
 }
 
-func TestIT_UserRepository_ListForRoom_WhenNoPlayerRegistered_ReturnEmptySlice(t *testing.T) {
+func TestIT_UserRepository_ListForRoom_WhenNoUserRegistered_ReturnsEmptySlice(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
 	room := insertTestRoom(t, conn)
 

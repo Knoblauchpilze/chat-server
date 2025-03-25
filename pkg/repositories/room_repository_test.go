@@ -76,6 +76,30 @@ func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_RoomRepository_ListForUser(t *testing.T) {
+	repo, conn := newTestRoomRepository(t)
+	user := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
+
+	actual, err := repo.ListForUser(context.Background(), user.Id)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Len(t, actual, 1)
+	assert.True(t, eassert.EqualsIgnoringFields(actual[0], room1))
+}
+
+func TestIT_RoomRepository_ListForUser_WhenNoRoomRegistered_ReturnsEmptySlice(t *testing.T) {
+	repo, conn := newTestRoomRepository(t)
+	user := insertTestUser(t, conn)
+
+	actual, err := repo.ListForUser(context.Background(), user.Id)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, []persistence.Room{}, actual)
+}
+
 func TestIT_RoomRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
 

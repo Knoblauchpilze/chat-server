@@ -12,6 +12,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -91,6 +92,32 @@ func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_UserService_ListForUser_WhenNoRoomRegistered_ExpectEmptyList(t *testing.T) {
+	service, _ := newTestUserService(t)
+
+	actual, err := service.ListForUser(context.Background(), uuid.New())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []communication.RoomDtoResponse{}, actual)
+}
+
+func TestIT_UserService_ListForUser(t *testing.T) {
+	service, conn := newTestUserService(t)
+	user := insertTestUser(t, conn)
+
+	room1 := insertTestRoom(t, conn)
+	insertTestRoom(t, conn)
+
+	insertUserInRoom(t, conn, user.Id, room1.Id)
+
+	actual, err := service.ListForUser(context.Background(), user.Id)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Len(t, actual, 1)
+	expected := communication.ToRoomDtoResponse(room1)
+	assert.True(t, eassert.EqualsIgnoringFields(actual[0], expected))
+}
+
 func TestIT_UserService_Delete(t *testing.T) {
 	service, conn := newTestUserService(t)
 	user := insertTestUser(t, conn)
@@ -114,6 +141,7 @@ func newTestUserService(t *testing.T) (UserService, db.Connection) {
 	conn := newTestDbConnection(t)
 
 	repos := repositories.Repositories{
+		Room: repositories.NewRoomRepository(conn),
 		User: repositories.NewUserRepository(conn),
 	}
 
