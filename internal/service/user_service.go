@@ -13,18 +13,21 @@ import (
 type UserService interface {
 	Create(ctx context.Context, userDto communication.UserDtoRequest) (communication.UserDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.UserDtoResponse, error)
+	ListForUser(ctx context.Context, user uuid.UUID) ([]communication.RoomDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type userServiceImpl struct {
 	conn db.Connection
 
+	roomRepo repositories.RoomRepository
 	userRepo repositories.UserRepository
 }
 
 func NewUserService(conn db.Connection, repos repositories.Repositories) UserService {
 	return &userServiceImpl{
 		conn:     conn,
+		roomRepo: repos.Room,
 		userRepo: repos.User,
 	}
 }
@@ -56,6 +59,20 @@ func (s *userServiceImpl) Get(
 	}
 
 	out := communication.ToUserDtoResponse(user)
+	return out, nil
+}
+func (s *userServiceImpl) ListForUser(ctx context.Context, user uuid.UUID) ([]communication.RoomDtoResponse, error) {
+	rooms, err := s.roomRepo.ListForUser(ctx, user)
+	if err != nil {
+		return []communication.RoomDtoResponse{}, err
+	}
+
+	out := make([]communication.RoomDtoResponse, 0)
+	for _, room := range rooms {
+		dto := communication.ToRoomDtoResponse(room)
+		out = append(out, dto)
+	}
+
 	return out, nil
 }
 

@@ -24,6 +24,10 @@ func UserEndpoints(service service.UserService) rest.Routes {
 	get := rest.NewRoute(http.MethodGet, "/users/:id", getHandler)
 	out = append(out, get)
 
+	listForUserHandler := createComponentAwareHttpHandler(listForUser, service)
+	listForUser := rest.NewRoute(http.MethodGet, "/users/:id/rooms", listForUserHandler)
+	out = append(out, listForUser)
+
 	deleteHandler := createComponentAwareHttpHandler(deleteUser, service)
 	delete := rest.NewRoute(http.MethodDelete, "/users/:id", deleteHandler)
 	out = append(out, delete)
@@ -70,6 +74,26 @@ func getUser(c echo.Context, s service.UserService) error {
 	}
 
 	return c.JSON(http.StatusOK, out)
+}
+
+func listForUser(c echo.Context, s service.UserService) error {
+	maybeId := c.Param("id")
+	id, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
+	rooms, err := s.ListForUser(c.Request().Context(), id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	out, err := marshalNilToEmptySlice(rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSONBlob(http.StatusOK, out)
 }
 
 func deleteUser(c echo.Context, s service.UserService) error {

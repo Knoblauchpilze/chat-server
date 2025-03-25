@@ -85,10 +85,6 @@ func listForRoom(c echo.Context, s service.RoomService) error {
 
 	users, err := s.ListForRoom(c.Request().Context(), id)
 	if err != nil {
-		if errors.IsErrorWithCode(err, db.NoMatchingRows) {
-			return c.JSON(http.StatusNotFound, "No such room")
-		}
-
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
