@@ -77,7 +77,7 @@ func (m *managerImpl) OnReadError(id uuid.UUID, err error) {
 func (m *managerImpl) Broadcast(msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
-		m.log.Warnf("Failed to broadcast message %s: %v", msg.Type(), err)
+		m.log.Warnf("Broadcast: failed to broadcast message %s: %v", msg.Type(), err)
 	}
 
 	m.lock.RLock()
@@ -88,10 +88,10 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 		// Or at least check if this is already handled.
 		n, err := conn.Write(encoded)
 		if n != len(encoded) {
-			m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), id)
+			m.log.Warnf("Broadcast: only sent %d byte(s) out of %d to %v", n, len(encoded), id)
 		}
 		if err != nil {
-			m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), id, err)
+			m.log.Warnf("Broadcast: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), id, err)
 		}
 	}
 }
@@ -99,7 +99,7 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
-		m.log.Warnf("Failed to broadcast message %s: %v", msg.Type(), err)
+		m.log.Warnf("BroadcastExcept: failed to broadcast message %s: %v", msg.Type(), err)
 	}
 
 	m.lock.RLock()
@@ -112,10 +112,10 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 
 		n, err := conn.Write(encoded)
 		if n != len(encoded) {
-			m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), clientId)
+			m.log.Warnf("BroadcastExcept: only sent %d byte(s) out of %d to %v", n, len(encoded), clientId)
 		}
 		if err != nil {
-			m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), clientId, err)
+			m.log.Warnf("BroadcastExcept: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), clientId, err)
 		}
 	}
 }
@@ -123,7 +123,7 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
-		m.log.Warnf("Failed to broadcast message %s to %v: %v", msg.Type(), id, err)
+		m.log.Warnf("SendTo: failed to broadcast message %s to %v: %v", msg.Type(), id, err)
 	}
 
 	m.lock.RLock()
@@ -136,9 +136,9 @@ func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 
 	n, err := conn.Write(encoded)
 	if n != len(encoded) {
-		m.log.Warnf("Only sent %d byte(s) out of %d to %v", n, len(encoded), id)
+		m.log.Warnf("SendTo: only sent %d byte(s) out of %d to %v", n, len(encoded), id)
 	}
 	if err != nil {
-		m.log.Warnf("Got error when sending %d byte(s) to %v: %v", len(encoded), id, err)
+		m.log.Warnf("SendTo: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), id, err)
 	}
 }
