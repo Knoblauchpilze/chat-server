@@ -10,7 +10,7 @@ import (
 )
 
 type Manager interface {
-	OnConnect(id uuid.UUID, conn net.Conn) bool
+	OnConnect(conn net.Conn) (bool, uuid.UUID)
 	OnDisconnect(id uuid.UUID)
 	OnReadError(id uuid.UUID, err error)
 
@@ -33,18 +33,21 @@ func NewManager(queue messages.OutgoingQueue, log logger.Logger) Manager {
 	}
 }
 
-func (m *managerImpl) OnConnect(id uuid.UUID, conn net.Conn) bool {
+func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
+	connId := uuid.New()
+
 	func() {
 		m.lock.Lock()
 		defer m.lock.Unlock()
 
-		m.clients[id] = conn
+		m.clients[connId] = conn
 	}()
 
-	msg := messages.NewClientConnectedMessage(id)
+	msg := messages.NewClientConnectedMessage(connId)
 	m.queue <- msg
 
-	return true
+	// TODO: We should have a handshake here and potentially deny clients.
+	return true, connId
 }
 
 func (m *managerImpl) OnDisconnect(id uuid.UUID) {

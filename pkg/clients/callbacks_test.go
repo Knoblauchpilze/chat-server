@@ -16,31 +16,40 @@ func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 
 	var conn net.Conn
 	callback := func() {
-		callbacks.OnConnect(uuid.New(), conn)
+		callbacks.OnConnect(conn)
 	}
 	assert.NotPanics(t, callback)
 }
 
-func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectConnectionAccepted(t *testing.T) {
+func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectConnectionRefused(t *testing.T) {
 	var callbacks Callbacks
 
 	var conn net.Conn
-	actual := callbacks.OnConnect(uuid.New(), conn)
+	actual, _ := callbacks.OnConnect(conn)
 
-	assert.True(t, actual)
+	assert.False(t, actual)
+}
+
+func TestUnit_Callbacks_OnConnect_WhenUnset_ExpectNilUuid(t *testing.T) {
+	var callbacks Callbacks
+
+	var conn net.Conn
+	_, actual := callbacks.OnConnect(conn)
+
+	assert.Equal(t, uuid.Nil, actual)
 }
 
 func TestUnit_Callbacks_OnConnect_ExpectCallbackToBeCalled(t *testing.T) {
 	var called int
 	callbacks := Callbacks{
-		ConnectCallback: func(id uuid.UUID, conn net.Conn) bool {
+		ConnectCallback: func(conn net.Conn) (bool, uuid.UUID) {
 			called++
-			return false
+			return false, uuid.Nil
 		},
 	}
 
 	var conn net.Conn
-	callbacks.OnConnect(uuid.New(), conn)
+	callbacks.OnConnect(conn)
 
 	assert.Equal(t, 1, called)
 }
@@ -49,18 +58,21 @@ func TestUnit_Callbacks_OnConnect_ExpectCallbackValueToBeReturned(t *testing.T) 
 	var conn net.Conn
 
 	callbacks := Callbacks{
-		ConnectCallback: func(id uuid.UUID, conn net.Conn) bool {
-			return false
+		ConnectCallback: func(conn net.Conn) (bool, uuid.UUID) {
+			return false, uuid.Nil
 		},
 	}
-	actual := callbacks.OnConnect(uuid.New(), conn)
+	actual, id := callbacks.OnConnect(conn)
 	assert.False(t, actual)
+	assert.Equal(t, uuid.Nil, id)
 
-	callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
-		return true
+	expected := uuid.New()
+	callbacks.ConnectCallback = func(conn net.Conn) (bool, uuid.UUID) {
+		return true, expected
 	}
-	actual = callbacks.OnConnect(uuid.New(), conn)
+	actual, id = callbacks.OnConnect(conn)
 	assert.True(t, actual)
+	assert.Equal(t, expected, id)
 }
 
 func TestUnit_Callbacks_OnDisconnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {

@@ -6,8 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// The return value should indicate whether or not the connection is accepted.
-type OnConnect func(id uuid.UUID, conn net.Conn) bool
+// The return value should indicate whether or not the connection is accepted
+// and an identifier to refer to it.
+type OnConnect func(conn net.Conn) (bool, uuid.UUID)
 
 // The connection will automatically be closed after this callback is triggered.
 type OnDisconnect func(id uuid.UUID)
@@ -26,11 +27,11 @@ type Callbacks struct {
 	ReadDataCallback   OnReadData
 }
 
-func (c Callbacks) OnConnect(id uuid.UUID, conn net.Conn) bool {
+func (c Callbacks) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	if c.ConnectCallback == nil {
-		return true
+		return false, uuid.Nil
 	}
-	return c.ConnectCallback(id, conn)
+	return c.ConnectCallback(conn)
 }
 
 func (c Callbacks) OnDisconnect(id uuid.UUID) {
