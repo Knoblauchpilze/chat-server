@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,9 +42,9 @@ func TestUnit_TcpListenAndServe_WhenServerIsStopped_ExpectClientConnectionToBeCl
 func TestUnit_TcpListenAndServe_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTcpTestConfig(7002)
 	called := make(chan struct{}, 1)
-	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
+	config.Callbacks.ConnectCallback = func(net.Conn) (bool, uuid.UUID) {
 		called <- struct{}{}
-		return true
+		return true, uuid.Nil
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -109,8 +110,8 @@ func TestUnit_TcpListenAndServe_WhenClientDisconnects_ExpectCallbackNotified(t *
 
 func TestUnit_TcpListenAndServe_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTcpTestConfig(7005)
-	config.Callbacks.ConnectCallback = func(uuid.UUID, net.Conn) bool {
-		return false
+	config.Callbacks.ConnectCallback = func(net.Conn) (bool, uuid.UUID) {
+		return false, uuid.Nil
 	}
 	cancellable, cancel := context.WithCancel(context.Background())
 
@@ -270,6 +271,11 @@ func TestUnit_TcpListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorr
 func newTcpTestConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.TcpPort = port
+	conf.Callbacks = clients.Callbacks{
+		ConnectCallback: func(net.Conn) (bool, uuid.UUID) {
+			return true, uuid.Nil
+		},
+	}
 	return conf
 }
 
