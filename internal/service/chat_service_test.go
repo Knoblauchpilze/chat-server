@@ -12,7 +12,6 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,14 +28,12 @@ func TestUnit_ChatService_OnConnect_SendsMessagesToOthers(t *testing.T) {
 	_, server2 := newTestConnection(t, 6000)
 	wg := asyncRunChatService(t, service)
 
-	client1Id := uuid.New()
-	accepted := callbacks.OnConnect(client1Id, server1)
+	accepted, _ := callbacks.OnConnect(server1)
 	assert.True(t, accepted)
 
 	time.Sleep(reasonableWaitTimeForOnConnectMessageToBeProcessed)
 
-	client2Id := uuid.New()
-	accepted = callbacks.OnConnect(client2Id, server2)
+	accepted, client2Id := callbacks.OnConnect(server2)
 	assert.True(t, accepted)
 
 	data := readFromConnection(t, client1)
@@ -57,14 +54,12 @@ func TestUnit_ChatService_OnConnect_DoesNotSendMessageToSelf(t *testing.T) {
 	client2, server2 := newTestConnection(t, 6001)
 	wg := asyncRunChatService(t, service)
 
-	client1Id := uuid.New()
-	accepted := callbacks.OnConnect(client1Id, server1)
+	accepted, _ := callbacks.OnConnect(server1)
 	assert.True(t, accepted)
 
 	time.Sleep(reasonableWaitTimeForOnConnectMessageToBeProcessed)
 
-	client2Id := uuid.New()
-	accepted = callbacks.OnConnect(client2Id, server2)
+	accepted, _ = callbacks.OnConnect(server2)
 	assert.True(t, accepted)
 
 	assertNoDataReceived(t, client2)
@@ -79,14 +74,12 @@ func TestUnit_ChatService_OnDisconnect_SendsMessagesToOthers(t *testing.T) {
 	client2, server2 := newTestConnection(t, 6001)
 	wg := asyncRunChatService(t, service)
 
-	client1Id := uuid.New()
-	accepted := callbacks.OnConnect(client1Id, server1)
+	accepted, client1Id := callbacks.OnConnect(server1)
 	assert.True(t, accepted)
 
 	time.Sleep(reasonableWaitTimeForOnConnectMessageToBeProcessed)
 
-	client2Id := uuid.New()
-	accepted = callbacks.OnConnect(client2Id, server2)
+	accepted, _ = callbacks.OnConnect(server2)
 	assert.True(t, accepted)
 
 	callbacks.OnDisconnect(client1Id)
@@ -113,16 +106,13 @@ func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testin
 	client3, server3 := newTestConnection(t, 6002)
 	wg := asyncRunChatService(t, service)
 
-	client1Id := uuid.New()
-	accepted := callbacks.OnConnect(client1Id, server1)
+	accepted, client1Id := callbacks.OnConnect(server1)
 	assert.True(t, accepted)
 
-	client2Id := uuid.New()
-	accepted = callbacks.OnConnect(client2Id, server2)
+	accepted, client2Id := callbacks.OnConnect(server2)
 	assert.True(t, accepted)
 
-	client3Id := uuid.New()
-	accepted = callbacks.OnConnect(client3Id, server3)
+	accepted, _ = callbacks.OnConnect(server3)
 	assert.True(t, accepted)
 
 	time.Sleep(reasonableWaitTimeForOnConnectMessageToBeProcessed)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -64,11 +65,11 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOn
 func TestUnit_ConnectionManager_WhenClientConnects_ExpectCallbackNotified(t *testing.T) {
 	config := newTestManagerConfig()
 	called := make(chan struct{}, 1)
-	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
+	config.Callbacks.ConnectCallback = func(conn net.Conn) (bool, uuid.UUID) {
 		defer func() {
 			called <- struct{}{}
 		}()
-		return true
+		return true, uuid.Nil
 	}
 	cm := newConnectionManager(config, logger.New(os.Stdout))
 
@@ -105,11 +106,11 @@ func TestUnit_ConnectionManager_WhenClientSendsData_ExpectCallbackNotified(t *te
 func TestUnit_ConnectionManager_WhenClientConnectsAndIsDenied_ExpectConnectionToBeClosed(t *testing.T) {
 	config := newTestManagerConfig()
 	called := make(chan struct{}, 1)
-	config.Callbacks.ConnectCallback = func(id uuid.UUID, conn net.Conn) bool {
+	config.Callbacks.ConnectCallback = func(conn net.Conn) (bool, uuid.UUID) {
 		defer func() {
 			called <- struct{}{}
 		}()
-		return false
+		return false, uuid.Nil
 	}
 
 	cm := newConnectionManager(config, logger.New(os.Stdout))
@@ -222,5 +223,10 @@ func TestUnit_ConnectionManager_WhenDataReadCallbackPanics_ExpectConnectionToBeC
 func newTestManagerConfig() managerConfig {
 	return managerConfig{
 		ReadTimeout: reasonableReadTimeout,
+		Callbacks: clients.Callbacks{
+			ConnectCallback: func(conn net.Conn) (bool, uuid.UUID) {
+				return true, uuid.New()
+			},
+		},
 	}
 }

@@ -48,11 +48,30 @@ func newConnectionManager(config managerConfig, log logger.Logger) connectionMan
 }
 
 func (m *managerImpl) OnClientConnected(conn net.Conn) {
-	opts := m.prepareListenerOptions()
-	listener := connection.New(conn, opts)
+	var connId uuid.UUID
+	var err error
+	accepted := m.accepting.Load()
 
-	m.registerListener(listener)
-	m.handleOnConnect(conn, listener)
+	if accepted {
+		cb := func() {
+			accepted, connId = m.callbacks.OnConnect(conn)
+		}
+		err = m.callCallbackAndLogError(cb, "Connect", connId)
+	}
+
+	address := conn.RemoteAddr().String()
+	if !accepted {
+		m.log.Infof("OnConnect: denied connection from %v", address)
+		// Voluntarily ignoring errors
+		conn.Close()
+	} else if err != nil {
+		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, address, err)
+		// Voluntarily ignoring errors
+		conn.Close()
+	} else {
+		m.log.Debugf("OnConnect: %v assigned to %v", address, connId)
+		m.registerListenerForConnection(connId, conn)
+	}
 }
 
 func (m *managerImpl) Close() {
@@ -89,8 +108,9 @@ func (m *managerImpl) Close() {
 	m.wg.Wait()
 }
 
-func (m *managerImpl) prepareListenerOptions() connection.ListenerOptions {
+func (m *managerImpl) prepareListenerOptions(connId uuid.UUID) connection.ListenerOptions {
 	return connection.ListenerOptions{
+		Id:          connId,
 		ReadTimeout: m.readTimeout,
 		Callbacks: connection.Callbacks{
 			DisconnectCallback: func(id uuid.UUID) {
@@ -106,38 +126,20 @@ func (m *managerImpl) prepareListenerOptions() connection.ListenerOptions {
 	}
 }
 
-func (m *managerImpl) registerListener(listener connection.Listener) {
-	defer m.lock.Unlock()
-	m.lock.Lock()
+func (m *managerImpl) registerListenerForConnection(connId uuid.UUID, conn net.Conn) {
+	opts := m.prepareListenerOptions(connId)
+	listener := connection.New(conn, opts)
 
-	m.listeners[listener.Id()] = &connectionData{
-		listener: listener,
-	}
-}
+	func() {
+		defer m.lock.Unlock()
+		m.lock.Lock()
 
-func (m *managerImpl) handleOnConnect(conn net.Conn, listener connection.Listener) {
-	var err error
-	accepted := m.accepting.Load()
-	connId := listener.Id()
-
-	if accepted {
-		cb := func() {
-			accepted = m.callbacks.OnConnect(connId, conn)
+		m.listeners[listener.Id()] = &connectionData{
+			listener: listener,
 		}
-		err = m.callCallbackAndLogError(cb, "Connect", connId)
-	}
+	}()
 
-	address := conn.RemoteAddr().String()
-	if !accepted {
-		m.log.Infof("OnConnect: denied connection from %v", address)
-		m.closeConnection(connId, false)
-	} else if err != nil {
-		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, address, err)
-		m.closeConnection(connId, false)
-	} else {
-		m.log.Debugf("OnConnect: %v assigned to %v", address, connId)
-		listener.Start()
-	}
+	listener.Start()
 }
 
 func (m *managerImpl) onClientDisconnected(id uuid.UUID) {

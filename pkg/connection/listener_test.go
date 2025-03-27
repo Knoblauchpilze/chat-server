@@ -14,6 +14,17 @@ var sampleListenerOptions = ListenerOptions{
 	ReadTimeout: sampleReadTimeout,
 }
 
+func TestUnit_Listener_UsesProvidedId(t *testing.T) {
+	_, server := newTestConnection(t, 1214)
+	opts := ListenerOptions{
+		Id: sampleUuid,
+	}
+
+	listener := New(server, opts)
+
+	assert.Equal(t, sampleUuid, listener.Id())
+}
+
 func TestUnit_Listener_StartStop(t *testing.T) {
 	_, server := newTestConnection(t, 1200)
 	listener := New(server, sampleListenerOptions)

@@ -11,6 +11,7 @@ import (
 )
 
 type ListenerOptions struct {
+	Id          uuid.UUID
 	ReadTimeout time.Duration
 	Callbacks   Callbacks
 }
@@ -35,7 +36,7 @@ func New(conn net.Conn, opts ListenerOptions) Listener {
 	connOpts := WithReadTimeout(opts.ReadTimeout)
 
 	l := &listenerImpl{
-		id:        uuid.New(),
+		id:        opts.Id,
 		conn:      WithOptions(conn, connOpts),
 		callbacks: opts.Callbacks,
 	}
