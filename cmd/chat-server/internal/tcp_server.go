@@ -8,7 +8,7 @@ import (
 )
 
 func RunTcpServer(ctx context.Context, conf Configuration, log logger.Logger) error {
-	chat := service.NewChatService(log)
+	chat := service.NewChatService(conf.ConnectTimeout, log)
 	conf.Callbacks = chat.GenerateCallbacks()
 
 	chat.Start()

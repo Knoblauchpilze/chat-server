@@ -19,6 +19,12 @@ func TestUnit_DefaultConfig_DefinesCorrectRestConfiguration(t *testing.T) {
 	assert.Equal(t, expectedConf, config.Server)
 }
 
+func TestUnit_DefaultConfig_DefinesReasonableConnectTimeout(t *testing.T) {
+	config := DefaultConfig()
+
+	assert.Equal(t, 1*time.Second, config.ConnectTimeout)
+}
+
 func TestUnit_DefaultConfig_UsesTcpPort49152(t *testing.T) {
 	config := DefaultConfig()
 

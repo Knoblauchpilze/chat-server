@@ -208,6 +208,12 @@ func newTestHandshakeFunc(id uuid.UUID) HandshakeFunc {
 }
 
 func newTestClientManager(queue chan messages.Message) Manager {
-	handshake := newTestHandshakeFunc(sampleUuid)
-	return NewManager(queue, handshake, logger.New(os.Stdout))
+	props := ManagerProps{
+		Queue:          queue,
+		ConnectTimeout: 100 * time.Millisecond,
+		Handshake:      newTestHandshakeFunc(sampleUuid),
+		Log:            logger.New(os.Stdout),
+	}
+
+	return NewManager(props)
 }

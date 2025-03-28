@@ -20,6 +20,7 @@ const (
 	reasonableWaitTimeForOnConnectMessageToBeProcessed = 100 * time.Millisecond
 	reasonableReadTimeout                              = 100 * time.Millisecond
 	reasonableReadSizeInBytes                          = 1024
+	reasonableConnectTimeout                           = 100 * time.Millisecond
 )
 
 func TestUnit_ChatService_OnConnect_SendsMessagesToOthers(t *testing.T) {
@@ -142,7 +143,7 @@ func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testin
 }
 
 func newTestChatService() (ChatService, clients.Callbacks) {
-	service := NewChatService(logger.New(os.Stdout))
+	service := NewChatService(reasonableConnectTimeout, logger.New(os.Stdout))
 	return service, service.GenerateCallbacks()
 }
 

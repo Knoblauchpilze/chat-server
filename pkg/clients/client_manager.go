@@ -3,6 +3,7 @@ package clients
 import (
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
@@ -18,22 +19,29 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	log       logger.Logger
-	queue     messages.OutgoingQueue
-	handshake HandshakeFunc
+	log            logger.Logger
+	queue          messages.OutgoingQueue
+	handshake      HandshakeFunc
+	connectTimeout time.Duration
 
 	lock    sync.RWMutex
 	clients map[uuid.UUID]net.Conn
 }
 
-func NewManager(
-	queue messages.OutgoingQueue, handshake HandshakeFunc, log logger.Logger,
-) Manager {
+type ManagerProps struct {
+	Queue          messages.OutgoingQueue
+	ConnectTimeout time.Duration
+	Handshake      HandshakeFunc
+	Log            logger.Logger
+}
+
+func NewManager(props ManagerProps) Manager {
 	return &managerImpl{
-		log:       log,
-		queue:     queue,
-		handshake: handshake,
-		clients:   make(map[uuid.UUID]net.Conn),
+		log:            props.Log,
+		queue:          props.Queue,
+		handshake:      props.Handshake,
+		connectTimeout: props.ConnectTimeout,
+		clients:        make(map[uuid.UUID]net.Conn),
 	}
 }
 
