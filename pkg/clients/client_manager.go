@@ -58,7 +58,7 @@ func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 		m.log.Warnf("OnConnect: panic while performing handshake: %v", err)
 		return false, uuid.Nil
 	} else if handshakeErr != nil {
-		m.log.Warnf("OnConnect: handsahke failed: %v", handshakeErr)
+		m.log.Warnf("OnConnect: handshake failed: %v", handshakeErr)
 		return false, uuid.Nil
 	}
 
