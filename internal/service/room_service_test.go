@@ -112,6 +112,7 @@ func TestIT_RoomService_ListForRoom(t *testing.T) {
 	actual, err := service.ListForRoom(context.Background(), room.Id)
 
 	assert.Nil(t, err, "Actual err: %v", err)
+	// TODO: This can be flaky as the order of the users is not guaranteed.
 	expected := []communication.UserDtoResponse{
 		communication.ToUserDtoResponse(user1),
 		communication.ToUserDtoResponse(user2),
