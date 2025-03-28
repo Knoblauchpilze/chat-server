@@ -61,9 +61,9 @@ func assertConnectionIsStillOpen(t *testing.T, conn net.Conn) {
 	_, err := conn.Read(oneByte)
 
 	opErr, ok := err.(*net.OpError)
-	assert.True(t, ok)
+	assert.True(t, ok, "Actual err: %v", err)
 	if ok {
-		assert.True(t, opErr.Timeout())
+		assert.True(t, opErr.Timeout(), "Actual err: %v", opErr)
 	}
 }
 
