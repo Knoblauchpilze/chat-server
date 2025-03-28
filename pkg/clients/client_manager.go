@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	bterrors "github.com/Knoblauchpilze/chat-server/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/google/uuid"
 )
@@ -46,7 +47,20 @@ func NewManager(props ManagerProps) Manager {
 }
 
 func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
-	connId := uuid.New()
+	var connId uuid.UUID
+	var handshakeErr error
+
+	err := bterrors.SafeRunSync(func() {
+		connId, handshakeErr = m.handshake(conn, m.connectTimeout)
+	})
+
+	if err != nil {
+		m.log.Warnf("OnConnect: panic while performing handshake: %v", err)
+		return false, uuid.Nil
+	} else if handshakeErr != nil {
+		m.log.Warnf("OnConnect: handsahke failed: %v", handshakeErr)
+		return false, uuid.Nil
+	}
 
 	func() {
 		m.lock.Lock()
@@ -58,7 +72,6 @@ func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	msg := messages.NewClientConnectedMessage(connId)
 	m.queue <- msg
 
-	// TODO: We should have a handshake here and potentially deny clients.
 	return true, connId
 }
 

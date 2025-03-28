@@ -18,14 +18,17 @@ func TestUnit_ClientManager_WhenClientConnects_ExpectMessageToBeSent(t *testing.
 	queue := make(chan messages.Message, 1)
 	manager := newTestClientManager(queue)
 
-	// TODO: Once we can specify the handshake we can restore asserting the
-	// client id in this test and others.
-	actual, _ := manager.OnConnect(nil)
+	actual, clientId := manager.OnConnect(nil)
 
 	msg := <-queue
 
 	assert.True(t, actual)
-	assert.Equal(t, messages.CLIENT_CONNECTED, msg.Type())
+	assert.Equal(t, sampleUuid, clientId)
+
+	actualMsg, ok := msg.(messages.ClientConnectedMessage)
+	assert.True(t, ok)
+	assert.Equal(t, messages.CLIENT_CONNECTED, actualMsg.Type())
+	assert.Equal(t, clientId, actualMsg.Client)
 }
 
 func TestUnit_ClientManager_WhenClientDisconnects_ExpectMessageToBeSent(t *testing.T) {
@@ -70,8 +73,9 @@ func TestUnit_ClientManager_WhenReadErrorDetected_ExpectMessageIsNotReceivedAnym
 
 	manager.OnReadError(clientId, errSample)
 
-	assert.NotEqual(t, sampleUuid, clientId)
-	msg := messages.NewClientConnectedMessage(sampleUuid)
+	dummyId := uuid.New()
+	assert.NotEqual(t, dummyId, clientId)
+	msg := messages.NewClientConnectedMessage(dummyId)
 	manager.Broadcast(msg)
 
 	time.Sleep(100 * time.Millisecond)
@@ -81,7 +85,9 @@ func TestUnit_ClientManager_WhenReadErrorDetected_ExpectMessageIsNotReceivedAnym
 
 func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManager(queue)
+	manager := newTestClientManagerWithHandshakeFunc(
+		queue, newHandshakeFuncWithRandomUuid(),
+	)
 
 	clientConn1, serverConn1 := newTestConnection(t, 7501)
 	manager.OnConnect(serverConn1)
@@ -97,23 +103,20 @@ func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *tes
 
 	time.Sleep(100 * time.Millisecond)
 
-	expectedMessage := []byte{
-		// CLIENT_CONNECTED
-		0x0, 0x0, 0x0, 0x0,
-		// Client id
-		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
-	}
+	expected, err := messages.Encode(msg)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	actual1 := readFromConnection(t, clientConn1)
-	assert.Equal(t, expectedMessage, actual1)
-
+	assert.Equal(t, expected, actual1)
 	actual2 := readFromConnection(t, clientConn2)
-	assert.Equal(t, expectedMessage, actual2)
+	assert.Equal(t, expected, actual2)
 }
 
 func TestUnit_ClientManager_WhenMessageIsBroadcastExceptToOneClient_ExpectNothingReceivedForThisClient(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManager(queue)
+	manager := newTestClientManagerWithHandshakeFunc(
+		queue, newHandshakeFuncWithRandomUuid(),
+	)
 
 	clientConn1, serverConn1 := newTestConnection(t, 7502)
 	manager.OnConnect(serverConn1)
@@ -129,14 +132,11 @@ func TestUnit_ClientManager_WhenMessageIsBroadcastExceptToOneClient_ExpectNothin
 	time.Sleep(100 * time.Millisecond)
 
 	actual1 := readFromConnection(t, clientConn1)
-	expectedMessage := []byte{
-		// CLIENT_CONNECTED
-		0x0, 0x0, 0x0, 0x0,
-		// Client id
-		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
-	}
-	assert.Equal(t, expectedMessage, actual1)
 
+	expected, err := messages.Encode(msg)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, expected, actual1)
 	assertNoDataReceived(t, clientConn2)
 }
 
@@ -144,28 +144,28 @@ func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectMessageIsSent(t *tes
 	queue := make(chan messages.Message, 1)
 	manager := newTestClientManager(queue)
 
-	clientConn1, serverConn1 := newTestConnection(t, 7503)
-	_, client1 := manager.OnConnect(serverConn1)
+	clientConn, serverConn := newTestConnection(t, 7503)
+	_, client := manager.OnConnect(serverConn)
 	<-queue
 
 	msg := messages.NewClientConnectedMessage(sampleUuid)
-	manager.SendTo(client1, msg)
+	manager.SendTo(client, msg)
 
 	time.Sleep(100 * time.Millisecond)
 
-	actual1 := readFromConnection(t, clientConn1)
-	expectedMessage := []byte{
-		// CLIENT_CONNECTED
-		0x0, 0x0, 0x0, 0x0,
-		// Client id
-		0x2d, 0xbf, 0x26, 0x22, 0x2a, 0x95, 0x4b, 0xd1, 0x9b, 0x38, 0x2f, 0x7b, 0x4c, 0xe6, 0x5f, 0xfe,
-	}
-	assert.Equal(t, expectedMessage, actual1)
+	actual1 := readFromConnection(t, clientConn)
+
+	expected, err := messages.Encode(msg)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, expected, actual1)
 }
 
 func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectNobodyElseReceivesIt(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManager(queue)
+	manager := newTestClientManagerWithHandshakeFunc(
+		queue, newHandshakeFuncWithRandomUuid(),
+	)
 
 	_, serverConn1 := newTestConnection(t, 7504)
 	_, client1 := manager.OnConnect(serverConn1)
@@ -201,17 +201,55 @@ func TestUnit_ClientManager_WhenClientDisconnects_ExpectMessageIsNotReceivedAnym
 	assertNoDataReceived(t, clientConn1)
 }
 
+func TestUnit_ClientManager_WhenHandshakeFails_ExpectClientIsDenied(t *testing.T) {
+	hanshake := func(net.Conn, time.Duration) (uuid.UUID, error) {
+		return uuid.Nil, errSample
+	}
+	// In case a message is published this will hang
+	queue := make(chan messages.Message)
+	manager := newTestClientManagerWithHandshakeFunc(queue, hanshake)
+
+	actual, _ := manager.OnConnect(nil)
+
+	assert.False(t, actual)
+}
+
+func TestUnit_ClientManager_WhenHandshakePanics_ExpectClientIsDenied(t *testing.T) {
+	hanshake := func(net.Conn, time.Duration) (uuid.UUID, error) {
+		panic(errSample)
+	}
+	// In case a message is published this will hang
+	queue := make(chan messages.Message)
+	manager := newTestClientManagerWithHandshakeFunc(queue, hanshake)
+
+	actual, _ := manager.OnConnect(nil)
+
+	assert.False(t, actual)
+}
+
 func newTestHandshakeFunc(id uuid.UUID) HandshakeFunc {
 	return func(net.Conn, time.Duration) (uuid.UUID, error) {
 		return id, nil
 	}
 }
 
+func newHandshakeFuncWithRandomUuid() HandshakeFunc {
+	return func(net.Conn, time.Duration) (uuid.UUID, error) {
+		return uuid.New(), nil
+	}
+}
+
 func newTestClientManager(queue chan messages.Message) Manager {
+	return newTestClientManagerWithHandshakeFunc(queue, newTestHandshakeFunc(sampleUuid))
+}
+
+func newTestClientManagerWithHandshakeFunc(
+	queue chan messages.Message, handshake HandshakeFunc,
+) Manager {
 	props := ManagerProps{
 		Queue:          queue,
 		ConnectTimeout: 100 * time.Millisecond,
-		Handshake:      newTestHandshakeFunc(sampleUuid),
+		Handshake:      handshake,
 		Log:            logger.New(os.Stdout),
 	}
 
