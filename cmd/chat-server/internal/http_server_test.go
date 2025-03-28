@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const reasonableConnectTimeout = 100 * time.Millisecond
+
 func TestIT_RunHttpServer_StartAndStopWithContext(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	asyncCancelContext(200*time.Millisecond, cancel)
@@ -217,17 +219,19 @@ func TestIT_RunHttpServer_ListForRoom(t *testing.T) {
 func newTestHttpConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Server.Port = port
+	conf.ConnectTimeout = reasonableConnectTimeout
 	return conf
 }
 
 func newTestHttpProps(port uint16, dbConn db.Connection) HttpServerProps {
+	conf := newTestHttpConfig(port)
 	log := logger.New(os.Stdout)
 	repos := repositories.New(dbConn)
 
 	return HttpServerProps{
-		Config:   newTestHttpConfig(port),
+		Config:   conf,
 		DbConn:   dbConn,
-		Services: service.New(dbConn, repos, log),
+		Services: service.New(conf.ConnectTimeout, dbConn, repos, log),
 		Log:      log,
 	}
 }

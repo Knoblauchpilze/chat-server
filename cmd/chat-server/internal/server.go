@@ -38,7 +38,7 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	props := HttpServerProps{
 		Config:   config,
 		DbConn:   dbConn,
-		Services: service.New(dbConn, repos, log),
+		Services: service.New(config.ConnectTimeout, dbConn, repos, log),
 		Log:      log,
 	}
 	httpErr := RunHttpServer(ctx, props)
