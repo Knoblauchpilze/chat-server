@@ -22,7 +22,7 @@ type chatServiceImpl struct {
 
 func NewChatService(log logger.Logger) ChatService {
 	queue := make(chan messages.Message, incomingMessagesBufferSize)
-	manager := clients.NewManager(queue, log)
+	manager := clients.NewManager(queue, clients.Handshake, log)
 
 	return &chatServiceImpl{
 		clientManager:            manager,

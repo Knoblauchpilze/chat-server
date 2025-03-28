@@ -18,18 +18,22 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	log   logger.Logger
-	queue messages.OutgoingQueue
+	log       logger.Logger
+	queue     messages.OutgoingQueue
+	handshake HandshakeFunc
 
 	lock    sync.RWMutex
 	clients map[uuid.UUID]net.Conn
 }
 
-func NewManager(queue messages.OutgoingQueue, log logger.Logger) Manager {
+func NewManager(
+	queue messages.OutgoingQueue, handshake HandshakeFunc, log logger.Logger,
+) Manager {
 	return &managerImpl{
-		log:     log,
-		queue:   queue,
-		clients: make(map[uuid.UUID]net.Conn),
+		log:       log,
+		queue:     queue,
+		handshake: handshake,
+		clients:   make(map[uuid.UUID]net.Conn),
 	}
 }
 
