@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+type HandshakeFunc func(net.Conn, time.Duration) (uuid.UUID, error)
+
 func Handshake(conn net.Conn, timeout time.Duration) (uuid.UUID, error) {
 	limit := time.Now().Add(timeout)
 	conn.SetReadDeadline(limit)
