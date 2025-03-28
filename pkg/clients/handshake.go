@@ -19,11 +19,11 @@ func Handshake(conn net.Conn, timeout time.Duration) (uuid.UUID, error) {
 
 	n, err := conn.Read(data)
 	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-		return uuid.Nil, errors.NewCode(HandshakeTimeout)
+		return uuid.Nil, newHandshakeTimeoutError()
 	} else if err != nil {
-		return uuid.Nil, errors.WrapCode(err, HandshakeFailure)
+		return uuid.Nil, wrapHandshakeFailureError(err)
 	} else if n != len(id) {
-		return uuid.Nil, errors.NewCode(IncompleteHandshake)
+		return uuid.Nil, newHandshakeIncompleteError()
 	}
 
 	id, err = uuid.FromBytes(data)
