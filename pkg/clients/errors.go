@@ -7,3 +7,21 @@ const (
 	IncompleteHandshake errors.ErrorCode = 501
 	HandshakeFailure    errors.ErrorCode = 502
 )
+
+func newHandshakeTimeoutError() error {
+	return errors.NewCodeWithDetails(HandshakeTimeout, "timeout")
+}
+
+func newHandshakeIncompleteError() error {
+	return errors.NewCodeWithDetails(
+		IncompleteHandshake,
+		"not enough data to received to perform handshake",
+	)
+}
+
+func wrapHandshakeFailureError(err error) error {
+	return errors.NewCodeWithDetails(
+		HandshakeFailure,
+		"failed to interpret handshake data",
+	)
+}
