@@ -61,9 +61,9 @@ func assertConnectionIsStillOpen(t *testing.T, conn net.Conn) {
 	_, err := conn.Read(oneByte)
 
 	opErr, ok := err.(*net.OpError)
-	assert.True(t, ok)
+	assert.True(t, ok, "Actual err: %v", err)
 	if ok {
-		assert.True(t, opErr.Timeout())
+		assert.True(t, opErr.Timeout(), "Actual err: %v", opErr)
 	}
 }
 
@@ -239,4 +239,17 @@ func assertResponseAndExtractDetails[T any](
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	return out
+}
+
+func connectToServerAndSendHandshake(t *testing.T, port uint16) (net.Conn, uuid.UUID) {
+	clientId := uuid.New()
+
+	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	n, err := conn.Write(clientId[:])
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(clientId), n)
+
+	return conn, clientId
 }

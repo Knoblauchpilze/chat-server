@@ -45,8 +45,7 @@ func TestIT_RunServer_CanConnectOnTcpPort(t *testing.T) {
 
 	wg := asyncListenAndServe(t, conf, cancellable)
 
-	conn, err := net.Dial("tcp", ":7304")
-	assert.Nil(t, err, "Actual err: %v", err)
+	conn, _ := connectToServerAndSendHandshake(t, 7304)
 
 	time.Sleep(100 * time.Millisecond)
 	assertConnectionIsStillOpen(t, conn)
@@ -57,14 +56,33 @@ func TestIT_RunServer_CanConnectOnTcpPort(t *testing.T) {
 	assertConnectionIsClosed(t, conn)
 }
 
+func TestIT_RunServer_WhenClientDoesNotPerformHandshake_ExpectConnectionToBeTerminated(t *testing.T) {
+	conf := newTestServerConfig(7306, 7307)
+	conf.ConnectTimeout = 50 * time.Millisecond
+	cancellable, cancel := context.WithCancel(context.Background())
+
+	wg := asyncListenAndServe(t, conf, cancellable)
+
+	conn, err := net.Dial("tcp", ":7306")
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait long enough for the handshake timeout to kick in
+	time.Sleep(100 * time.Millisecond)
+	assertConnectionIsClosed(t, conn)
+
+	cancel()
+	wg.Wait()
+}
+
 func newTestServerConfig(tcpPort uint16, httpPort uint16) Configuration {
 	baseConfig := DefaultConfig()
 	baseConfig.Server.Port = httpPort
 
 	return Configuration{
-		Server:   baseConfig.Server,
-		TcpPort:  tcpPort,
-		Database: dbTestConfig,
+		Server:         baseConfig.Server,
+		ConnectTimeout: baseConfig.ConnectTimeout,
+		TcpPort:        tcpPort,
+		Database:       dbTestConfig,
 	}
 }
 

@@ -230,9 +230,9 @@ func TestUnit_TcpListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorr
 	conn, err := net.Dial("tcp", ":7008")
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	clientId1 := uuid.New()
-	clientId2 := uuid.New()
-	msg := messages.NewDirectMessage(clientId1, clientId2, "hello")
+	client1Id := uuid.New()
+	client2Id := uuid.New()
+	msg := messages.NewDirectMessage(client1Id, client2Id, "hello")
 	data, err := messages.Encode(msg)
 	assert.Nil(t, err, "Actual err: %v", err)
 
@@ -263,8 +263,8 @@ func TestUnit_TcpListenAndServe_WhenMessageIsSentInMultiplePieces_ExpectItToCorr
 	assert.GreaterOrEqual(t, called.Load(), int32(2))
 	actual, err := messages.ToMessageStruct[messages.DirectMessage](receivedMessage)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, clientId1, actual.Emitter)
-	assert.Equal(t, clientId2, actual.Receiver)
+	assert.Equal(t, client1Id, actual.Emitter)
+	assert.Equal(t, client2Id, actual.Receiver)
 	assert.Equal(t, "hello", actual.Content)
 }
 

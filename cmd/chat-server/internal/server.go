@@ -20,6 +20,7 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	defer dbConn.Close(ctx)
 
 	repos := repositories.New(dbConn)
+	services := service.New(config.ConnectTimeout, dbConn, repos, log)
 
 	var tcpErr error
 	var wg sync.WaitGroup
@@ -32,13 +33,13 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 				tcpErr = errors.New(fmt.Sprintf("TCP server panicked: %v", err))
 			}
 		}()
-		tcpErr = RunTcpServer(ctx, config, log)
+		tcpErr = RunTcpServer(ctx, config, services, log)
 	}()
 
 	props := HttpServerProps{
 		Config:   config,
 		DbConn:   dbConn,
-		Services: service.New(config.ConnectTimeout, dbConn, repos, log),
+		Services: services,
 		Log:      log,
 	}
 	httpErr := RunHttpServer(ctx, props)
