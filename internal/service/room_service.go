@@ -13,7 +13,7 @@ import (
 type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
-	ListForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
+	ListUserForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -62,7 +62,7 @@ func (s *roomServiceImpl) Get(
 	return out, nil
 }
 
-func (s *roomServiceImpl) ListForRoom(
+func (s *roomServiceImpl) ListUserForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]communication.UserDtoResponse, error) {
 	users, err := s.userRepo.ListForRoom(ctx, room)
