@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/stretchr/testify/assert"
 )
@@ -199,6 +201,15 @@ func asyncRunTcpServer(
 	var err error
 	var wg sync.WaitGroup
 
+	log := logger.New(os.Stdout)
+	services := service.Services{
+		Chat: service.NewChatService(
+			clients.Handshake,
+			config.ConnectTimeout,
+			log,
+		),
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -208,7 +219,7 @@ func asyncRunTcpServer(
 			}
 		}()
 
-		err = RunTcpServer(ctx, config, logger.New(os.Stdout))
+		err = RunTcpServer(ctx, config, services, log)
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 

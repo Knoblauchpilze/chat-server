@@ -12,6 +12,7 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -143,7 +144,15 @@ func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testin
 }
 
 func newTestChatService() (ChatService, clients.Callbacks) {
-	service := NewChatService(reasonableConnectTimeout, logger.New(os.Stdout))
+	handshakeFunc := func(net.Conn, time.Duration) (uuid.UUID, error) {
+		return uuid.New(), nil
+	}
+
+	service := NewChatService(
+		handshakeFunc,
+		reasonableConnectTimeout,
+		logger.New(os.Stdout),
+	)
 	return service, service.GenerateCallbacks()
 }
 
