@@ -141,12 +141,12 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 	)
 }
 
-func TestIT_RoomController_ListForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
 	req := httptest.NewRequest(http.MethodGet, "/not-a-uuid/users", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
-	err := listForRoom(ctx, service)
+	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, http.StatusBadRequest, rw.Code)
@@ -160,7 +160,7 @@ func TestIT_RoomController_ListForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *
 	)
 }
 
-func TestIT_RoomController_ListForRoom(t *testing.T) {
+func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
@@ -175,7 +175,7 @@ func TestIT_RoomController_ListForRoom(t *testing.T) {
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
 
-	err := listForRoom(ctx, service)
+	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	var responseDto []communication.UserDtoResponse
@@ -202,7 +202,7 @@ func TestIT_RoomController_ListForRoom(t *testing.T) {
 	)
 }
 
-func TestIT_RoomController_ListForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
+func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
 	room := insertTestRoom(t, dbConn)
 
@@ -211,7 +211,7 @@ func TestIT_RoomController_ListForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *test
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
 
-	err := listForRoom(ctx, service)
+	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	var responseDto []communication.UserDtoResponse
