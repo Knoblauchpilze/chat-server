@@ -22,12 +22,14 @@ type chatServiceImpl struct {
 	messageProcessingService messages.ProcessingService
 }
 
-func NewChatService(connectTimeout time.Duration, log logger.Logger) ChatService {
+func NewChatService(
+	handshakeFunc clients.HandshakeFunc, connectTimeout time.Duration, log logger.Logger,
+) ChatService {
 	queue := make(chan messages.Message, incomingMessagesBufferSize)
 	props := clients.ManagerProps{
 		Queue:          queue,
 		ConnectTimeout: connectTimeout,
-		Handshake:      clients.Handshake,
+		Handshake:      handshakeFunc,
 		Log:            log,
 	}
 	manager := clients.NewManager(props)
