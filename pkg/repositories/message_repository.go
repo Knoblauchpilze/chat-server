@@ -6,10 +6,12 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/google/uuid"
 )
 
 type MessageRepository interface {
 	Create(ctx context.Context, msg persistence.Message) (persistence.Message, error)
+	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error)
 }
 
 type messageRepositoryImpl struct {
@@ -35,10 +37,34 @@ func (r *messageRepositoryImpl) Create(
 		r.conn,
 		createMessageSqlTemplate,
 		msg.Id,
-		msg.User,
+		msg.ChatUser,
 		msg.Room,
 		msg.Message,
 	)
 	msg.CreatedAt = createdAt
 	return msg, err
+}
+
+const listMessageByRoomSqlTemplate = `
+SELECT
+	m.id,
+	m.chat_user,
+	m.room,
+	m.message,
+	m.created_at
+FROM
+	message AS m
+	LEFT JOIN room AS r ON m.room = r.id
+WHERE
+	m.room = $1`
+
+func (r *messageRepositoryImpl) ListForRoom(
+	ctx context.Context, room uuid.UUID,
+) ([]persistence.Message, error) {
+	return db.QueryAll[persistence.Message](
+		ctx,
+		r.conn,
+		listMessageByRoomSqlTemplate,
+		room,
+	)
 }
