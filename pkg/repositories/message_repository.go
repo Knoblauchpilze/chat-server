@@ -41,7 +41,9 @@ func (r *messageRepositoryImpl) Create(
 		msg.Room,
 		msg.Message,
 	)
-	msg.CreatedAt = createdAt
+
+	msg.CreatedAt = createdAt.UTC()
+
 	return msg, err
 }
 
@@ -61,10 +63,18 @@ WHERE
 func (r *messageRepositoryImpl) ListForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]persistence.Message, error) {
-	return db.QueryAll[persistence.Message](
+	messages, err := db.QueryAll[persistence.Message](
 		ctx,
 		r.conn,
 		listMessageByRoomSqlTemplate,
 		room,
 	)
+
+	if err == nil {
+		for id, message := range messages {
+			messages[id].CreatedAt = message.CreatedAt.UTC()
+		}
+	}
+
+	return messages, err
 }

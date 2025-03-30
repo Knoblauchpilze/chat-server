@@ -154,7 +154,7 @@ func insertTestMessage(
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	msg.CreatedAt = createdAt
+	msg.CreatedAt = createdAt.UTC()
 
 	return msg
 }
