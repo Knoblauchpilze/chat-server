@@ -117,7 +117,44 @@ func TestIT_RoomService_ListUserForRoom(t *testing.T) {
 		communication.ToUserDtoResponse(user1),
 		communication.ToUserDtoResponse(user2),
 	}
-	assert.Equal(t, expected, actual)
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestIT_RoomService_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptyList(t *testing.T) {
+	service, _ := newTestRoomService(t)
+
+	actual, err := service.ListMessageForRoom(context.Background(), uuid.New())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []communication.MessageDtoResponse{}, actual)
+}
+
+func TestIT_RoomService_ListMessageForRoom(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	user3 := insertTestUser(t, conn)
+
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+
+	insertUserInRoom(t, conn, user1.Id, room1.Id)
+	insertUserInRoom(t, conn, user2.Id, room1.Id)
+	insertUserInRoom(t, conn, user3.Id, room2.Id)
+
+	msg1 := insertTestMessage(t, conn, user1.Id, room1.Id)
+	msg2 := insertTestMessage(t, conn, user2.Id, room1.Id)
+	insertTestMessage(t, conn, user3.Id, room2.Id)
+
+	actual, err := service.ListMessageForRoom(context.Background(), room1.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	// TODO: This can be flaky as the order of the users is not guaranteed.
+	expected := []communication.MessageDtoResponse{
+		communication.ToMessageDtoResponse(msg1),
+		communication.ToMessageDtoResponse(msg2),
+	}
+	assert.ElementsMatch(t, expected, actual)
 }
 
 func TestIT_RoomService_Delete(t *testing.T) {
@@ -143,8 +180,9 @@ func newTestRoomService(t *testing.T) (RoomService, db.Connection) {
 	conn := newTestDbConnection(t)
 
 	repos := repositories.Repositories{
-		Room: repositories.NewRoomRepository(conn),
-		User: repositories.NewUserRepository(conn),
+		User:    repositories.NewUserRepository(conn),
+		Room:    repositories.NewRoomRepository(conn),
+		Message: repositories.NewMessageRepository(conn),
 	}
 
 	return NewRoomService(conn, repos), conn
