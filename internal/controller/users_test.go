@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
@@ -265,10 +264,9 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 
 	id := uuid.New()
 	user := persistence.User{
-		Id:        id,
-		Name:      fmt.Sprintf("my-user-%s", id),
-		ApiUser:   uuid.New(),
-		CreatedAt: time.Now(),
+		Id:      id,
+		Name:    fmt.Sprintf("my-user-%s", id),
+		ApiUser: uuid.New(),
 	}
 	out, err := repo.Create(context.Background(), user)
 	assert.Nil(t, err, "Actual err: %v", err)
