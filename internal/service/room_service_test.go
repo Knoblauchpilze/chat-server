@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
@@ -69,10 +68,10 @@ func TestIT_RoomService_Get(t *testing.T) {
 	room := insertTestRoom(t, conn)
 
 	actual, err := service.Get(context.Background(), room.Id)
-
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, room.Id, actual.Id)
-	assert.Equal(t, room.Name, actual.Name)
+
+	expected := communication.ToRoomDtoResponse(room)
+	assert.Equal(t, expected, actual)
 }
 
 func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
@@ -191,9 +190,8 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 
 	id := uuid.New()
 	room := persistence.Room{
-		Id:        id,
-		Name:      fmt.Sprintf("my-room-%s", id),
-		CreatedAt: time.Now(),
+		Id:   id,
+		Name: fmt.Sprintf("my-room-%s", id),
 	}
 	out, err := repo.Create(context.Background(), room)
 	assert.Nil(t, err, "Actual err: %v", err)
