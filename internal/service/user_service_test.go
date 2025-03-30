@@ -141,8 +141,8 @@ func newTestUserService(t *testing.T) (UserService, db.Connection) {
 	conn := newTestDbConnection(t)
 
 	repos := repositories.Repositories{
-		Room: repositories.NewRoomRepository(conn),
 		User: repositories.NewUserRepository(conn),
+		Room: repositories.NewRoomRepository(conn),
 	}
 
 	return NewUserService(conn, repos), conn
