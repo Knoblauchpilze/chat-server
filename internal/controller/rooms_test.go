@@ -16,7 +16,6 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
-	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -112,10 +111,8 @@ func TestIT_RoomController_GetRoom(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, room.Id, responseDto.Id)
-	assert.Equal(t, room.Name, responseDto.Name)
-	safetyMargin := 1 * time.Second
-	assert.True(t, eassert.AreTimeCloserThan(room.CreatedAt, responseDto.CreatedAt, safetyMargin))
+	expected := communication.ToRoomDtoResponse(room)
+	assert.Equal(t, expected, responseDto)
 }
 
 func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testing.T) {
@@ -184,24 +181,11 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	user1Dto := communication.ToUserDtoResponse(user1)
-	user2Dto := communication.ToUserDtoResponse(user2)
-
-	assert.Len(t, responseDto, 2)
-	assert.True(
-		t,
-		eassert.ContainsIgnoringFields(responseDto, user1Dto, "CreatedAt"),
-		"Expected %v to contain %v",
-		responseDto,
-		user1Dto,
-	)
-	assert.True(
-		t,
-		eassert.ContainsIgnoringFields(responseDto, user2Dto, "CreatedAt"),
-		"Expected %v to contain %v",
-		responseDto,
-		user2Dto,
-	)
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user1),
+		communication.ToUserDtoResponse(user2),
+	}
+	assert.ElementsMatch(t, expected, responseDto)
 }
 
 func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
@@ -270,7 +254,6 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 		communication.ToMessageDtoResponse(msg1),
 		communication.ToMessageDtoResponse(msg2),
 	}
-	assert.Len(t, responseDto, 2)
 	assert.ElementsMatch(t, expected, responseDto)
 }
 
