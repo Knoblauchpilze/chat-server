@@ -16,7 +16,7 @@ import (
 
 func TestIT_UserRepository_Create(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
-	startTime := time.Now()
+	beforeInsertion := time.Now()
 
 	user := persistence.User{
 		Id:      uuid.New(),
@@ -29,7 +29,7 @@ func TestIT_UserRepository_Create(t *testing.T) {
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "CreatedAt", "UpdatedAt"))
 	assert.Equal(t, actual.CreatedAt, actual.UpdatedAt)
-	assert.True(t, actual.CreatedAt.After(startTime))
+	assert.True(t, actual.CreatedAt.After(beforeInsertion))
 	assertUserExists(t, conn, user.Id)
 }
 
@@ -38,10 +38,9 @@ func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 	user := insertTestUser(t, conn)
 
 	newUser := persistence.User{
-		Id:        uuid.New(),
-		Name:      user.Name,
-		ApiUser:   uuid.New(),
-		CreatedAt: time.Now(),
+		Id:      uuid.New(),
+		Name:    user.Name,
+		ApiUser: uuid.New(),
 	}
 
 	_, err := repo.Create(context.Background(), newUser)
@@ -62,7 +61,7 @@ func TestIT_UserRepository_Get(t *testing.T) {
 	actual, err := repo.Get(context.Background(), user.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.True(t, eassert.EqualsIgnoringFields(actual, user))
+	assert.Equal(t, actual, user)
 }
 
 func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
@@ -89,8 +88,8 @@ func TestIT_UserRepository_ListForRoom(t *testing.T) {
 	actual, err := repo.ListForRoom(context.Background(), room.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Len(t, actual, 1)
-	assert.True(t, eassert.EqualsIgnoringFields(actual[0], user1))
+	expected := []persistence.User{user1}
+	assert.ElementsMatch(t, expected, actual)
 }
 
 func TestIT_UserRepository_ListForRoom_WhenNoUserRegistered_ReturnsEmptySlice(t *testing.T) {
@@ -164,30 +163,27 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 }
 
 func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
-	someTime := time.Date(2025, 3, 2, 10, 17, 15, 0, time.UTC)
-
 	user := persistence.User{
-		Id:        uuid.New(),
-		Name:      "my-name-" + uuid.New().String(),
-		ApiUser:   uuid.New(),
-		CreatedAt: someTime,
+		Id:      uuid.New(),
+		Name:    "my-name-" + uuid.New().String(),
+		ApiUser: uuid.New(),
 	}
 
-	updatedAt, err := db.QueryOne[time.Time](
+	times, err := db.QueryOne[createdAtUpdatedAt](
 		context.Background(),
 		conn,
 		`INSERT INTO
-			chat_user (id, name, api_user, created_at)
-			VALUES ($1, $2, $3, $4)
-			RETURNING updated_at`,
+			chat_user (id, name, api_user)
+			VALUES ($1, $2, $3)
+			RETURNING created_at, updated_at`,
 		user.Id,
 		user.Name,
 		user.ApiUser,
-		user.CreatedAt,
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	user.UpdatedAt = updatedAt
+	user.CreatedAt = times.CreatedAt
+	user.UpdatedAt = times.UpdatedAt
 
 	return user
 }
