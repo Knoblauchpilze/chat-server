@@ -178,8 +178,8 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	room.CreatedAt = times.CreatedAt
-	room.UpdatedAt = times.UpdatedAt
+	room.CreatedAt = times.CreatedAt.UTC()
+	room.UpdatedAt = times.UpdatedAt.UTC()
 
 	return room
 }
