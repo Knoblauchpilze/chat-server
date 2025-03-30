@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
@@ -12,7 +11,6 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
-	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -71,11 +69,10 @@ func TestIT_UserService_Get(t *testing.T) {
 	user := insertTestUser(t, conn)
 
 	actual, err := service.Get(context.Background(), user.Id)
-
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, user.Id, actual.Id)
-	assert.Equal(t, user.Name, actual.Name)
-	assert.Equal(t, user.ApiUser, actual.ApiUser)
+
+	expected := communication.ToUserDtoResponse(user)
+	assert.Equal(t, expected, actual)
 }
 
 func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
@@ -113,9 +110,10 @@ func TestIT_UserService_ListForUser(t *testing.T) {
 	actual, err := service.ListForUser(context.Background(), user.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Len(t, actual, 1)
-	expected := communication.ToRoomDtoResponse(room1)
-	assert.True(t, eassert.EqualsIgnoringFields(actual[0], expected))
+	expected := []communication.RoomDtoResponse{
+		communication.ToRoomDtoResponse(room1),
+	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestIT_UserService_Delete(t *testing.T) {
@@ -153,10 +151,9 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 
 	id := uuid.New()
 	user := persistence.User{
-		Id:        id,
-		Name:      fmt.Sprintf("my-user-%s", id),
-		ApiUser:   uuid.New(),
-		CreatedAt: time.Now(),
+		Id:      id,
+		Name:    fmt.Sprintf("my-user-%s", id),
+		ApiUser: uuid.New(),
 	}
 	out, err := repo.Create(context.Background(), user)
 	assert.Nil(t, err, "Actual err: %v", err)
