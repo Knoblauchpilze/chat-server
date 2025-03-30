@@ -16,7 +16,6 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
-	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -114,11 +113,8 @@ func TestIT_UserController_GetUser(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, user.Id, responseDto.Id)
-	assert.Equal(t, user.Name, responseDto.Name)
-	assert.Equal(t, user.ApiUser, responseDto.ApiUser)
-	safetyMargin := 1 * time.Second
-	assert.True(t, eassert.AreTimeCloserThan(user.CreatedAt, responseDto.CreatedAt, safetyMargin))
+	expected := communication.ToUserDtoResponse(user)
+	assert.Equal(t, expected, responseDto)
 }
 
 func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testing.T) {
@@ -183,16 +179,10 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	room1Dto := communication.ToRoomDtoResponse(room1)
-
-	assert.Len(t, responseDto, 1)
-	assert.True(
-		t,
-		eassert.ContainsIgnoringFields(responseDto, room1Dto, "CreatedAt"),
-		"Expected %v to contain %v",
-		responseDto,
-		room1Dto,
-	)
+	expected := []communication.RoomDtoResponse{
+		communication.ToRoomDtoResponse(room1),
+	}
+	assert.ElementsMatch(t, expected, responseDto)
 }
 
 func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *testing.T) {
