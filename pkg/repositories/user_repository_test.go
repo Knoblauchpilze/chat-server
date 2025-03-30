@@ -182,8 +182,8 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	user.CreatedAt = times.CreatedAt
-	user.UpdatedAt = times.UpdatedAt
+	user.CreatedAt = times.CreatedAt.UTC()
+	user.UpdatedAt = times.UpdatedAt.UTC()
 
 	return user
 }

@@ -41,8 +41,10 @@ func (r *userRepositoryImpl) Create(
 		user.Name,
 		user.ApiUser,
 	)
-	user.CreatedAt = times.CreatedAt
-	user.UpdatedAt = times.UpdatedAt
+
+	user.CreatedAt = times.CreatedAt.UTC()
+	user.UpdatedAt = times.UpdatedAt.UTC()
+
 	return user, err
 }
 
@@ -62,7 +64,14 @@ WHERE
 func (r *userRepositoryImpl) Get(
 	ctx context.Context, id uuid.UUID,
 ) (persistence.User, error) {
-	return db.QueryOne[persistence.User](ctx, r.conn, getUserSqlTemplate, id)
+	user, err := db.QueryOne[persistence.User](ctx, r.conn, getUserSqlTemplate, id)
+
+	if err == nil {
+		user.CreatedAt = user.CreatedAt.UTC()
+		user.UpdatedAt = user.UpdatedAt.UTC()
+	}
+
+	return user, err
 }
 
 const listUserByRoomSqlTemplate = `
@@ -82,12 +91,21 @@ WHERE
 func (r *userRepositoryImpl) ListForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]persistence.User, error) {
-	return db.QueryAll[persistence.User](
+	users, err := db.QueryAll[persistence.User](
 		ctx,
 		r.conn,
 		listUserByRoomSqlTemplate,
 		room,
 	)
+
+	if err == nil {
+		for id, user := range users {
+			users[id].CreatedAt = user.CreatedAt.UTC()
+			users[id].UpdatedAt = user.UpdatedAt.UTC()
+		}
+	}
+
+	return users, err
 }
 
 const deleteUserSqlTemplate = `
