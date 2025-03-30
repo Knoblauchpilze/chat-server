@@ -28,6 +28,10 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	listUserForRoom := rest.NewRoute(http.MethodGet, "/rooms/:id/users", listUserForRoomHandler)
 	out = append(out, listUserForRoom)
 
+	listMessageForRoomHandler := createComponentAwareHttpHandler(listMessageForRoom, service)
+	listMessageForRoom := rest.NewRoute(http.MethodGet, "/rooms/:id/messages", listMessageForRoomHandler)
+	out = append(out, listMessageForRoom)
+
 	deleteHandler := createComponentAwareHttpHandler(deleteRoom, service)
 	delete := rest.NewRoute(http.MethodDelete, "/rooms/:id", deleteHandler)
 	out = append(out, delete)
@@ -84,6 +88,26 @@ func listUserForRoom(c echo.Context, s service.RoomService) error {
 	}
 
 	users, err := s.ListUserForRoom(c.Request().Context(), id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	out, err := marshalNilToEmptySlice(users)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSONBlob(http.StatusOK, out)
+}
+
+func listMessageForRoom(c echo.Context, s service.RoomService) error {
+	maybeId := c.Param("id")
+	id, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
+	users, err := s.ListMessageForRoom(c.Request().Context(), id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}

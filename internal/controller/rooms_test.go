@@ -143,8 +143,10 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 
 func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
-	req := httptest.NewRequest(http.MethodGet, "/not-a-uuid/users", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues("not-a-uuid")
 
 	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -221,10 +223,82 @@ func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *
 	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
 }
 
+func TestIT_RoomController_ListMessageForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestRoomService(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listMessageForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
+	service, dbConn := newTestRoomService(t)
+	room := insertTestRoom(t, dbConn)
+
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	msg1 := insertTestMessage(t, dbConn, user1.Id, room.Id)
+	msg2 := insertTestMessage(t, dbConn, user2.Id, room.Id)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err := listMessageForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.MessageDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := []communication.MessageDtoResponse{
+		communication.ToMessageDtoResponse(msg1),
+		communication.ToMessageDtoResponse(msg2),
+	}
+	assert.Len(t, responseDto, 2)
+	assert.ElementsMatch(t, expected, responseDto)
+}
+
+func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySlice(t *testing.T) {
+	service, dbConn := newTestRoomService(t)
+	room := insertTestRoom(t, dbConn)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err := listMessageForRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
+}
+
 func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestRoomService(t)
-	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues("not-a-uuid")
 
 	err := deleteRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
