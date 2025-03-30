@@ -14,21 +14,24 @@ type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
 	ListUserForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
+	ListMessageForRoom(ctx context.Context, room uuid.UUID) ([]communication.MessageDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type roomServiceImpl struct {
 	conn db.Connection
 
-	roomRepo repositories.RoomRepository
-	userRepo repositories.UserRepository
+	roomRepo    repositories.RoomRepository
+	userRepo    repositories.UserRepository
+	messageRepo repositories.MessageRepository
 }
 
 func NewRoomService(conn db.Connection, repos repositories.Repositories) RoomService {
 	return &roomServiceImpl{
-		conn:     conn,
-		roomRepo: repos.Room,
-		userRepo: repos.User,
+		conn:        conn,
+		roomRepo:    repos.Room,
+		userRepo:    repos.User,
+		messageRepo: repos.Message,
 	}
 }
 
@@ -73,6 +76,23 @@ func (s *roomServiceImpl) ListUserForRoom(
 	out := make([]communication.UserDtoResponse, 0)
 	for _, user := range users {
 		dto := communication.ToUserDtoResponse(user)
+		out = append(out, dto)
+	}
+
+	return out, nil
+}
+
+func (s *roomServiceImpl) ListMessageForRoom(
+	ctx context.Context, room uuid.UUID,
+) ([]communication.MessageDtoResponse, error) {
+	messages, err := s.messageRepo.ListForRoom(ctx, room)
+	if err != nil {
+		return []communication.MessageDtoResponse{}, err
+	}
+
+	out := make([]communication.MessageDtoResponse, 0)
+	for _, message := range messages {
+		dto := communication.ToMessageDtoResponse(message)
 		out = append(out, dto)
 	}
 
