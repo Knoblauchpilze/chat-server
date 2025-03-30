@@ -16,11 +16,10 @@ import (
 
 func TestIT_MessageRepository_Create(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	beforeInsertion := time.Now()
 
 	room := insertTestRoom(t, conn)
 	user := insertTestUser(t, conn)
-
-	beforeInsertion := time.Now()
 
 	msg := persistence.Message{
 		Id:       uuid.New(),
@@ -98,8 +97,8 @@ func TestIT_MessageRepository_ListForRoom(t *testing.T) {
 	actual, err := repo.ListForRoom(context.Background(), room1.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Len(t, actual, 1)
-	assert.True(t, eassert.EqualsIgnoringFields(actual[0], msg1))
+	expected := []persistence.Message{msg1}
+	assert.ElementsMatch(t, expected, actual)
 }
 
 func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySlice(t *testing.T) {
@@ -134,29 +133,28 @@ func insertTestMessage(
 	user uuid.UUID,
 	room uuid.UUID,
 ) persistence.Message {
-	someTime := time.Date(2025, 3, 29, 11, 42, 43, 0, time.UTC)
-
 	msg := persistence.Message{
-		Id:        uuid.New(),
-		ChatUser:  user,
-		Room:      room,
-		Message:   "my-message-" + uuid.NewString(),
-		CreatedAt: someTime,
+		Id:       uuid.New(),
+		ChatUser: user,
+		Room:     room,
+		Message:  "my-message-" + uuid.NewString(),
 	}
 
-	n, err := conn.Exec(
+	createdAt, err := db.QueryOne[time.Time](
 		context.Background(),
+		conn,
 		`INSERT INTO
-			message (id, chat_user, room, message, created_at)
-			VALUES ($1, $2, $3, $4, $5)`,
+			message (id, chat_user, room, message)
+			VALUES ($1, $2, $3, $4)
+			RETURNING created_at`,
 		msg.Id,
 		msg.ChatUser,
 		msg.Room,
 		msg.Message,
-		msg.CreatedAt,
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, int64(1), n, "Actual err: %v", err)
+
+	msg.CreatedAt = createdAt
 
 	return msg
 }

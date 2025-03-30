@@ -16,7 +16,7 @@ import (
 
 func TestIT_RoomRepository_Create(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
-	startTime := time.Now()
+	beforeInsertion := time.Now()
 
 	room := persistence.Room{
 		Id:   uuid.New(),
@@ -28,7 +28,7 @@ func TestIT_RoomRepository_Create(t *testing.T) {
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, room, "CreatedAt", "UpdatedAt"))
 	assert.Equal(t, actual.CreatedAt, actual.UpdatedAt)
-	assert.True(t, actual.CreatedAt.After(startTime))
+	assert.True(t, actual.CreatedAt.After(beforeInsertion))
 	assertRoomExists(t, conn, room.Id)
 }
 
@@ -59,7 +59,7 @@ func TestIT_RoomRepository_Get(t *testing.T) {
 	actual, err := repo.Get(context.Background(), room.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.True(t, eassert.EqualsIgnoringFields(actual, room))
+	assert.Equal(t, room, actual)
 }
 
 func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
@@ -86,8 +86,8 @@ func TestIT_RoomRepository_ListForUser(t *testing.T) {
 	actual, err := repo.ListForUser(context.Background(), user.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Len(t, actual, 1)
-	assert.True(t, eassert.EqualsIgnoringFields(actual[0], room1))
+	expected := []persistence.Room{room1}
+	assert.ElementsMatch(t, expected, actual)
 }
 
 func TestIT_RoomRepository_ListForUser_WhenNoRoomRegistered_ReturnsEmptySlice(t *testing.T) {
@@ -161,28 +161,25 @@ func assertRoomDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 }
 
 func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
-	someTime := time.Date(2025, 3, 2, 10, 38, 40, 0, time.UTC)
-
 	room := persistence.Room{
-		Id:        uuid.New(),
-		Name:      "my-room-" + uuid.New().String(),
-		CreatedAt: someTime,
+		Id:   uuid.New(),
+		Name: "my-room-" + uuid.New().String(),
 	}
 
-	updatedAt, err := db.QueryOne[time.Time](
+	times, err := db.QueryOne[createdAtUpdatedAt](
 		context.Background(),
 		conn,
 		`INSERT INTO
-			room (id, name, created_at)
-			VALUES ($1, $2, $3)
-			RETURNING updated_at`,
+			room (id, name)
+			VALUES ($1, $2)
+			RETURNING created_at, updated_at`,
 		room.Id,
 		room.Name,
-		room.CreatedAt,
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	room.UpdatedAt = updatedAt
+	room.CreatedAt = times.CreatedAt
+	room.UpdatedAt = times.UpdatedAt
 
 	return room
 }
