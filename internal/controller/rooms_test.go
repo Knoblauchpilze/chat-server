@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
@@ -339,9 +338,8 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 
 	id := uuid.New()
 	room := persistence.Room{
-		Id:        id,
-		Name:      fmt.Sprintf("my-room-%s", id),
-		CreatedAt: time.Now(),
+		Id:   id,
+		Name: fmt.Sprintf("my-room-%s", id),
 	}
 	out, err := repo.Create(context.Background(), room)
 	assert.Nil(t, err, "Actual err: %v", err)
