@@ -140,7 +140,7 @@ func insertTestMessage(
 		Id:        uuid.New(),
 		ChatUser:  user,
 		Room:      room,
-		Message:   "my-name-" + uuid.NewString(),
+		Message:   "my-message-" + uuid.NewString(),
 		CreatedAt: someTime,
 	}
 
