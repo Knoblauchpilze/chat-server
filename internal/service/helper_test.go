@@ -38,7 +38,7 @@ func insertTestMessage(
 		Id:       id,
 		ChatUser: user,
 		Room:     room,
-		Message:  fmt.Sprintf("my-name-%s", id),
+		Message:  fmt.Sprintf("my-message-%s", id),
 	}
 	out, err := repo.Create(context.Background(), msg)
 	assert.Nil(t, err, "Actual err: %v", err)
