@@ -25,8 +25,7 @@ func New(
 		Room: NewRoomService(conn, repos),
 		User: NewUserService(conn, repos),
 		Chat: NewChatService(
-			clients.Handshake,
-			connectTimeout,
+			clients.NewHandshake(repos.User, connectTimeout),
 			log,
 		),
 	}

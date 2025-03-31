@@ -21,7 +21,6 @@ const (
 	reasonableWaitTimeForOnConnectMessageToBeProcessed = 100 * time.Millisecond
 	reasonableReadTimeout                              = 100 * time.Millisecond
 	reasonableReadSizeInBytes                          = 1024
-	reasonableConnectTimeout                           = 100 * time.Millisecond
 )
 
 func TestUnit_ChatService_OnConnect_SendsMessagesToOthers(t *testing.T) {
@@ -143,14 +142,24 @@ func TestUnit_ChatService_OnDirectMessage_RoutesMessageToCorrectClient(t *testin
 	wg.Wait()
 }
 
+type generateUuid func() uuid.UUID
+
+type mockHandshake struct {
+	generateUuid generateUuid
+	err          error
+}
+
+func (m *mockHandshake) Perform(net.Conn) (uuid.UUID, error) {
+	return m.generateUuid(), m.err
+}
+
 func newTestChatService() (ChatService, clients.Callbacks) {
-	handshakeFunc := func(net.Conn, time.Duration) (uuid.UUID, error) {
-		return uuid.New(), nil
+	handshake := &mockHandshake{
+		generateUuid: uuid.New,
 	}
 
 	service := NewChatService(
-		handshakeFunc,
-		reasonableConnectTimeout,
+		handshake,
 		logger.New(os.Stdout),
 	)
 	return service, service.GenerateCallbacks()

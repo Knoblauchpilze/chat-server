@@ -1,8 +1,6 @@
 package service
 
 import (
-	"time"
-
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
@@ -23,14 +21,13 @@ type chatServiceImpl struct {
 }
 
 func NewChatService(
-	handshakeFunc clients.HandshakeFunc, connectTimeout time.Duration, log logger.Logger,
+	handshake clients.Handshake, log logger.Logger,
 ) ChatService {
 	queue := make(chan messages.Message, incomingMessagesBufferSize)
 	props := clients.ManagerProps{
-		Queue:          queue,
-		ConnectTimeout: connectTimeout,
-		Handshake:      handshakeFunc,
-		Log:            log,
+		Queue:     queue,
+		Handshake: handshake,
+		Log:       log,
 	}
 	manager := clients.NewManager(props)
 
