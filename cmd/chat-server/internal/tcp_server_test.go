@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,8 +23,10 @@ const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
 func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7100)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, err := net.Dial("tcp", ":7100")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -37,8 +41,10 @@ func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7101)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, err := net.Dial("tcp", ":7101")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -51,8 +57,10 @@ func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testin
 func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7103)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn1, _ := connectToServerAndSendHandshake(t, 7103)
 
@@ -76,8 +84,10 @@ func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7104)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn1, client1Id := connectToServerAndSendHandshake(t, 7104)
 	conn2, _ := connectToServerAndSendHandshake(t, 7104)
@@ -104,8 +114,10 @@ func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7105)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	// Connect client 1
 	conn1, client1Id := connectToServerAndSendHandshake(t, 7105)
@@ -150,8 +162,10 @@ func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *
 func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7102)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, _ := connectToServerAndSendHandshake(t, 7102)
 	_, err := conn.Write([]byte("garbage"))
@@ -170,8 +184,10 @@ func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *test
 func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7106)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, _ := connectToServerAndSendHandshake(t, 7106)
 
@@ -196,16 +212,21 @@ func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(
 func asyncRunTcpServer(
 	t *testing.T,
 	config Configuration,
+	dbConn db.Connection,
 	ctx context.Context,
 ) *sync.WaitGroup {
 	var err error
 	var wg sync.WaitGroup
 
+	userRepo := repositories.NewUserRepository(dbConn)
+
 	log := logger.New(os.Stdout)
 	services := service.Services{
 		Chat: service.NewChatService(
-			clients.Handshake,
-			config.ConnectTimeout,
+			clients.NewHandshake(
+				userRepo,
+				config.ConnectTimeout,
+			),
 			log,
 		),
 	}
