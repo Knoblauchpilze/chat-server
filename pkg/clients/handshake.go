@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"net"
 	"time"
 
@@ -28,6 +29,20 @@ func NewHandshake(
 }
 
 func (h *handshakeImpl) Perform(conn net.Conn) (uuid.UUID, error) {
+	id, err := h.tryWaitForUserId(conn)
+	if err != nil {
+		return id, err
+	}
+
+	_, err = h.userRepo.Get(context.Background(), id)
+	if err != nil {
+		return id, wrapHandshakeFailureError(err)
+	}
+
+	return id, nil
+}
+
+func (h *handshakeImpl) tryWaitForUserId(conn net.Conn) (uuid.UUID, error) {
 	limit := time.Now().Add(h.timeout)
 	conn.SetReadDeadline(limit)
 
