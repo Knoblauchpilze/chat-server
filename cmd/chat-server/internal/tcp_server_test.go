@@ -20,7 +20,7 @@ import (
 
 const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
 
-func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
+func TestIT_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7100)
 	dbConn := newTestDbConnection(t)
@@ -38,7 +38,7 @@ func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
+func TestIT_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7101)
 	dbConn := newTestDbConnection(t)
@@ -54,7 +54,7 @@ func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testin
 	assertConnectionIsClosed(t, conn)
 }
 
-func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
+func TestIT_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7103)
 	dbConn := newTestDbConnection(t)
@@ -81,7 +81,7 @@ func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
+func TestIT_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7104)
 	dbConn := newTestDbConnection(t)
@@ -111,7 +111,7 @@ func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
+func TestIT_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7105)
 	dbConn := newTestDbConnection(t)
@@ -159,7 +159,7 @@ func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
+func TestIT_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7102)
 	dbConn := newTestDbConnection(t)
@@ -181,7 +181,7 @@ func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *test
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
+func TestIT_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7106)
 	dbConn := newTestDbConnection(t)

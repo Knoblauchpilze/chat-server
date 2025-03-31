@@ -14,7 +14,7 @@ import (
 
 const reasonableHandshakeTimeout = 50 * time.Millisecond
 
-func TestUnit_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
+func TestIT_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
 	handshake, dbConn := newTestHandshake(t)
 	defer dbConn.Close(context.Background())
 	_, server := newTestConnection(t, 7400)
@@ -29,7 +29,7 @@ func TestUnit_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
 	)
 }
 
-func TestUnit_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
+func TestIT_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
 	handshake, dbConn := newTestHandshake(t)
 	defer dbConn.Close(context.Background())
 	client, server := newTestConnection(t, 7401)
@@ -49,7 +49,7 @@ func TestUnit_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
 	)
 }
 
-func TestUnit_Handshake_WhenDataIsNotAnId_ExpectFailure(t *testing.T) {
+func TestIT_Handshake_WhenDataIsNotAnId_ExpectFailure(t *testing.T) {
 	handshake, dbConn := newTestHandshake(t)
 	defer dbConn.Close(context.Background())
 	client, server := newTestConnection(t, 7402)
