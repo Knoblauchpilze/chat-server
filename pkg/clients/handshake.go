@@ -34,7 +34,6 @@ func (h *handshakeImpl) Perform(conn net.Conn) (uuid.UUID, error) {
 		return id, err
 	}
 
-	// TODO: We could probably propagate the connection's context
 	_, err = h.userRepo.Get(context.Background(), id)
 	if err != nil {
 		return id, wrapHandshakeFailureError(err)
