@@ -69,6 +69,7 @@ func TestIT_UserController_CreateUser_WhenUserHasEmptyName_ExpectBadRequest(t *t
 
 func TestIT_UserController_CreateUser(t *testing.T) {
 	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	requestDto := communication.UserDtoRequest{
 		Name:    fmt.Sprintf("my-user-%s", uuid.NewString()),
 		ApiUser: uuid.New(),
@@ -97,6 +98,7 @@ func TestIT_UserController_CreateUser(t *testing.T) {
 
 func TestIT_UserController_GetUser(t *testing.T) {
 	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -160,6 +162,7 @@ func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *
 
 func TestIT_UserController_ListForUser(t *testing.T) {
 	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 
 	room1 := insertTestRoom(t, dbConn)
@@ -186,6 +189,7 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 
 func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *testing.T) {
 	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
@@ -224,6 +228,7 @@ func TestIT_UserController_DeleteUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *t
 
 func TestIT_UserController_DeleteUser(t *testing.T) {
 	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
