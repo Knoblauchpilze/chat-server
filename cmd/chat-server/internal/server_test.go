@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,11 +42,18 @@ func TestIT_RunServer_CanConnectOnHttpPort(t *testing.T) {
 
 func TestIT_RunServer_CanConnectOnTcpPort(t *testing.T) {
 	conf := newTestServerConfig(7304, 7305)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 	cancellable, cancel := context.WithCancel(context.Background())
 
 	wg := asyncListenAndServe(t, conf, cancellable)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7304)
+	conn, _ := connectToServerAndSendHandshake(t, 7304, dbConn)
+
+	clientId := uuid.New()
+	n, err := conn.Write(clientId[:])
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(clientId), n)
 
 	time.Sleep(100 * time.Millisecond)
 	assertConnectionIsStillOpen(t, conn)
@@ -57,6 +65,24 @@ func TestIT_RunServer_CanConnectOnTcpPort(t *testing.T) {
 }
 
 func TestIT_RunServer_WhenClientDoesNotPerformHandshake_ExpectConnectionToBeTerminated(t *testing.T) {
+	conf := newTestServerConfig(7306, 7307)
+	conf.ConnectTimeout = 50 * time.Millisecond
+	cancellable, cancel := context.WithCancel(context.Background())
+
+	wg := asyncListenAndServe(t, conf, cancellable)
+
+	conn, err := net.Dial("tcp", ":7306")
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait long enough for the handshake timeout to kick in
+	time.Sleep(100 * time.Millisecond)
+	assertConnectionIsClosed(t, conn)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestIT_RunServer_WhenClientIsNotRegistered_ExpectConnectionToBeTerminated(t *testing.T) {
 	conf := newTestServerConfig(7306, 7307)
 	conf.ConnectTimeout = 50 * time.Millisecond
 	cancellable, cancel := context.WithCancel(context.Background())

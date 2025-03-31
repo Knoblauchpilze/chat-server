@@ -9,20 +9,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/stretchr/testify/assert"
 )
 
 const reasonableTimeForConnectionToBeProcessed = 100 * time.Millisecond
 
-func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
+func TestIT_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7100)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, err := net.Dial("tcp", ":7100")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -34,11 +38,13 @@ func TestUnit_RunTcpServer_OnConnect_ShouldBeAccepted(t *testing.T) {
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
+func TestIT_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7101)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	conn, err := net.Dial("tcp", ":7101")
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -48,17 +54,19 @@ func TestUnit_RunTcpServer_WhenServerCloses_ExpectConnectionToBeClosed(t *testin
 	assertConnectionIsClosed(t, conn)
 }
 
-func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
+func TestIT_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7103)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn1, _ := connectToServerAndSendHandshake(t, 7103)
+	conn1, _ := connectToServerAndSendHandshake(t, 7103, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
-	conn2, client2Id := connectToServerAndSendHandshake(t, 7103)
+	conn2, client2 := connectToServerAndSendHandshake(t, 7103, dbConn)
 
 	data := readFromConnection(t, conn1)
 	msg, decoded, err := messages.Decode(data)
@@ -66,21 +74,23 @@ func TestUnit_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	assert.Equal(t, len(data), decoded)
 	actualMsg, err := messages.ToMessageStruct[messages.ClientConnectedMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client2Id, actualMsg.Client)
+	assert.Equal(t, client2.Id, actualMsg.Client)
 	assertNoDataReceived(t, conn2)
 
 	cancel()
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
+func TestIT_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7104)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn1, client1Id := connectToServerAndSendHandshake(t, 7104)
-	conn2, _ := connectToServerAndSendHandshake(t, 7104)
+	conn1, client1 := connectToServerAndSendHandshake(t, 7104, dbConn)
+	conn2, _ := connectToServerAndSendHandshake(t, 7104, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 	drainConnection(t, conn1)
@@ -95,25 +105,27 @@ func TestUnit_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	assert.Equal(t, len(data), decoded)
 	actualMsg, err := messages.ToMessageStruct[messages.ClientDisconnectedMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client1Id, actualMsg.Client)
+	assert.Equal(t, client1.Id, actualMsg.Client)
 
 	cancel()
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
+func TestIT_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7105)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	// Connect client 1
-	conn1, client1Id := connectToServerAndSendHandshake(t, 7105)
+	conn1, client1 := connectToServerAndSendHandshake(t, 7105, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
 	// Connect client 2
-	conn2, client2Id := connectToServerAndSendHandshake(t, 7105)
+	conn2, client2 := connectToServerAndSendHandshake(t, 7105, dbConn)
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
 	// Drain connection 1 so that no data is pending
@@ -122,7 +134,7 @@ func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *
 	assertNoDataReceived(t, conn2)
 
 	// Send message to client 2 from client 1's connection
-	msg := messages.NewDirectMessage(client1Id, client2Id, "Hello, client 2")
+	msg := messages.NewDirectMessage(client1.Id, client2.Id, "Hello, client 2")
 	out, err := messages.Encode(msg)
 
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -139,21 +151,23 @@ func TestUnit_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *
 	assert.Equal(t, len(data), decoded)
 	actual, err := messages.ToMessageStruct[messages.DirectMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client1Id, actual.Emitter)
-	assert.Equal(t, client2Id, actual.Receiver)
+	assert.Equal(t, client1.Id, actual.Emitter)
+	assert.Equal(t, client2.Id, actual.Receiver)
 	assert.Equal(t, "Hello, client 2", actual.Content)
 
 	cancel()
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
+func TestIT_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7102)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7102)
+	conn, _ := connectToServerAndSendHandshake(t, 7102, dbConn)
 	_, err := conn.Write([]byte("garbage"))
 	assert.Nil(t, err, "Actual err: %v", err)
 
@@ -167,13 +181,15 @@ func TestUnit_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *test
 	wg.Wait()
 }
 
-func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
+func TestIT_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	config := newTcpTestConfig(7106)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncRunTcpServer(t, config, cancellable)
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7106)
+	conn, _ := connectToServerAndSendHandshake(t, 7106, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
@@ -196,16 +212,21 @@ func TestUnit_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(
 func asyncRunTcpServer(
 	t *testing.T,
 	config Configuration,
+	dbConn db.Connection,
 	ctx context.Context,
 ) *sync.WaitGroup {
 	var err error
 	var wg sync.WaitGroup
 
+	userRepo := repositories.NewUserRepository(dbConn)
+
 	log := logger.New(os.Stdout)
 	services := service.Services{
 		Chat: service.NewChatService(
-			clients.Handshake,
-			config.ConnectTimeout,
+			clients.NewHandshake(
+				userRepo,
+				config.ConnectTimeout,
+			),
 			log,
 		),
 	}

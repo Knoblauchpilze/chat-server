@@ -3,7 +3,6 @@ package clients
 import (
 	"net"
 	"sync"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	bterrors "github.com/Knoblauchpilze/chat-server/pkg/errors"
@@ -20,29 +19,26 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	log            logger.Logger
-	queue          messages.OutgoingQueue
-	handshake      HandshakeFunc
-	connectTimeout time.Duration
+	log       logger.Logger
+	queue     messages.OutgoingQueue
+	handshake Handshake
 
 	lock    sync.RWMutex
 	clients map[uuid.UUID]net.Conn
 }
 
 type ManagerProps struct {
-	Queue          messages.OutgoingQueue
-	ConnectTimeout time.Duration
-	Handshake      HandshakeFunc
-	Log            logger.Logger
+	Queue     messages.OutgoingQueue
+	Handshake Handshake
+	Log       logger.Logger
 }
 
 func NewManager(props ManagerProps) Manager {
 	return &managerImpl{
-		log:            props.Log,
-		queue:          props.Queue,
-		handshake:      props.Handshake,
-		connectTimeout: props.ConnectTimeout,
-		clients:        make(map[uuid.UUID]net.Conn),
+		log:       props.Log,
+		queue:     props.Queue,
+		handshake: props.Handshake,
+		clients:   make(map[uuid.UUID]net.Conn),
 	}
 }
 
@@ -51,7 +47,7 @@ func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	var handshakeErr error
 
 	err := bterrors.SafeRunSync(func() {
-		connId, handshakeErr = m.handshake(conn, m.connectTimeout)
+		connId, handshakeErr = m.handshake.Perform(conn)
 	})
 
 	if err != nil {

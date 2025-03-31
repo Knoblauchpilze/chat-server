@@ -20,8 +20,5 @@ func newHandshakeIncompleteError() error {
 }
 
 func wrapHandshakeFailureError(err error) error {
-	return errors.NewCodeWithDetails(
-		HandshakeFailure,
-		"failed to interpret handshake data",
-	)
+	return errors.WrapCode(err, HandshakeFailure)
 }
