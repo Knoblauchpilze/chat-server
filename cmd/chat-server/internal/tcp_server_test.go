@@ -62,11 +62,11 @@ func TestIT_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 
 	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn1, _ := connectToServerAndSendHandshake(t, 7103)
+	conn1, _ := connectToServerAndSendHandshake(t, 7103, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
-	conn2, client2Id := connectToServerAndSendHandshake(t, 7103)
+	conn2, client2 := connectToServerAndSendHandshake(t, 7103, dbConn)
 
 	data := readFromConnection(t, conn1)
 	msg, decoded, err := messages.Decode(data)
@@ -74,7 +74,7 @@ func TestIT_RunTcpServer_OnConnect_ExpectOthersAreNotified(t *testing.T) {
 	assert.Equal(t, len(data), decoded)
 	actualMsg, err := messages.ToMessageStruct[messages.ClientConnectedMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client2Id, actualMsg.Client)
+	assert.Equal(t, client2.Id, actualMsg.Client)
 	assertNoDataReceived(t, conn2)
 
 	cancel()
@@ -89,8 +89,8 @@ func TestIT_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 
 	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn1, client1Id := connectToServerAndSendHandshake(t, 7104)
-	conn2, _ := connectToServerAndSendHandshake(t, 7104)
+	conn1, client1 := connectToServerAndSendHandshake(t, 7104, dbConn)
+	conn2, _ := connectToServerAndSendHandshake(t, 7104, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 	drainConnection(t, conn1)
@@ -105,7 +105,7 @@ func TestIT_RunTcpServer_OnDisconnect_ExpectOthersAreNotified(t *testing.T) {
 	assert.Equal(t, len(data), decoded)
 	actualMsg, err := messages.ToMessageStruct[messages.ClientDisconnectedMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client1Id, actualMsg.Client)
+	assert.Equal(t, client1.Id, actualMsg.Client)
 
 	cancel()
 	wg.Wait()
@@ -120,12 +120,12 @@ func TestIT_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *te
 	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
 	// Connect client 1
-	conn1, client1Id := connectToServerAndSendHandshake(t, 7105)
+	conn1, client1 := connectToServerAndSendHandshake(t, 7105, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
 	// Connect client 2
-	conn2, client2Id := connectToServerAndSendHandshake(t, 7105)
+	conn2, client2 := connectToServerAndSendHandshake(t, 7105, dbConn)
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 
 	// Drain connection 1 so that no data is pending
@@ -134,7 +134,7 @@ func TestIT_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *te
 	assertNoDataReceived(t, conn2)
 
 	// Send message to client 2 from client 1's connection
-	msg := messages.NewDirectMessage(client1Id, client2Id, "Hello, client 2")
+	msg := messages.NewDirectMessage(client1.Id, client2.Id, "Hello, client 2")
 	out, err := messages.Encode(msg)
 
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -151,8 +151,8 @@ func TestIT_RunTcpServer_WhenSendingMessageToClient_ExpectOnlyItReceivesIt(t *te
 	assert.Equal(t, len(data), decoded)
 	actual, err := messages.ToMessageStruct[messages.DirectMessage](msg)
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, client1Id, actual.Emitter)
-	assert.Equal(t, client2Id, actual.Receiver)
+	assert.Equal(t, client1.Id, actual.Emitter)
+	assert.Equal(t, client2.Id, actual.Receiver)
 	assert.Equal(t, "Hello, client 2", actual.Content)
 
 	cancel()
@@ -167,7 +167,7 @@ func TestIT_RunTcpServer_WhenSendingGarbage_ExpectConnectionToStayOpen(t *testin
 
 	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7102)
+	conn, _ := connectToServerAndSendHandshake(t, 7102, dbConn)
 	_, err := conn.Write([]byte("garbage"))
 	assert.Nil(t, err, "Actual err: %v", err)
 
@@ -189,7 +189,7 @@ func TestIT_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t 
 
 	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7106)
+	conn, _ := connectToServerAndSendHandshake(t, 7106, dbConn)
 
 	time.Sleep(reasonableTimeForConnectionToBeProcessed)
 

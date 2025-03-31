@@ -241,15 +241,17 @@ func assertResponseAndExtractDetails[T any](
 	return out
 }
 
-func connectToServerAndSendHandshake(t *testing.T, port uint16) (net.Conn, uuid.UUID) {
-	clientId := uuid.New()
+func connectToServerAndSendHandshake(
+	t *testing.T, port uint16, dbConn db.Connection,
+) (net.Conn, persistence.User) {
+	user := insertTestUser(t, dbConn)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	n, err := conn.Write(clientId[:])
+	n, err := conn.Write(user.Id[:])
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, len(clientId), n)
+	assert.Equal(t, len(user.Id), n)
 
-	return conn, clientId
+	return conn, user
 }
