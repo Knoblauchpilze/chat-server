@@ -1,9 +1,11 @@
 package clients
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
@@ -13,7 +15,8 @@ import (
 const reasonableHandshakeTimeout = 50 * time.Millisecond
 
 func TestUnit_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
-	handshake := newTestHandshake(t)
+	handshake, dbConn := newTestHandshake(t)
+	defer dbConn.Close(context.Background())
 	_, server := newTestConnection(t, 7400)
 
 	_, err := handshake.Perform(server)
@@ -27,7 +30,8 @@ func TestUnit_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
 }
 
 func TestUnit_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
-	handshake := newTestHandshake(t)
+	handshake, dbConn := newTestHandshake(t)
+	defer dbConn.Close(context.Background())
 	client, server := newTestConnection(t, 7401)
 
 	id := uuid.New()
@@ -46,7 +50,8 @@ func TestUnit_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
 }
 
 func TestUnit_Handshake_WhenDataIsNotAnId_ExpectFailure(t *testing.T) {
-	handshake := newTestHandshake(t)
+	handshake, dbConn := newTestHandshake(t)
+	defer dbConn.Close(context.Background())
 	client, server := newTestConnection(t, 7402)
 
 	expected := uuid.New()
@@ -60,11 +65,13 @@ func TestUnit_Handshake_WhenDataIsNotAnId_ExpectFailure(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func newTestHandshake(t *testing.T) Handshake {
+func newTestHandshake(t *testing.T) (Handshake, db.Connection) {
 	dbConn := newTestDbConnection(t)
 	userRepo := repositories.NewUserRepository(dbConn)
 
-	return NewHandshake(
+	handshake := NewHandshake(
 		userRepo, reasonableHandshakeTimeout,
 	)
+
+	return handshake, dbConn
 }

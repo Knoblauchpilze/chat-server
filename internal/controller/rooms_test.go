@@ -68,6 +68,7 @@ func TestIT_RoomController_CreateRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *t
 
 func TestIT_RoomController_CreateRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	requestDto := communication.RoomDtoRequest{
 		Name: fmt.Sprintf("my-room-%s", uuid.NewString()),
 	}
@@ -95,6 +96,7 @@ func TestIT_RoomController_CreateRoom(t *testing.T) {
 
 func TestIT_RoomController_GetRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -160,6 +162,7 @@ func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest
 
 func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
 	insertTestUser(t, dbConn)
@@ -189,6 +192,7 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 
 func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
@@ -227,6 +231,7 @@ func TestIT_RoomController_ListMessageForRoom_WhenIdHasWrongSyntax_ExpectBadRequ
 
 func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
 	user1 := insertTestUser(t, dbConn)
@@ -258,6 +263,7 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 
 func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySlice(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
@@ -298,6 +304,7 @@ func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *t
 
 func TestIT_RoomController_DeleteRoom(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
