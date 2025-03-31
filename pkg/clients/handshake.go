@@ -5,13 +5,30 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 )
 
-type HandshakeFunc func(net.Conn, time.Duration) (uuid.UUID, error)
+type Handshake interface {
+	Perform(net.Conn) (uuid.UUID, error)
+}
 
-func Handshake(conn net.Conn, timeout time.Duration) (uuid.UUID, error) {
-	limit := time.Now().Add(timeout)
+type handshakeImpl struct {
+	userRepo repositories.UserRepository
+	timeout  time.Duration
+}
+
+func NewHandshake(
+	userRepo repositories.UserRepository, timeout time.Duration,
+) Handshake {
+	return &handshakeImpl{
+		userRepo: userRepo,
+		timeout:  timeout,
+	}
+}
+
+func (h *handshakeImpl) Perform(conn net.Conn) (uuid.UUID, error) {
+	limit := time.Now().Add(h.timeout)
 	conn.SetReadDeadline(limit)
 
 	var id uuid.UUID
