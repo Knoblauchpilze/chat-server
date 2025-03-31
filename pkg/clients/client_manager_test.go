@@ -85,8 +85,8 @@ func TestUnit_ClientManager_WhenReadErrorDetected_ExpectMessageIsNotReceivedAnym
 
 func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManagerWithHandshakeFunc(
-		queue, newHandshakeFuncWithRandomUuid(),
+	manager := newTestClientManagerWithHandshake(
+		queue, newHandshakeWithRandomUuid(),
 	)
 
 	clientConn1, serverConn1 := newTestConnection(t, 7501)
@@ -114,8 +114,8 @@ func TestUnit_ClientManager_WhenMessageIsBroadcast_ExpectMessagesToBeSent(t *tes
 
 func TestUnit_ClientManager_WhenMessageIsBroadcastExceptToOneClient_ExpectNothingReceivedForThisClient(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManagerWithHandshakeFunc(
-		queue, newHandshakeFuncWithRandomUuid(),
+	manager := newTestClientManagerWithHandshake(
+		queue, newHandshakeWithRandomUuid(),
 	)
 
 	clientConn1, serverConn1 := newTestConnection(t, 7502)
@@ -163,8 +163,8 @@ func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectMessageIsSent(t *tes
 
 func TestUnit_ClientManager_WhenMessageIsSentToClient_ExpectNobodyElseReceivesIt(t *testing.T) {
 	queue := make(chan messages.Message, 1)
-	manager := newTestClientManagerWithHandshakeFunc(
-		queue, newHandshakeFuncWithRandomUuid(),
+	manager := newTestClientManagerWithHandshake(
+		queue, newHandshakeWithRandomUuid(),
 	)
 
 	_, serverConn1 := newTestConnection(t, 7504)
@@ -202,12 +202,15 @@ func TestUnit_ClientManager_WhenClientDisconnects_ExpectMessageIsNotReceivedAnym
 }
 
 func TestUnit_ClientManager_WhenHandshakeFails_ExpectClientIsDenied(t *testing.T) {
-	hanshake := func(net.Conn, time.Duration) (uuid.UUID, error) {
-		return uuid.Nil, errSample
+	handshake := &mockHandshake{
+		generateUuid: func() uuid.UUID {
+			return uuid.New()
+		},
+		err: errSample,
 	}
 	// In case a message is published this will hang
 	queue := make(chan messages.Message)
-	manager := newTestClientManagerWithHandshakeFunc(queue, hanshake)
+	manager := newTestClientManagerWithHandshake(queue, handshake)
 
 	actual, _ := manager.OnConnect(nil)
 
@@ -215,42 +218,58 @@ func TestUnit_ClientManager_WhenHandshakeFails_ExpectClientIsDenied(t *testing.T
 }
 
 func TestUnit_ClientManager_WhenHandshakePanics_ExpectClientIsDenied(t *testing.T) {
-	hanshake := func(net.Conn, time.Duration) (uuid.UUID, error) {
-		panic(errSample)
+	handshake := &mockHandshake{
+		generateUuid: func() uuid.UUID {
+			panic(errSample)
+		},
+		err: errSample,
 	}
 	// In case a message is published this will hang
 	queue := make(chan messages.Message)
-	manager := newTestClientManagerWithHandshakeFunc(queue, hanshake)
+	manager := newTestClientManagerWithHandshake(queue, handshake)
 
 	actual, _ := manager.OnConnect(nil)
 
 	assert.False(t, actual)
 }
 
-func newTestHandshakeFunc(id uuid.UUID) HandshakeFunc {
-	return func(net.Conn, time.Duration) (uuid.UUID, error) {
-		return id, nil
+type generateUuid func() uuid.UUID
+
+type mockHandshake struct {
+	generateUuid generateUuid
+	err          error
+}
+
+func (m *mockHandshake) Perform(net.Conn) (uuid.UUID, error) {
+	return m.generateUuid(), m.err
+}
+
+func newTestHandshakeWithFixedUuid(id uuid.UUID) Handshake {
+	return &mockHandshake{
+		generateUuid: func() uuid.UUID {
+			return id
+		},
 	}
 }
 
-func newHandshakeFuncWithRandomUuid() HandshakeFunc {
-	return func(net.Conn, time.Duration) (uuid.UUID, error) {
-		return uuid.New(), nil
+func newHandshakeWithRandomUuid() Handshake {
+	return &mockHandshake{
+		generateUuid: uuid.New,
 	}
 }
 
 func newTestClientManager(queue chan messages.Message) Manager {
-	return newTestClientManagerWithHandshakeFunc(queue, newTestHandshakeFunc(sampleUuid))
+	return newTestClientManagerWithHandshake(
+		queue, newTestHandshakeWithFixedUuid(sampleUuid))
 }
 
-func newTestClientManagerWithHandshakeFunc(
-	queue chan messages.Message, handshake HandshakeFunc,
+func newTestClientManagerWithHandshake(
+	queue chan messages.Message, handshake Handshake,
 ) Manager {
 	props := ManagerProps{
-		Queue:          queue,
-		ConnectTimeout: 100 * time.Millisecond,
-		Handshake:      handshake,
-		Log:            logger.New(os.Stdout),
+		Queue:     queue,
+		Handshake: handshake,
+		Log:       logger.New(os.Stdout),
 	}
 
 	return NewManager(props)
