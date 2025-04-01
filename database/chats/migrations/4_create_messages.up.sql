@@ -6,7 +6,7 @@ CREATE TABLE message (
   message TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  FOREIGN KEY (chat_user) REFERENCES chat_user(id),
+  FOREIGN KEY (chat_user, room) REFERENCES room_user(chat_user, room),
   FOREIGN KEY (room) REFERENCES room(id)
 );
 

@@ -20,6 +20,7 @@ func TestIT_MessageRepository_Create(t *testing.T) {
 
 	room := insertTestRoom(t, conn)
 	user := insertTestUser(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
 
 	msg := persistence.Message{
 		Id:       uuid.New(),
@@ -34,6 +35,28 @@ func TestIT_MessageRepository_Create(t *testing.T) {
 	assert.True(t, eassert.EqualsIgnoringFields(actual, msg, "CreatedAt"))
 	assert.True(t, actual.CreatedAt.After(beforeInsertion))
 	assertMessageExists(t, conn, msg.Id)
+}
+
+func TestIT_MessageRepository_Create_WhenUserNotRegisteredInRoom_ExpectFailure(t *testing.T) {
+	repo, conn := newTestMessageRepository(t)
+	room := insertTestRoom(t, conn)
+	user := insertTestUser(t, conn)
+
+	msg := persistence.Message{
+		Id:       uuid.New(),
+		ChatUser: user.Id,
+		Room:     room.Id,
+		Message:  "hello world!",
+	}
+
+	_, err := repo.Create(context.Background(), msg)
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+	assertMessageDoesNotExist(t, conn, msg.Id)
 }
 
 func TestIT_MessageRepository_Create_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
@@ -125,6 +148,17 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
+}
+
+func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		"SELECT COUNT(id) FROM message WHERE id = $1",
+		id,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Zero(t, value)
 }
 
 func insertTestMessage(
