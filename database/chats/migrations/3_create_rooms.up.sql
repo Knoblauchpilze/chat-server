@@ -19,8 +19,7 @@ CREATE TABLE room_user (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (room, chat_user),
   FOREIGN KEY (room) REFERENCES room(id),
-  FOREIGN KEY (chat_user) REFERENCES chat_user(id),
-  UNIQUE (room, chat_user)
+  FOREIGN KEY (chat_user) REFERENCES chat_user(id)
 );
 
 CREATE INDEX room_user_chat_user_index ON room_user (chat_user);
