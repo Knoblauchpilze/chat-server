@@ -15,6 +15,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -202,6 +203,68 @@ func TestIT_RunTcpServer_WhenClientIsSendingTooMuchGarbage_ExpectDisconnected(t 
 
 	// Wait long enough for the connection to be terminated.
 	time.Sleep(200 * time.Millisecond)
+
+	assertConnectionIsClosed(t, conn)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestIT_RunTcpServer_WhenClientIsSendingNotProcessableDqtq_ExpectConnectionToStayOpenForSomeTimeAndThenClosed(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTcpTestConfig(7107)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
+
+	conn, _ := connectToServerAndSendHandshake(t, 7107, dbConn)
+
+	// Send some garbage
+	_, err := conn.Write([]byte("garbage"))
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	time.Sleep(2 * time.Second)
+	assertConnectionIsStillOpen(t, conn)
+
+	// Wait long enough for the incomplete data timeout to kick in
+	// and connection to be effectively closed.
+	time.Sleep(4 * time.Second)
+
+	assertConnectionIsClosed(t, conn)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestIT_RunTcpServer_WhenClientIsSendingDataButNotProcessable_ExpectConnectionToBeClosed(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	config := newTcpTestConfig(7108)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	wg := asyncRunTcpServer(t, config, dbConn, cancellable)
+
+	conn, _ := connectToServerAndSendHandshake(t, 7108, dbConn)
+
+	// Send a valid message
+	client1Id := uuid.New()
+	client2Id := uuid.New()
+	msg := messages.NewDirectMessage(client1Id, client2Id, "foo")
+	out, err := messages.Encode(msg)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	n, err := conn.Write(out)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, len(out), n)
+
+	// Send some garbage
+	_, err = conn.Write([]byte("garbage"))
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait long enough for the incomplete data timeout to kick in
+	// and connection to be effectively closed.
+	time.Sleep(6 * time.Second)
 
 	assertConnectionIsClosed(t, conn)
 
