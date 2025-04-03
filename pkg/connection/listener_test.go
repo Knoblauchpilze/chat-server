@@ -305,7 +305,7 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 }
 
 func TestUnit_Listener_WhenIncompleteDataReceived_IfNoDataComesLater_ExpectOnReadErrorNotified(t *testing.T) {
-	client, server := newTestConnection(t, 1212)
+	client, server := newTestConnection(t, 1213)
 
 	var readErr error
 	var called atomic.Bool
