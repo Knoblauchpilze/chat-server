@@ -101,6 +101,8 @@ func (l *listenerImpl) Close() {
 func (l *listenerImpl) activeLoop() {
 	defer l.wg.Done()
 
+	l.lastSuccessfulProcessing = time.Now()
+
 	running := true
 	for running {
 		var readResult connectionReadResult
@@ -116,7 +118,7 @@ func (l *listenerImpl) activeLoop() {
 
 		l.conn.DiscardBytes(readResult.processed)
 
-		if err := l.updateLastSuccessfulRead(readResult); err != nil {
+		if err := l.updateLastSuccessfulRead(readResult); err != nil && running {
 			l.callbacks.OnReadError(l.id, err)
 		} else if readPanic != nil {
 			l.callbacks.OnReadError(l.id, readPanic)
