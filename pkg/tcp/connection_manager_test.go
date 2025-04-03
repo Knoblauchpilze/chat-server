@@ -51,7 +51,7 @@ func TestUnit_ConnectionManager_WhenCloseIsCalled_ExpectOnDisconnectToBeCalledOn
 	}
 	cm := newConnectionManager(config, logger.New(os.Stdout))
 
-	_, server := newTestConnection(t, 5100)
+	_, server := newTestConnection(t, 5108)
 
 	cm.OnClientConnected(server)
 	// Wait for the connection to be processed
