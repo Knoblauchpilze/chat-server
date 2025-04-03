@@ -24,9 +24,10 @@ type connectionData struct {
 }
 
 type managerImpl struct {
-	log         logger.Logger
-	readTimeout time.Duration
-	callbacks   clients.Callbacks
+	log                   logger.Logger
+	readTimeout           time.Duration
+	incompleteDataTimeout time.Duration
+	callbacks             clients.Callbacks
 
 	accepting atomic.Bool
 	lock      sync.Mutex
@@ -36,10 +37,11 @@ type managerImpl struct {
 
 func newConnectionManager(config managerConfig, log logger.Logger) connectionManager {
 	m := &managerImpl{
-		log:         log,
-		readTimeout: config.ReadTimeout,
-		callbacks:   config.Callbacks,
-		listeners:   make(map[uuid.UUID]*connectionData),
+		log:                   log,
+		readTimeout:           config.ReadTimeout,
+		incompleteDataTimeout: config.IncompleteDataTimeout,
+		callbacks:             config.Callbacks,
+		listeners:             make(map[uuid.UUID]*connectionData),
 	}
 
 	m.accepting.Store(true)
@@ -110,8 +112,9 @@ func (m *managerImpl) Close() {
 
 func (m *managerImpl) prepareListenerOptions(connId uuid.UUID) connection.ListenerOptions {
 	return connection.ListenerOptions{
-		Id:          connId,
-		ReadTimeout: m.readTimeout,
+		Id:                    connId,
+		ReadTimeout:           m.readTimeout,
+		IncompleteDataTimeout: m.incompleteDataTimeout,
 		Callbacks: connection.Callbacks{
 			DisconnectCallback: func(id uuid.UUID) {
 				m.onClientDisconnected(id)

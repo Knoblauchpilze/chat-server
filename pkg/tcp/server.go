@@ -14,6 +14,11 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 )
 
+const (
+	connectionReadTimeout           = 1 * time.Second
+	connectionIncompleteDataTimeout = 5 * time.Second
+)
+
 type Server interface {
 	Start(ctx context.Context) error
 }
@@ -27,16 +32,15 @@ type serverImpl struct {
 	wg      sync.WaitGroup
 }
 
-const connectionReadTimeout = 1 * time.Second
-
 func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 	s := serverImpl{
 		log: log,
 	}
 
 	managerConfig := managerConfig{
-		ReadTimeout: connectionReadTimeout,
-		Callbacks:   config.Callbacks,
+		ReadTimeout:           connectionReadTimeout,
+		IncompleteDataTimeout: connectionIncompleteDataTimeout,
+		Callbacks:             config.Callbacks,
 	}
 	s.manager = newConnectionManager(managerConfig, s.log)
 

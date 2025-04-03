@@ -11,9 +11,27 @@ import (
 )
 
 type ListenerOptions struct {
-	Id          uuid.UUID
+	Id uuid.UUID
+
+	// Defines how long the listener will wait for each read operation
+	// on the connection to complete. This is used to periodically interrupt
+	// the listening process to allow the server to properly close connections
+	// and gracefully shutdown.
+	// If no data is available within the allocated time and the server is
+	// still running, the listener will continue to listen for new data.
 	ReadTimeout time.Duration
-	Callbacks   Callbacks
+
+	// Defines how long the listener will wait in case some data is available
+	// but can't be processed. It is expected that some read operations might
+	// yield incomplete data. We expect the server to promptly receive the rest
+	// of the data in case a legitimate client is connected.
+	// If the server does not receive the rest of the data within the allocated
+	// time we will terminate the connection in order to prevent resource hogging
+	// where a client would open many connections to the server and send as much
+	// data as possible without going over the limit and then wait indefinitely.
+	IncompleteDataTimeout time.Duration
+
+	Callbacks Callbacks
 }
 
 type Listener interface {
@@ -28,6 +46,11 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
+	// TODO: Use this to track the last successful processing time
+	// of data and trigger closing the connection.
+	lastSuccessfulProcessing time.Time
+	incompleteDataTimeout    time.Duration
+
 	running atomic.Bool
 	wg      sync.WaitGroup
 }
@@ -39,6 +62,8 @@ func New(conn net.Conn, opts ListenerOptions) Listener {
 		id:        opts.Id,
 		conn:      WithOptions(conn, connOpts),
 		callbacks: opts.Callbacks,
+
+		incompleteDataTimeout: opts.IncompleteDataTimeout,
 	}
 
 	return l
