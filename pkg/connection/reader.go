@@ -5,28 +5,41 @@ import (
 	"github.com/google/uuid"
 )
 
-func readFromConnection(id uuid.UUID, conn connection, callbacks Callbacks) (processed int, timeout bool, err error) {
+type connectionReadResult struct {
+	processed int
+	available int
+	timeout   bool
+}
+
+func readFromConnection(
+	id uuid.UUID, conn connection, callbacks Callbacks,
+) (out connectionReadResult, err error) {
 	var data []byte
 
-	processed = 0
-	timeout = false
+	out = connectionReadResult{
+		processed: 0,
+		available: 0,
+		timeout:   false,
+	}
 
 	data, err = conn.Read()
 
 	if bterr.IsErrorWithCode(err, ErrClientDisconnected) {
 		callbacks.OnDisconnect(id)
 	} else if bterr.IsErrorWithCode(err, ErrReadTimeout) {
-		timeout = true
+		out.timeout = true
 		err = nil
 	} else if err != nil {
 		callbacks.OnReadError(id, err)
 	}
 
+	out.available = len(data)
+
 	// This block needs to be after the error has potentially been reset
 	// in case of a timeout. We might still have data to read despite the
 	// timeout and we want to process it.
 	if err == nil && len(data) > 0 {
-		processed = callbacks.OnReadData(id, data)
+		out.processed = callbacks.OnReadData(id, data)
 	}
 
 	return
