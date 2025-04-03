@@ -12,8 +12,9 @@ type acceptorConfig struct {
 }
 
 type managerConfig struct {
-	ReadTimeout time.Duration
-	Callbacks   clients.Callbacks
+	ReadTimeout           time.Duration
+	IncompleteDataTimeout time.Duration
+	Callbacks             clients.Callbacks
 }
 
 type ServerConfiguration struct {
