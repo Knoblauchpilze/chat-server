@@ -133,6 +133,15 @@ func (l *listenerImpl) activeLoop() {
 func (l *listenerImpl) updateLastSuccessfulRead(
 	readResult connectionReadResult) error {
 	if readResult.processed > 0 {
+		// TODO: We should also probably reset when we receive data after not having
+		// had anything to process anymore for a while. Otherwise imagine that:
+		//  - we receive some data
+		//  - the lastSuccessfulProcessing is set
+		//  - we process it all in go
+		//  - we wait long enough to pass the timeout
+		//  - as there's no available data it's all good
+		//  - we receive partial data
+		//  - we disconnect immediately
 		l.lastSuccessfulProcessing = time.Now()
 	}
 
