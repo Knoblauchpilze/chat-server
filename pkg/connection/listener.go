@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	bterrors "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 	"github.com/google/uuid"
 )
@@ -46,8 +47,6 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	// TODO: Use this to track the last successful processing time
-	// of data and trigger closing the connection.
 	lastSuccessfulProcessing time.Time
 	incompleteDataTimeout    time.Duration
 
@@ -117,7 +116,9 @@ func (l *listenerImpl) activeLoop() {
 
 		l.conn.DiscardBytes(readResult.processed)
 
-		if readPanic != nil {
+		if err := l.updateLastSuccessfulRead(readResult); err != nil {
+			l.callbacks.OnReadError(l.id, err)
+		} else if readPanic != nil {
 			l.callbacks.OnReadError(l.id, readPanic)
 		}
 
@@ -125,4 +126,26 @@ func (l *listenerImpl) activeLoop() {
 			running = false
 		}
 	}
+}
+
+func (l *listenerImpl) updateLastSuccessfulRead(
+	readResult connectionReadResult) error {
+	if readResult.processed > 0 {
+		l.lastSuccessfulProcessing = time.Now()
+	}
+
+	if readResult.available == 0 {
+		return nil
+	}
+
+	if time.Since(l.lastSuccessfulProcessing) < l.incompleteDataTimeout {
+		// We processed data recently enough so we can still wait
+		// for more data to come in.
+		return nil
+	}
+
+	// It's been long enough since we last processed data so it's
+	// safer to assume that the client is either misbehaving or
+	// not responsive.
+	return bterrors.NewCode(ErrIncompleteDataTimeout)
 }

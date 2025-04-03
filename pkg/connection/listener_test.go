@@ -1,9 +1,12 @@
 package connection
 
 import (
+	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -299,4 +302,47 @@ func TestUnit_Listener_WhenFirstReadTimeouts_ExpectDataCanStillBeRead(t *testing
 
 	assert.Equal(t, 1, called)
 	assert.Equal(t, sampleData, actualData)
+}
+
+func TestUnit_Listener_WhenIncompleteDataReceived_IfNoDataComesLater_ExpectOnReadErrorNotified(t *testing.T) {
+	client, server := newTestConnection(t, 1212)
+
+	var readErr error
+	var called atomic.Bool
+	opts := ListenerOptions{
+		ReadTimeout:           50 * time.Millisecond,
+		IncompleteDataTimeout: 100 * time.Millisecond,
+		Callbacks: Callbacks{
+			ReadDataCallback: func(id uuid.UUID, data []byte) int {
+				if called.CompareAndSwap(false, true) {
+					fmt.Printf("reading once\n")
+					return 1
+				}
+				fmt.Printf("not reading anything\n")
+				return 0
+			},
+			ReadErrorCallback: func(id uuid.UUID, err error) {
+				readErr = err
+			},
+		},
+	}
+	listener := New(server, opts)
+
+	n, err := client.Write(sampleData)
+	assert.Equal(t, len(sampleData), n)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	listener.Start()
+
+	// Wait long enough for the timeout to be reached.
+	time.Sleep(200 * time.Millisecond)
+
+	listener.Close()
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(readErr, ErrIncompleteDataTimeout),
+		"Actual err: %v",
+		readErr,
+	)
 }
