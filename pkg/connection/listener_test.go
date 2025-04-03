@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -315,10 +314,8 @@ func TestUnit_Listener_WhenIncompleteDataReceived_IfNoDataComesLater_ExpectOnRea
 		Callbacks: Callbacks{
 			ReadDataCallback: func(id uuid.UUID, data []byte) int {
 				if called.CompareAndSwap(false, true) {
-					fmt.Printf("reading once\n")
 					return 1
 				}
-				fmt.Printf("not reading anything\n")
 				return 0
 			},
 			ReadErrorCallback: func(id uuid.UUID, err error) {
