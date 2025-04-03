@@ -79,19 +79,18 @@ func (l *listenerImpl) activeLoop() {
 
 	running := true
 	for running {
-		var processed int
-		var timeout bool
+		var readResult connectionReadResult
 		var err error
 
 		readPanic := errors.SafeRunSync(func() {
-			processed, timeout, err = readFromConnection(l.id, l.conn, l.callbacks)
+			readResult, err = readFromConnection(l.id, l.conn, l.callbacks)
 		})
 
-		if timeout {
+		if readResult.timeout {
 			running = l.running.Load()
 		}
 
-		l.conn.DiscardBytes(processed)
+		l.conn.DiscardBytes(readResult.processed)
 
 		if readPanic != nil {
 			l.callbacks.OnReadError(l.id, readPanic)
