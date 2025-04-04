@@ -47,8 +47,9 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	lastSuccessfulProcessing time.Time
-	incompleteDataTimeout    time.Duration
+	lastAvailableBytesCount   int
+	dataProcessingWindowStart time.Time
+	incompleteDataTimeout     time.Duration
 
 	running atomic.Bool
 	wg      sync.WaitGroup
@@ -101,7 +102,7 @@ func (l *listenerImpl) Close() {
 func (l *listenerImpl) activeLoop() {
 	defer l.wg.Done()
 
-	l.lastSuccessfulProcessing = time.Now()
+	l.dataProcessingWindowStart = time.Now()
 
 	running := true
 	for running {
@@ -130,33 +131,30 @@ func (l *listenerImpl) activeLoop() {
 	}
 }
 
-func (l *listenerImpl) updateLastSuccessfulRead(
-	readResult connectionReadResult) error {
+func (l *listenerImpl) updateLastSuccessfulRead(readResult connectionReadResult) error {
 	if readResult.processed > 0 {
-		// TODO: We should also probably reset when we receive data after not having
-		// had anything to process anymore for a while. Otherwise imagine that:
-		//  - we receive some data
-		//  - the lastSuccessfulProcessing is set
-		//  - we process it all in go
-		//  - we wait long enough to pass the timeout
-		//  - as there's no available data it's all good
-		//  - we receive partial data
-		//  - we disconnect immediately
-		l.lastSuccessfulProcessing = time.Now()
+		l.dataProcessingWindowStart = time.Now()
 	}
+
+	if readResult.available != 0 && l.lastAvailableBytesCount == 0 {
+		l.dataProcessingWindowStart = time.Now()
+	}
+	l.lastAvailableBytesCount = readResult.available
 
 	if readResult.available == 0 {
 		return nil
 	}
 
-	if time.Since(l.lastSuccessfulProcessing) < l.incompleteDataTimeout {
-		// We processed data recently enough so we can still wait
-		// for more data to come in.
+	durationOfCurrentProcessingWindow := time.Since(l.dataProcessingWindowStart)
+	if durationOfCurrentProcessingWindow < l.incompleteDataTimeout {
+		// The processing window is still within what we consider valid for a
+		// client to send data. Let's wait a bit longer
 		return nil
 	}
 
-	// It's been long enough since we last processed data so it's
-	// safer to assume that the client is either misbehaving or
-	// not responsive.
+	// The current processing window lasts for too long already. It can either
+	// be that the client is not responsive (network issue) or that it is
+	// misbehaving. In both cases, we want to terminate the connection to not
+	// risk resource hogging.
 	return bterrors.NewCode(ErrIncompleteDataTimeout)
 }

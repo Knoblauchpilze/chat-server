@@ -343,3 +343,40 @@ func TestUnit_Listener_WhenIncompleteDataReceived_IfNoDataComesLater_ExpectOnRea
 		readErr,
 	)
 }
+
+func TestUnit_Listener_WhenIncompleteDataReceivedAfterALongPause_ExpectOnReadErrorNotNotifiedImmediately(t *testing.T) {
+	client, server := newTestConnection(t, 1214)
+
+	var called atomic.Bool
+	opts := ListenerOptions{
+		ReadTimeout:           50 * time.Millisecond,
+		IncompleteDataTimeout: 100 * time.Millisecond,
+		Callbacks: Callbacks{
+			ReadDataCallback: func(uuid.UUID, []byte) int {
+				return 0
+			},
+			ReadErrorCallback: func(id uuid.UUID, err error) {
+				called.Store(true)
+			},
+		},
+	}
+	listener := New(server, opts)
+	listener.Start()
+
+	// Wait long enough for thetimeout to be reached
+	time.Sleep(200 * time.Millisecond)
+
+	// Write some data: none of it will be processed considering
+	// how the callback is setup to return 0
+	n, err := client.Write(sampleData)
+	assert.Equal(t, len(sampleData), n)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait long enough for the processing to happen but not long enough for
+	// the timeout to be reached
+	time.Sleep(50 * time.Millisecond)
+
+	assert.False(t, called.Load())
+
+	listener.Close()
+}
