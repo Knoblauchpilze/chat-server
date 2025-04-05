@@ -47,7 +47,7 @@ type listenerImpl struct {
 	conn      connection
 	callbacks Callbacks
 
-	lastAvailableBytesCount   int
+	availableBytesCount       int
 	dataProcessingWindowStart time.Time
 	incompleteDataTimeout     time.Duration
 
@@ -136,12 +136,13 @@ func (l *listenerImpl) updateLastSuccessfulRead(readResult connectionReadResult)
 		l.dataProcessingWindowStart = time.Now()
 	}
 
-	if readResult.available != 0 && l.lastAvailableBytesCount == 0 {
+	if readResult.available != 0 && l.availableBytesCount == 0 {
 		l.dataProcessingWindowStart = time.Now()
 	}
-	l.lastAvailableBytesCount = readResult.available
 
-	if readResult.available == 0 {
+	l.availableBytesCount = readResult.available
+
+	if l.availableBytesCount == 0 {
 		return nil
 	}
 
