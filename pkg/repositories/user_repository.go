@@ -11,6 +11,7 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user persistence.User) (persistence.User, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.User, error)
+	GetByName(ctx context.Context, name string) (persistence.User, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.User, error)
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
 }
@@ -65,6 +66,34 @@ func (r *userRepositoryImpl) Get(
 	ctx context.Context, id uuid.UUID,
 ) (persistence.User, error) {
 	user, err := db.QueryOne[persistence.User](ctx, r.conn, getUserSqlTemplate, id)
+
+	if err == nil {
+		user.CreatedAt = user.CreatedAt.UTC()
+		user.UpdatedAt = user.UpdatedAt.UTC()
+	}
+
+	return user, err
+}
+
+const getUserByNameSqlTemplate = `
+SELECT
+	id,
+	name,
+	api_user,
+	created_at,
+	updated_at,
+	version
+FROM
+	chat_user
+WHERE
+	name = $1`
+
+func (r *userRepositoryImpl) GetByName(
+	ctx context.Context, name string,
+) (persistence.User, error) {
+	user, err := db.QueryOne[persistence.User](
+		ctx, r.conn, getUserByNameSqlTemplate, name,
+	)
 
 	if err == nil {
 		user.CreatedAt = user.CreatedAt.UTC()
