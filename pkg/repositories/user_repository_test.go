@@ -16,6 +16,7 @@ import (
 
 func TestIT_UserRepository_Create(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	beforeInsertion := time.Now()
 
 	user := persistence.User{
@@ -35,6 +36,7 @@ func TestIT_UserRepository_Create(t *testing.T) {
 
 func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	newUser := persistence.User{
@@ -56,6 +58,7 @@ func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 
 func TestIT_UserRepository_Get(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	actual, err := repo.Get(context.Background(), user.Id)
@@ -65,7 +68,8 @@ func TestIT_UserRepository_Get(t *testing.T) {
 }
 
 func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
-	repo, _ := newTestUserRepository(t)
+	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 
 	// Non-existent id
 	id := uuid.MustParse("00000000-1111-2222-1111-000000000000")
@@ -80,6 +84,7 @@ func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 
 func TestIT_UserRepository_GetByNqme(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
 	insertTestUser(t, conn)
 
@@ -90,7 +95,8 @@ func TestIT_UserRepository_GetByNqme(t *testing.T) {
 }
 
 func TestIT_UserRepository_GetByName_WhenNotFound_ExpectFailure(t *testing.T) {
-	repo, _ := newTestUserRepository(t)
+	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 
 	// Non-existent name
 	name := "my-non-existent-name"
@@ -105,6 +111,7 @@ func TestIT_UserRepository_GetByName_WhenNotFound_ExpectFailure(t *testing.T) {
 
 func TestIT_UserRepository_ListForRoom(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 	user1 := insertTestUser(t, conn)
 	insertTestUser(t, conn)
@@ -119,6 +126,7 @@ func TestIT_UserRepository_ListForRoom(t *testing.T) {
 
 func TestIT_UserRepository_ListForRoom_WhenNoUserRegistered_ReturnsEmptySlice(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	actual, err := repo.ListForRoom(context.Background(), room.Id)
@@ -129,6 +137,7 @@ func TestIT_UserRepository_ListForRoom_WhenNoUserRegistered_ReturnsEmptySlice(t 
 
 func TestIT_UserRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestUserRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	user := insertTestUser(t, conn)
 
@@ -141,6 +150,7 @@ func TestIT_UserRepository_Delete(t *testing.T) {
 
 func TestIT_UserRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	repo, conn, tx := newTestUserRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	user := insertTestUser(t, conn)
 	id := uuid.New()

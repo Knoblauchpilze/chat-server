@@ -16,6 +16,7 @@ import (
 
 func TestIT_RoomRepository_Create(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 	beforeInsertion := time.Now()
 
 	room := persistence.Room{
@@ -34,6 +35,7 @@ func TestIT_RoomRepository_Create(t *testing.T) {
 
 func TestIT_RoomRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	newRoom := persistence.Room{
@@ -54,6 +56,7 @@ func TestIT_RoomRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 
 func TestIT_RoomRepository_Get(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	actual, err := repo.Get(context.Background(), room.Id)
@@ -63,7 +66,8 @@ func TestIT_RoomRepository_Get(t *testing.T) {
 }
 
 func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
-	repo, _ := newTestRoomRepository(t)
+	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 
 	// Non-existent id
 	id := uuid.MustParse("00000000-1111-2222-1111-000000000000")
@@ -78,6 +82,7 @@ func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 
 func TestIT_RoomRepository_ListForUser(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 	room1 := insertTestRoom(t, conn)
 	insertTestRoom(t, conn)
@@ -92,6 +97,7 @@ func TestIT_RoomRepository_ListForUser(t *testing.T) {
 
 func TestIT_RoomRepository_ListForUser_WhenNoRoomRegistered_ReturnsEmptySlice(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	actual, err := repo.ListForUser(context.Background(), user.Id)
@@ -102,6 +108,7 @@ func TestIT_RoomRepository_ListForUser_WhenNoRoomRegistered_ReturnsEmptySlice(t 
 
 func TestIT_RoomRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	room := insertTestRoom(t, conn)
 
@@ -114,6 +121,7 @@ func TestIT_RoomRepository_Delete(t *testing.T) {
 
 func TestIT_RoomRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	room := insertTestRoom(t, conn)
 	id := uuid.New()

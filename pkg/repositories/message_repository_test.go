@@ -16,6 +16,7 @@ import (
 
 func TestIT_MessageRepository_Create(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 	beforeInsertion := time.Now()
 
 	room := insertTestRoom(t, conn)
@@ -39,6 +40,7 @@ func TestIT_MessageRepository_Create(t *testing.T) {
 
 func TestIT_MessageRepository_Create_WhenUserNotRegisteredInRoom_ExpectFailure(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 	user := insertTestUser(t, conn)
 
@@ -61,6 +63,7 @@ func TestIT_MessageRepository_Create_WhenUserNotRegisteredInRoom_ExpectFailure(t
 
 func TestIT_MessageRepository_Create_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 
 	room := insertTestRoom(t, conn)
 
@@ -84,6 +87,7 @@ func TestIT_MessageRepository_Create_WhenUserDoesNotExist_ExpectFailure(t *testi
 
 func TestIT_MessageRepository_Create_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 
 	user := insertTestUser(t, conn)
 
@@ -107,6 +111,7 @@ func TestIT_MessageRepository_Create_WhenRoomDoesNotExist_ExpectFailure(t *testi
 
 func TestIT_MessageRepository_ListForRoom(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 	room1 := insertTestRoom(t, conn)
 	room2 := insertTestRoom(t, conn)
 	user1 := insertTestUser(t, conn)
@@ -126,6 +131,7 @@ func TestIT_MessageRepository_ListForRoom(t *testing.T) {
 
 func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySlice(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	actual, err := repo.ListForRoom(context.Background(), room.Id)
