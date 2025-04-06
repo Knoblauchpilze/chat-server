@@ -22,6 +22,7 @@ func TestIT_RoomService_Create(t *testing.T) {
 	}
 
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	out, err := service.Create(context.Background(), roomDtoRequest)
 
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -35,7 +36,8 @@ func TestIT_RoomService_Create_InvalidName(t *testing.T) {
 		Name: "",
 	}
 
-	service, _ := newTestRoomService(t)
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	_, err := service.Create(context.Background(), roomDtoRequest)
 
 	assert.True(
@@ -48,6 +50,7 @@ func TestIT_RoomService_Create_InvalidName(t *testing.T) {
 
 func TestIT_RoomService_Create_WhenRoomWithSameNameAlreadyExists_ExpectFailure(t *testing.T) {
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 	roomDtoRequest := communication.RoomDtoRequest{
 		Name: room.Name,
@@ -65,6 +68,7 @@ func TestIT_RoomService_Create_WhenRoomWithSameNameAlreadyExists_ExpectFailure(t
 
 func TestIT_RoomService_Get(t *testing.T) {
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	actual, err := service.Get(context.Background(), room.Id)
@@ -77,7 +81,8 @@ func TestIT_RoomService_Get(t *testing.T) {
 func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestRoomService(t)
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	_, err := service.Get(context.Background(), nonExistingId)
 
 	assert.True(
@@ -89,7 +94,8 @@ func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 }
 
 func TestIT_RoomService_ListUserForRoom_WhenNobodyInRoom_ExpectEmptyList(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 
 	actual, err := service.ListUserForRoom(context.Background(), uuid.New())
 
@@ -99,6 +105,7 @@ func TestIT_RoomService_ListUserForRoom_WhenNobodyInRoom_ExpectEmptyList(t *test
 
 func TestIT_RoomService_ListUserForRoom(t *testing.T) {
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
 	user2 := insertTestUser(t, conn)
 	insertTestUser(t, conn)
@@ -119,7 +126,8 @@ func TestIT_RoomService_ListUserForRoom(t *testing.T) {
 }
 
 func TestIT_RoomService_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptyList(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 
 	actual, err := service.ListMessageForRoom(context.Background(), uuid.New())
 
@@ -129,6 +137,7 @@ func TestIT_RoomService_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptyList(t
 
 func TestIT_RoomService_ListMessageForRoom(t *testing.T) {
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
 	user2 := insertTestUser(t, conn)
 	user3 := insertTestUser(t, conn)
@@ -156,6 +165,7 @@ func TestIT_RoomService_ListMessageForRoom(t *testing.T) {
 
 func TestIT_RoomService_Delete(t *testing.T) {
 	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
 	err := service.Delete(context.Background(), room.Id)
@@ -167,7 +177,8 @@ func TestIT_RoomService_Delete(t *testing.T) {
 func TestIT_RoomService_Delete_WhenRoomDoesNotExist_ExpectSuccess(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestRoomService(t)
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
 	err := service.Delete(context.Background(), nonExistingId)
 
 	assert.Nil(t, err, "Actual err: %v", err)

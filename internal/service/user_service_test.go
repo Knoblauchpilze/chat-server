@@ -22,6 +22,7 @@ func TestIT_UserService_Create(t *testing.T) {
 	}
 
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	out, err := service.Create(context.Background(), userDtoRequest)
 
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -35,7 +36,8 @@ func TestIT_UserService_Create_InvalidName(t *testing.T) {
 		Name: "",
 	}
 
-	service, _ := newTestUserService(t)
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	_, err := service.Create(context.Background(), userDtoRequest)
 
 	assert.True(
@@ -48,6 +50,7 @@ func TestIT_UserService_Create_InvalidName(t *testing.T) {
 
 func TestIT_UserService_Create_WhenUserWithSameNameAlreadyExists_ExpectFailure(t *testing.T) {
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 	userDtoRequest := communication.UserDtoRequest{
 		Name:    user.Name,
@@ -66,6 +69,7 @@ func TestIT_UserService_Create_WhenUserWithSameNameAlreadyExists_ExpectFailure(t
 
 func TestIT_UserService_Get(t *testing.T) {
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	actual, err := service.Get(context.Background(), user.Id)
@@ -78,7 +82,8 @@ func TestIT_UserService_Get(t *testing.T) {
 func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestUserService(t)
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	_, err := service.Get(context.Background(), nonExistingId)
 
 	assert.True(
@@ -91,6 +96,7 @@ func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 
 func TestIT_UserService_GetByName(t *testing.T) {
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
 	insertTestUser(t, conn)
 
@@ -104,7 +110,8 @@ func TestIT_UserService_GetByName(t *testing.T) {
 func TestIT_UserService_GetByName_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	nonExistingName := "my-non-existent-name"
 
-	service, _ := newTestUserService(t)
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	_, err := service.GetByName(context.Background(), nonExistingName)
 
 	assert.True(
@@ -116,7 +123,8 @@ func TestIT_UserService_GetByName_WhenUserDoesNotExist_ExpectFailure(t *testing.
 }
 
 func TestIT_UserService_ListForUser_WhenNoRoomRegistered_ExpectEmptyList(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 
 	actual, err := service.ListForUser(context.Background(), uuid.New())
 
@@ -126,6 +134,7 @@ func TestIT_UserService_ListForUser_WhenNoRoomRegistered_ExpectEmptyList(t *test
 
 func TestIT_UserService_ListForUser(t *testing.T) {
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	room1 := insertTestRoom(t, conn)
@@ -144,6 +153,7 @@ func TestIT_UserService_ListForUser(t *testing.T) {
 
 func TestIT_UserService_Delete(t *testing.T) {
 	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
 	err := service.Delete(context.Background(), user.Id)
@@ -155,7 +165,8 @@ func TestIT_UserService_Delete(t *testing.T) {
 func TestIT_UserService_Delete_WhenUserDoesNotExist_ExpectSuccess(t *testing.T) {
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 
-	service, _ := newTestUserService(t)
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
 	err := service.Delete(context.Background(), nonExistingId)
 
 	assert.Nil(t, err, "Actual err: %v", err)
