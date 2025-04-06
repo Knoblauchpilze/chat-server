@@ -78,6 +78,31 @@ func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_UserRepository_GetByNqme(t *testing.T) {
+	repo, conn := newTestUserRepository(t)
+	user1 := insertTestUser(t, conn)
+	insertTestUser(t, conn)
+
+	actual, err := repo.GetByName(context.Background(), user1.Name)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, actual, user1)
+}
+
+func TestIT_UserRepository_GetByName_WhenNotFound_ExpectFailure(t *testing.T) {
+	repo, _ := newTestUserRepository(t)
+
+	// Non-existent name
+	name := "my-non-existent-name"
+	_, err := repo.GetByName(context.Background(), name)
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_UserRepository_ListForRoom(t *testing.T) {
 	repo, conn := newTestUserRepository(t)
 	room := insertTestRoom(t, conn)
