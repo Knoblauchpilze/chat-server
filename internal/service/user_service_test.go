@@ -89,6 +89,32 @@ func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_UserService_GetByName(t *testing.T) {
+	service, conn := newTestUserService(t)
+	user1 := insertTestUser(t, conn)
+	insertTestUser(t, conn)
+
+	actual, err := service.GetByName(context.Background(), user1.Name)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := communication.ToUserDtoResponse(user1)
+	assert.Equal(t, expected, actual)
+}
+
+func TestIT_UserService_GetByName_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+	nonExistingName := "my-non-existent-name"
+
+	service, _ := newTestUserService(t)
+	_, err := service.GetByName(context.Background(), nonExistingName)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_UserService_ListForUser_WhenNoRoomRegistered_ExpectEmptyList(t *testing.T) {
 	service, _ := newTestUserService(t)
 

@@ -13,6 +13,7 @@ import (
 type UserService interface {
 	Create(ctx context.Context, userDto communication.UserDtoRequest) (communication.UserDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.UserDtoResponse, error)
+	GetByName(ctx context.Context, name string) (communication.UserDtoResponse, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]communication.RoomDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -61,6 +62,19 @@ func (s *userServiceImpl) Get(
 	out := communication.ToUserDtoResponse(user)
 	return out, nil
 }
+
+func (s *userServiceImpl) GetByName(
+	ctx context.Context, name string,
+) (communication.UserDtoResponse, error) {
+	user, err := s.userRepo.GetByName(ctx, name)
+	if err != nil {
+		return communication.UserDtoResponse{}, err
+	}
+
+	out := communication.ToUserDtoResponse(user)
+	return out, nil
+}
+
 func (s *userServiceImpl) ListForUser(ctx context.Context, user uuid.UUID) ([]communication.RoomDtoResponse, error) {
 	rooms, err := s.roomRepo.ListForUser(ctx, user)
 	if err != nil {
