@@ -171,7 +171,7 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	insertUserInRoom(t, dbConn, user1.Id, room.Id)
 	insertUserInRoom(t, dbConn, user2.Id, room.Id)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
@@ -195,7 +195,7 @@ func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *
 	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
@@ -242,7 +242,7 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 	msg1 := insertTestMessage(t, dbConn, user1.Id, room.Id)
 	msg2 := insertTestMessage(t, dbConn, user2.Id, room.Id)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
@@ -266,7 +266,7 @@ func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySli
 	defer dbConn.Close(context.Background())
 	room := insertTestRoom(t, dbConn)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(room.Id.String())
