@@ -36,6 +36,16 @@ func generateTestEchoContextFromRequest(req *http.Request) (echo.Context, *httpt
 	return ctx, rw
 }
 
+func generateTestRequestWithQueryParam(
+	method string, key string, param string,
+) *http.Request {
+	req := httptest.NewRequest(method, "/", nil)
+	query := req.URL.Query()
+	query.Add(key, param)
+	req.URL.RawQuery = query.Encode()
+	return req
+}
+
 func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 

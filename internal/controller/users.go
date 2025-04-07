@@ -24,6 +24,10 @@ func UserEndpoints(service service.UserService) rest.Routes {
 	get := rest.NewRoute(http.MethodGet, "/users/:id", getHandler)
 	out = append(out, get)
 
+	listHandler := createComponentAwareHttpHandler(listUsers, service)
+	list := rest.NewRoute(http.MethodGet, "/users", listHandler)
+	out = append(out, list)
+
 	listForUserHandler := createComponentAwareHttpHandler(listForUser, service)
 	listForUser := rest.NewRoute(http.MethodGet, "/users/:id/rooms", listForUserHandler)
 	out = append(out, listForUser)
@@ -74,6 +78,39 @@ func getUser(c echo.Context, s service.UserService) error {
 	}
 
 	return c.JSON(http.StatusOK, out)
+}
+
+func listUsers(c echo.Context, s service.UserService) error {
+	const userNameKey = "name"
+	maybeName := c.QueryParam(userNameKey)
+	exists := (maybeName != "")
+
+	var users []communication.UserDtoResponse
+	var err error
+
+	if exists {
+		var user communication.UserDtoResponse
+		user, err = s.GetByName(c.Request().Context(), maybeName)
+		if err == nil {
+			users = append(users, user)
+		}
+	} else {
+		return c.JSON(
+			http.StatusBadRequest,
+			"Please provide a user name as filtering parameter",
+		)
+	}
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	out, err := marshalNilToEmptySlice(users)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSONBlob(http.StatusOK, out)
 }
 
 func listForUser(c echo.Context, s service.UserService) error {
