@@ -141,10 +141,53 @@ func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testin
 	)
 }
 
+func TestIT_UserController_ListUsers_WhenNoNameProvided_ExpectBadRequest(t *testing.T) {
+	service, _ := newTestUserService(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listUsers(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"Please provide a user name as filtering parameter\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
+func TestIT_UserController_ListUsers(t *testing.T) {
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
+	user := insertTestUser(t, dbConn)
+	insertTestUser(t, dbConn)
+
+	req := generateTestRequestWithQueryParam(http.MethodGet, "name", user.Name)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listUsers(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user),
+	}
+	assert.ElementsMatch(t, expected, responseDto)
+}
+
 func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestUserService(t)
-	req := httptest.NewRequest(http.MethodGet, "/not-a-uuid/rooms", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues("not-a-uuid")
 
 	err := listForUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -169,7 +212,7 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 	insertTestRoom(t, dbConn)
 	insertUserInRoom(t, dbConn, user.Id, room1.Id)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(user.Id.String())
@@ -192,7 +235,7 @@ func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *tes
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 
-	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(user.Id.String())
