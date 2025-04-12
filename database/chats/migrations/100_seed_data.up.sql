@@ -55,7 +55,7 @@ INSERT INTO chat_server_schema.message ("id", "chat_user", "room", "message")
 INSERT INTO chat_server_schema.room ("id", "name")
   VALUES (
     'b9d66811-c6f2-4f20-9374-4fc754c5098f',
-    'room-wit-banned-people'
+    'room-with-banned-people'
   );
 
 INSERT INTO chat_server_schema.room_user ("room", "chat_user")
