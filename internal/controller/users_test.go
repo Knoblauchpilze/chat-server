@@ -182,6 +182,29 @@ func TestIT_UserController_ListUsers(t *testing.T) {
 	assert.ElementsMatch(t, expected, responseDto)
 }
 
+func TestIT_UserController_ListUsers_WhenNameHasSpecialCharacters_ExpectSuccess(t *testing.T) {
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
+	name := fmt.Sprintf("my special /chars\\ user 😊 %s", uuid.NewString())
+	user := insertTestUserWithName(t, dbConn, name)
+
+	req := generateTestRequestWithQueryParam(http.MethodGet, "name", user.Name)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listUsers(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDto []communication.UserDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user),
+	}
+
+	assert.ElementsMatch(t, expected, responseDto)
+}
+
 func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, _ := newTestUserService(t)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -308,12 +331,17 @@ func newTestUserService(t *testing.T) (service.UserService, db.Connection) {
 }
 
 func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+	name := fmt.Sprintf("my-user-%s", uuid.NewString())
+	return insertTestUserWithName(t, conn, name)
+}
+
+func insertTestUserWithName(t *testing.T, conn db.Connection, name string) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
 	id := uuid.New()
 	user := persistence.User{
 		Id:      id,
-		Name:    fmt.Sprintf("my-user-%s", id),
+		Name:    name,
 		ApiUser: uuid.New(),
 	}
 	out, err := repo.Create(context.Background(), user)
