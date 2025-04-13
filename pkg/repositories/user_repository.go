@@ -9,7 +9,7 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, user persistence.User) (persistence.User, error)
+	Create(ctx context.Context, tx db.Transaction, user persistence.User) (persistence.User, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.User, error)
 	GetByName(ctx context.Context, name string) (persistence.User, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.User, error)
@@ -32,11 +32,11 @@ INSERT INTO chat_user (id, name, api_user)
 	RETURNING created_at, updated_at`
 
 func (r *userRepositoryImpl) Create(
-	ctx context.Context, user persistence.User,
+	ctx context.Context, tx db.Transaction, user persistence.User,
 ) (persistence.User, error) {
-	times, err := db.QueryOne[createdAtUpdatedAt](
+	times, err := db.QueryOneTx[createdAtUpdatedAt](
 		ctx,
-		r.conn,
+		tx,
 		createUserSqlTemplate,
 		user.Id,
 		user.Name,

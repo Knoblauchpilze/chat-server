@@ -67,6 +67,21 @@ func TestIT_UserService_Create_WhenUserWithSameNameAlreadyExists_ExpectFailure(t
 	)
 }
 
+func TestIT_UserService_Create_RegistersUserInGeneralRoomt(t *testing.T) {
+	id := uuid.New()
+	userDtoRequest := communication.UserDtoRequest{
+		Name: fmt.Sprintf("my-user-%s", id),
+	}
+
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
+	out, err := service.Create(context.Background(), userDtoRequest)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, out.Id, "general")
+}
+
 func TestIT_UserService_Get(t *testing.T) {
 	service, conn := newTestUserService(t)
 	defer conn.Close(context.Background())
@@ -172,6 +187,17 @@ func TestIT_UserService_Delete_WhenUserDoesNotExist_ExpectSuccess(t *testing.T) 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
+func TestIT_UserService_Delete_RemovesUserFromGeneralRoomt(t *testing.T) {
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+
+	err := service.Delete(context.Background(), user.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, "general")
+}
+
 func newTestUserService(t *testing.T) (UserService, db.Connection) {
 	conn := newTestDbConnection(t)
 
@@ -186,13 +212,17 @@ func newTestUserService(t *testing.T) (UserService, db.Connection) {
 func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
+	tx, err := conn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
 	id := uuid.New()
 	user := persistence.User{
 		Id:      id,
 		Name:    fmt.Sprintf("my-user-%s", id),
 		ApiUser: uuid.New(),
 	}
-	out, err := repo.Create(context.Background(), user)
+	out, err := repo.Create(context.Background(), tx, user)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertUserExists(t, conn, out.Id)
@@ -233,4 +263,46 @@ func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uui
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, int64(1), count)
+}
+
+func assertUserRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		`SELECT
+			COUNT(*)
+		FROM
+			room_user AS ru
+			LEFT JOIN room AS r ON ru.room = r.id
+		WHERE
+			ru.chat_user = $1
+			AND r.name = $2`,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 1, value)
+}
+
+func assertUserNotRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		`SELECT
+			COUNT(*)
+		FROM
+			room_user AS ru
+			LEFT JOIN room AS r ON ru.room = r.id
+		WHERE
+			ru.chat_user = $1
+			AND r.name = $2`,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 0, value)
 }
