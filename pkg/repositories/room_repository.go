@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
 )
@@ -12,7 +14,10 @@ type RoomRepository interface {
 	Create(ctx context.Context, room persistence.Room) (persistence.Room, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
+	RegisterUserInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
+	RegisterUserInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
+	DeleteUserFromRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 }
 
 type roomRepositoryImpl struct {
@@ -99,6 +104,44 @@ func (r *roomRepositoryImpl) ListForUser(
 	return rooms, err
 }
 
+const registerUserInRoomSqlTemplate = `
+INSERT INTO room_user (chat_user, room)
+	VALUES ($1, $2)
+	RETURNING created_at`
+
+func (r *roomRepositoryImpl) RegisterUserInRoom(
+	ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID,
+) error {
+	_, err := tx.Exec(ctx, registerUserInRoomSqlTemplate, user, room)
+	return err
+}
+
+const registerUserInRoomByNameSqlTemplate = `
+INSERT INTO
+	room_user (chat_user, room)
+SELECT
+	$1,
+	id
+FROM
+	room
+WHERE
+	name = $2
+RETURNING created_at`
+
+func (r *roomRepositoryImpl) RegisterUserInRoomByName(
+	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
+) error {
+	_, err := db.QueryOneTx[time.Time](
+		ctx, tx, registerUserInRoomByNameSqlTemplate, user, room,
+	)
+
+	if errors.IsErrorWithCode(err, db.NoMatchingRows) {
+		return errors.NewCode(ErrNoSuchRoom)
+	}
+
+	return err
+}
+
 const deleteRoomSqlTemplate = `
 DELETE FROM
 	room
@@ -109,5 +152,24 @@ func (r *roomRepositoryImpl) Delete(
 	ctx context.Context, tx db.Transaction, id uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteRoomSqlTemplate, id)
+	return err
+}
+
+const deleteUserFromByNameSqlTemplate = `
+DELETE FROM
+	room_user AS rud
+USING
+	room_user AS ru
+	LEFT JOIN room AS r ON r.id = ru.room
+WHERE
+	rud.room = ru.room
+	AND rud.chat_user = ru.chat_user
+	AND ru.chat_user = $1
+	AND r.name = $2`
+
+func (r *roomRepositoryImpl) DeleteUserFromRoomByName(
+	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
+) error {
+	_, err := tx.Exec(ctx, deleteUserFromByNameSqlTemplate, user, room)
 	return err
 }

@@ -109,13 +109,17 @@ func newTestHandshake(t *testing.T) (Handshake, db.Connection) {
 func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
+	tx, err := conn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
 	id := uuid.New()
 	user := persistence.User{
 		Id:      id,
 		Name:    fmt.Sprintf("my-user-%s", id),
 		ApiUser: uuid.New(),
 	}
-	out, err := repo.Create(context.Background(), user)
+	out, err := repo.Create(context.Background(), tx, user)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertUserExists(t, conn, out.Id)
