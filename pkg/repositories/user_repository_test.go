@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,9 +16,10 @@ import (
 )
 
 func TestIT_UserRepository_Create(t *testing.T) {
-	repo, conn := newTestUserRepository(t)
-	defer conn.Close(context.Background())
 	beforeInsertion := time.Now()
+
+	repo, conn, tx := newTestUserRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	user := persistence.User{
 		Id:      uuid.New(),
@@ -25,17 +27,20 @@ func TestIT_UserRepository_Create(t *testing.T) {
 		ApiUser: uuid.New(),
 	}
 
-	actual, err := repo.Create(context.Background(), user)
+	actual, err := repo.Create(context.Background(), tx, user)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "CreatedAt", "UpdatedAt"))
 	assert.Equal(t, actual.CreatedAt, actual.UpdatedAt)
+	fmt.Printf("createdAt: %v\n", actual.CreatedAt)
+	fmt.Printf("beforeInsertion: %v\n", beforeInsertion)
 	assert.True(t, actual.CreatedAt.After(beforeInsertion))
 	assertUserExists(t, conn, user.Id)
 }
 
 func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) {
-	repo, conn := newTestUserRepository(t)
+	repo, conn, tx := newTestUserRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
 
@@ -45,7 +50,8 @@ func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 		ApiUser: uuid.New(),
 	}
 
-	_, err := repo.Create(context.Background(), newUser)
+	_, err := repo.Create(context.Background(), tx, newUser)
+	tx.Close(context.Background())
 
 	assert.True(
 		t,

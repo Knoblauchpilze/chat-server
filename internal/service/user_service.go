@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const generalRoomName = "general"
+
 type UserService interface {
 	Create(ctx context.Context, userDto communication.UserDtoRequest) (communication.UserDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.UserDtoResponse, error)
@@ -42,7 +44,20 @@ func (s *userServiceImpl) Create(
 		return communication.UserDtoResponse{}, errors.NewCode(InvalidName)
 	}
 
-	createdUser, err := s.userRepo.Create(ctx, user)
+	tx, err := s.conn.BeginTx(ctx)
+	if err != nil {
+		return communication.UserDtoResponse{}, err
+	}
+	defer tx.Close(ctx)
+
+	createdUser, err := s.userRepo.Create(ctx, tx, user)
+	if err != nil {
+		return communication.UserDtoResponse{}, err
+	}
+
+	err = s.roomRepo.RegisterUserInRoomByName(
+		ctx, tx, createdUser.Id, generalRoomName,
+	)
 	if err != nil {
 		return communication.UserDtoResponse{}, err
 	}
@@ -98,6 +113,13 @@ func (s *userServiceImpl) Delete(
 		return err
 	}
 	defer tx.Close(ctx)
+
+	err = s.roomRepo.DeleteUserFromRoomByName(
+		ctx, tx, id, generalRoomName,
+	)
+	if err != nil {
+		return err
+	}
 
 	err = s.userRepo.Delete(ctx, tx, id)
 	if err != nil {

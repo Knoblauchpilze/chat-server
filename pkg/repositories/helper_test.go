@@ -33,3 +33,31 @@ func registerUserInRoom(
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 }
+
+func assertUserRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		"SELECT COUNT(*) FROM room_user WHERE chat_user = $1 AND room = $2",
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 1, value)
+}
+
+func assertUserNotRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		"SELECT COUNT(*) FROM room_user WHERE chat_user = $1 AND room = $2",
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 0, value)
+}

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -106,6 +107,136 @@ func TestIT_RoomRepository_ListForUser_WhenNoRoomRegistered_ReturnsEmptySlice(t 
 	assert.Equal(t, []persistence.Room{}, actual)
 }
 
+func TestIT_RoomRepository_RegisterUserInRoom(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserInRoom(context.Background(), tx, user.Id, room.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := uuid.New()
+
+	err := repo.RegisterUserInRoom(context.Background(), tx, user.Id, room)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoom_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := uuid.New()
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserInRoom(context.Background(), tx, user, room.Id)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+
+	assertUserNotRegisteredInRoom(t, conn, user, room.Id)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.RegisterUserInRoom(context.Background(), tx, user.Id, room.Id)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
+		"Actual err: %v",
+		err,
+	)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoomByName(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserInRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoomByName_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := fmt.Sprintf("my-inexistent-room-%s", uuid.New().String())
+
+	err := repo.RegisterUserInRoomByName(context.Background(), tx, user.Id, room)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrNoSuchRoom),
+		"Actual err: %v",
+		err,
+	)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoomByName_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := uuid.New()
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserInRoomByName(context.Background(), tx, user, room.Name)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+
+	assertUserNotRegisteredInRoom(t, conn, user, room.Id)
+}
+
+func TestIT_RoomRepository_RegisterUserInRoomByName_WhenUserAlreadyRegistered_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.RegisterUserInRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_RoomRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
@@ -132,6 +263,61 @@ func TestIT_RoomRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 
 	assert.Nil(t, err, "Actual err: %v", err)
 	assertRoomExists(t, conn, room.Id)
+}
+
+func TestIT_RoomRepository_DeleteUserFromRoomByName(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RoomRepository_DeleteUserFromRoomByName_DoesNotDeleteUser(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserExists(t, conn, user.Id)
+}
+
+func TestIT_RoomRepository_DeleteUserFromRoomByName_DoesNotDeleteRoom(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertRoomExists(t, conn, room.Id)
+}
+
+func TestIT_RoomRepository_DeleteUserFromRoomByName_WhenNotFound_ExpectSuccess(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+
+	user := uuid.New()
+	room := fmt.Sprintf("my-room-%s", uuid.NewString())
+
+	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user, room)
+	tx.Close(context.Background())
+
+	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func newTestRoomRepository(t *testing.T) (RoomRepository, db.Connection) {

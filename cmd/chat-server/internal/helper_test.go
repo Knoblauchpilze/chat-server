@@ -116,6 +116,9 @@ func newTestDbConnection(t *testing.T) db.Connection {
 func insertTestUser(t *testing.T, dbConn db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(dbConn)
 
+	tx, err := dbConn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
 	id := uuid.New()
 	user := persistence.User{
 		Id:        id,
@@ -123,7 +126,8 @@ func insertTestUser(t *testing.T, dbConn db.Connection) persistence.User {
 		ApiUser:   uuid.New(),
 		CreatedAt: time.Now(),
 	}
-	out, err := repo.Create(context.Background(), user)
+	out, err := repo.Create(context.Background(), tx, user)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertUserExists(t, dbConn, id)
