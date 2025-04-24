@@ -12,7 +12,7 @@ import (
 )
 
 type connectionAcceptor interface {
-	// Prompt to start accepting incoming connection. This function blocks until
+	// Prompt to start accepting incoming connections. This function blocks until
 	// Close is called on the same acceptor, at which point it returns any error.
 	// Calling it multiple times on the same acceptor will return an error.
 	Accept() error
@@ -97,7 +97,7 @@ func (a *acceptorImpl) acceptLoop() error {
 		if err != nil {
 			running = a.running.Load()
 			if running {
-				a.log.Errorf("Failed to accept connection in accept: %v", err)
+				a.log.Errorf("Failed to accept incoming connection: %v", err)
 			}
 		}
 
