@@ -1,11 +1,13 @@
 package connection
 
 import (
+	"context"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -166,7 +168,7 @@ func TestUnit_Listener_WhenDataReceivedAndProcessed_ExpectDataToBeDiscarded(t *t
 	listener := New(server, opts)
 
 	data := []byte("123456789")
-	_, err := client.Write(data)
+	err := client.Write(context.Background(), websocket.MessageBinary, data)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Start the listener and wait for it to process the data. We
@@ -193,7 +195,8 @@ func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackNotified(t *testing.T
 	}
 	listener := New(server, opts)
 
-	client.Close()
+	err := client.Close(websocket.StatusNormalClosure, "test")
+	assert.Nil(t, err, "Actual err: %v", err)
 	listener.Start()
 	listener.Close()
 
@@ -213,7 +216,8 @@ func TestUnit_Listener_WhenClientDisconnects_ExpectCallbackReceivesCorrectId(t *
 	}
 	listener := New(server, opts)
 
-	client.Close()
+	err := client.Close(websocket.StatusNormalClosure, "test")
+	assert.Nil(t, err, "Actual err: %v", err)
 	listener.Start()
 	listener.Close()
 
@@ -325,8 +329,7 @@ func TestUnit_Listener_WhenIncompleteDataReceived_IfNoDataComesLater_ExpectOnRea
 	}
 	listener := New(server, opts)
 
-	n, err := client.Write(sampleData)
-	assert.Equal(t, len(sampleData), n)
+	err := client.Write(context.Background(), websocket.MessageBinary, sampleData)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	listener.Start()
@@ -368,8 +371,7 @@ func TestUnit_Listener_WhenIncompleteDataReceivedAfterALongPause_ExpectOnReadErr
 
 	// Write some data: none of it will be processed considering
 	// how the callback is setup to return 0
-	n, err := client.Write(sampleData)
-	assert.Equal(t, len(sampleData), n)
+	err := client.Write(context.Background(), websocket.MessageBinary, sampleData)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	// Wait long enough for the processing to happen but not long enough for
