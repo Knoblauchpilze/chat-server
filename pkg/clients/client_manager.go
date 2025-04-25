@@ -1,17 +1,18 @@
 package clients
 
 import (
-	"net"
+	"context"
 	"sync"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	bterrors "github.com/Knoblauchpilze/chat-server/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 )
 
 type Manager interface {
-	OnConnect(conn net.Conn) (bool, uuid.UUID)
+	OnConnect(conn *websocket.Conn) (bool, uuid.UUID)
 	OnDisconnect(id uuid.UUID)
 	OnReadError(id uuid.UUID, err error)
 
@@ -24,7 +25,7 @@ type managerImpl struct {
 	handshake Handshake
 
 	lock    sync.RWMutex
-	clients map[uuid.UUID]net.Conn
+	clients map[uuid.UUID]*websocket.Conn
 }
 
 type ManagerProps struct {
@@ -38,11 +39,11 @@ func NewManager(props ManagerProps) Manager {
 		log:       props.Log,
 		queue:     props.Queue,
 		handshake: props.Handshake,
-		clients:   make(map[uuid.UUID]net.Conn),
+		clients:   make(map[uuid.UUID]*websocket.Conn),
 	}
 }
 
-func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
+func (m *managerImpl) OnConnect(conn *websocket.Conn) (bool, uuid.UUID) {
 	var connId uuid.UUID
 	var handshakeErr error
 
@@ -107,10 +108,7 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 	for id, conn := range m.clients {
 		// TODO: We should probably have some synchronization mechanism here.
 		// Or at least check if this is already handled.
-		n, err := conn.Write(encoded)
-		if n != len(encoded) {
-			m.log.Warnf("Broadcast: only sent %d byte(s) out of %d to %v", n, len(encoded), id)
-		}
+		err := conn.Write(context.Background(), websocket.MessageBinary, encoded)
 		if err != nil {
 			m.log.Warnf("Broadcast: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), id, err)
 		}
@@ -131,10 +129,7 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 			continue
 		}
 
-		n, err := conn.Write(encoded)
-		if n != len(encoded) {
-			m.log.Warnf("BroadcastExcept: only sent %d byte(s) out of %d to %v", n, len(encoded), clientId)
-		}
+		err := conn.Write(context.Background(), websocket.MessageBinary, encoded)
 		if err != nil {
 			m.log.Warnf("BroadcastExcept: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), clientId, err)
 		}
@@ -155,10 +150,7 @@ func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 		return
 	}
 
-	n, err := conn.Write(encoded)
-	if n != len(encoded) {
-		m.log.Warnf("SendTo: only sent %d byte(s) out of %d to %v", n, len(encoded), id)
-	}
+	err = conn.Write(context.Background(), websocket.MessageBinary, encoded)
 	if err != nil {
 		m.log.Warnf("SendTo: got error when sending %d byte(s) (%v) to %v: %v", len(encoded), msg.Type(), id, err)
 	}

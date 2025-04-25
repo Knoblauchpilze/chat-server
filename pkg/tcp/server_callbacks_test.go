@@ -1,16 +1,16 @@
 package tcp
 
 import (
-	"net"
 	"testing"
 
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUnit_ServerCallbacks_OnConnect_WhenUnset_ExpectNoFatalFailure(t *testing.T) {
 	var callbacks ServerCallbacks
 
-	conn, _ := net.Pipe()
+	var conn *websocket.Conn
 
 	callback := func() {
 		callbacks.OnConnect(conn)

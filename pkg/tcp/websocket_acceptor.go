@@ -8,8 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 	"github.com/coder/websocket"
 )
 
@@ -38,18 +39,9 @@ type websocketAcceptorImpl struct {
 	wg       sync.WaitGroup
 }
 
-// TODO: Make this private
-type AcceptorConfig struct {
-	BasePath        string
-	Port            uint16
-	ShutdownTimeout time.Duration
-	Callbacks       ServerCallbacks
-}
-
-func NewWebsocketAcceptor(config AcceptorConfig, log logger.Logger) websocketAcceptor {
+func NewWebsocketAcceptor(config acceptorConfig, log logger.Logger) websocketAcceptor {
 	a := websocketAcceptorImpl{
-		log: log,
-		// TODO: Specify this value when creating the acceptor
+		log:             log,
 		shutdownTimeout: config.ShutdownTimeout,
 		callbacks:       config.Callbacks,
 	}
@@ -64,7 +56,7 @@ func NewWebsocketAcceptor(config AcceptorConfig, log logger.Logger) websocketAcc
 func (a *websocketAcceptorImpl) Accept() error {
 	if !a.running.CompareAndSwap(false, true) {
 		// Acceptor is already listening.
-		return errors.NewCode(ErrAlreadyListening)
+		return bterr.NewCode(ErrAlreadyListening)
 	}
 
 	a.wg.Add(1)
@@ -89,6 +81,8 @@ func (a *websocketAcceptorImpl) initializeWebSocketListener(
 ) {
 	// https://shijuvar.medium.com/building-rest-apis-with-go-1-22-http-servemux-2115f242f02b
 	mux := http.NewServeMux()
+
+	fmt.Printf("handling base path: %s\n", basePath)
 
 	mux.HandleFunc(basePath, func(rw http.ResponseWriter, req *http.Request) {
 		a.handleConnectionRequest(req, rw)
@@ -135,13 +129,14 @@ func (a *websocketAcceptorImpl) handleConnectionRequest(req *http.Request, rw ht
 func (a *websocketAcceptorImpl) acceptConnection(conn *websocket.Conn) {
 	defer a.wg.Done()
 
-	var err error
-	// TODO: Should handle the connection and call the callbacks
-	a.log.Warnf("Not implemented yet: accept connection")
-	err = errors.NotImplemented()
+	err := errors.SafeRunSync(
+		func() {
+			a.callbacks.OnConnect(conn)
+		},
+	)
 
 	if err != nil {
-		a.log.Warnf("Failed to accept connection from: %v", err)
+		a.log.Warnf("Failed to accept connection: %v", err)
 		// TODO: Double check if this code makes sense
 		conn.Close(websocket.StatusNormalClosure, "denied")
 	}

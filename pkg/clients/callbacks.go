@@ -1,14 +1,13 @@
 package clients
 
 import (
-	"net"
-
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 )
 
 // The return value should indicate whether or not the connection is accepted
 // and an identifier to refer to it.
-type OnConnect func(conn net.Conn) (bool, uuid.UUID)
+type OnConnect func(conn *websocket.Conn) (bool, uuid.UUID)
 
 // The connection will automatically be closed after this callback is triggered.
 type OnDisconnect func(id uuid.UUID)
@@ -27,7 +26,7 @@ type Callbacks struct {
 	ReadDataCallback   OnReadData
 }
 
-func (c Callbacks) OnConnect(conn net.Conn) (bool, uuid.UUID) {
+func (c Callbacks) OnConnect(conn *websocket.Conn) (bool, uuid.UUID) {
 	if c.ConnectCallback == nil {
 		return false, uuid.Nil
 	}
