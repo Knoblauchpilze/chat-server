@@ -6,12 +6,13 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
+	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 )
 
 type Configuration struct {
 	Server         server.Config
 	ConnectTimeout time.Duration
-	TcpPort        uint16
+	TcpServer      tcp.ServerConfiguration
 	Database       postgresql.Config
 	Callbacks      clients.Callbacks
 }
@@ -28,7 +29,11 @@ func DefaultConfig() Configuration {
 		},
 		ConnectTimeout: 1 * time.Second,
 		// https://serverfault.com/questions/11806/which-ports-to-use-on-a-self-written-tcp-server
-		TcpPort: uint16(49152),
+		TcpServer: tcp.ServerConfiguration{
+			BasePath:        "/ws",
+			Port:            uint16(49152),
+			ShutdownTimeout: 3 * time.Second,
+		},
 		Database: postgresql.NewConfigForDockerContainer(
 			defaultDatabaseName,
 			defaultDatabaseUser,

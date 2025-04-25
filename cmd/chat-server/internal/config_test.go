@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
+	"github.com/Knoblauchpilze/chat-server/pkg/tcp"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnit_DefaultConfig_DefinesCorrectRestConfiguration(t *testing.T) {
+func TestUnit_DefaultConfig_DefinesReasonableRestConfiguration(t *testing.T) {
 	config := DefaultConfig()
 
 	expectedConf := server.Config{
@@ -25,10 +26,15 @@ func TestUnit_DefaultConfig_DefinesReasonableConnectTimeout(t *testing.T) {
 	assert.Equal(t, 1*time.Second, config.ConnectTimeout)
 }
 
-func TestUnit_DefaultConfig_UsesTcpPort49152(t *testing.T) {
+func TestUnit_DefaultConfig_DefinesReasonableTcpConfiguration(t *testing.T) {
 	config := DefaultConfig()
 
-	assert.Equal(t, uint16(49152), config.TcpPort)
+	expectedConf := tcp.ServerConfiguration{
+		BasePath:        "/ws",
+		Port:            uint16(49152),
+		ShutdownTimeout: 3 * time.Second,
+	}
+	assert.Equal(t, expectedConf, config.TcpServer)
 }
 
 func TestUnit_DefaultConfig_SetsExpectedDbConnection(t *testing.T) {
