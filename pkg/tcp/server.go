@@ -54,7 +54,7 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 			},
 		},
 	}
-	s.acceptor = NewWebsocketAcceptor(acceptorConfig, s.log)
+	s.acceptor = newWebsocketAcceptor(acceptorConfig, s.log)
 
 	return &s, nil
 }

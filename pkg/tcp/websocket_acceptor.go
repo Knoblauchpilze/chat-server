@@ -39,7 +39,7 @@ type websocketAcceptorImpl struct {
 	wg       sync.WaitGroup
 }
 
-func NewWebsocketAcceptor(config acceptorConfig, log logger.Logger) websocketAcceptor {
+func newWebsocketAcceptor(config acceptorConfig, log logger.Logger) websocketAcceptor {
 	a := websocketAcceptorImpl{
 		log:             log,
 		shutdownTimeout: config.ShutdownTimeout,
