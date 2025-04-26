@@ -235,7 +235,7 @@ func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
 		Message: fmt.Sprintf("%s says hello to %s", user.Name, room.Id),
 	}
 
-	url := fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s/messages", room.Id)
+	url := fmt.Sprintf("http://localhost:7204/v1/chats/rooms/%s/messages", room.Id)
 	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
 
 	responseDto := assertResponseAndExtractDetails[communication.MessageDtoResponse](
