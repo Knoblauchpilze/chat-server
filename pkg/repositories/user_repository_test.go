@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -33,8 +32,6 @@ func TestIT_UserRepository_Create(t *testing.T) {
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, user, "CreatedAt", "UpdatedAt"))
 	assert.Equal(t, actual.CreatedAt, actual.UpdatedAt)
-	fmt.Printf("createdAt: %v\n", actual.CreatedAt)
-	fmt.Printf("beforeInsertion: %v\n", beforeInsertion)
 	assert.True(t, actual.CreatedAt.After(beforeInsertion))
 	assertUserExists(t, conn, user.Id)
 }
