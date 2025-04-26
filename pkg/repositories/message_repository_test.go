@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
@@ -54,7 +53,7 @@ func TestIT_MessageRepository_Create_WhenUserNotRegisteredInRoom_ExpectFailure(t
 	_, err := repo.Create(context.Background(), msg)
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
 		"Actual err: %v",
 		err,
 	)
@@ -78,7 +77,7 @@ func TestIT_MessageRepository_Create_WhenUserDoesNotExist_ExpectFailure(t *testi
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
 		"Actual err: %v",
 		err,
 	)
@@ -102,7 +101,7 @@ func TestIT_MessageRepository_Create_WhenRoomDoesNotExist_ExpectFailure(t *testi
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
 		"Actual err: %v",
 		err,
 	)
