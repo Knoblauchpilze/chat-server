@@ -248,7 +248,7 @@ func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
 	assert.Equal(t, requestDto.Message, responseDto.Message)
 
 	// Fetch it
-	url = fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s/messages", responseDto.Room)
+	url = fmt.Sprintf("http://localhost:7204/v1/chats/rooms/%s/messages", responseDto.Room)
 	rw = doRequest(t, http.MethodGet, url)
 
 	getResponseDto := assertResponseAndExtractDetails[[]communication.MessageDtoResponse](
