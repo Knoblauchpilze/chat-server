@@ -41,7 +41,7 @@ func (s *userServiceImpl) Create(
 	user := communication.FromUserDtoRequest(userDto)
 
 	if user.Name == "" {
-		return communication.UserDtoResponse{}, errors.NewCode(InvalidName)
+		return communication.UserDtoResponse{}, errors.NewCode(ErrInvalidName)
 	}
 
 	tx, err := s.conn.BeginTx(ctx)

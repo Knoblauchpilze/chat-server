@@ -42,7 +42,7 @@ func (s *roomServiceImpl) Create(
 	room := communication.FromRoomDtoRequest(roomDto)
 
 	if room.Name == "" {
-		return communication.RoomDtoResponse{}, errors.NewCode(InvalidName)
+		return communication.RoomDtoResponse{}, errors.NewCode(ErrInvalidName)
 	}
 
 	createdRoom, err := s.roomRepo.Create(ctx, room)

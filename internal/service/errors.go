@@ -5,6 +5,6 @@ import (
 )
 
 const (
-	InvalidName     errors.ErrorCode = 400
+	ErrInvalidName  errors.ErrorCode = 400
 	ErrEmptyMessage errors.ErrorCode = 401
 )
