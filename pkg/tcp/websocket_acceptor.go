@@ -82,8 +82,6 @@ func (a *websocketAcceptorImpl) initializeWebSocketListener(
 	// https://shijuvar.medium.com/building-rest-apis-with-go-1-22-http-servemux-2115f242f02b
 	mux := http.NewServeMux()
 
-	fmt.Printf("handling base path: %s\n", basePath)
-
 	mux.HandleFunc(basePath, func(rw http.ResponseWriter, req *http.Request) {
 		a.handleConnectionRequest(req, rw)
 	})

@@ -33,8 +33,6 @@ func (s *testServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.conn, err = websocket.Accept(rw, req, &opts)
 
 	assert.Nil(s.t, err, "Actual err: %v", err)
-
-	fmt.Printf("accepted connection\n")
 }
 
 func newTestConnection(
@@ -48,8 +46,6 @@ func newTestConnection(
 	wg.Add(1)
 	asyncConnect := func() {
 		defer wg.Done()
-
-		fmt.Printf("attempt to connect to %s\n", s.URL)
 
 		var dialErr error
 		client, _, dialErr = websocket.Dial(
@@ -67,8 +63,6 @@ func newTestConnection(
 	s.Close()
 
 	server = ts.conn
-
-	fmt.Printf("all good\n")
 
 	return
 }

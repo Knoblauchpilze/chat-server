@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 	"io"
-	"net"
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -73,18 +72,20 @@ func (c *connectionImpl) Read() ([]byte, error) {
 	}
 
 	msgType, received, readErr := c.conn.Read(ctx)
-	if msgType != websocket.MessageBinary {
-		return []byte{}, errors.NewCode(ErrInvalidMessageFormat)
-	}
 
 	if err := c.accumulateIncomingData(received); err != nil {
 		return []byte{}, err
 	}
 
+	// TODO: This might not be how disconnect is communicated
 	if readErr == io.EOF {
 		return nil, errors.NewCode(ErrClientDisconnected)
-	} else if opErr, ok := readErr.(*net.OpError); ok && opErr.Timeout() {
+	} else if isTimeoutError(readErr) {
 		return c.data, errors.NewCode(ErrReadTimeout)
+	}
+
+	if readErr == nil && msgType != websocket.MessageBinary {
+		return []byte{}, errors.NewCode(ErrInvalidMessageFormat)
 	}
 
 	return c.data, readErr
