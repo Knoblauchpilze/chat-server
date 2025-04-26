@@ -60,7 +60,7 @@ func (h *handshakeImpl) tryWaitForUserId(conn net.Conn) (uuid.UUID, error) {
 
 	id, err = uuid.FromBytes(data)
 	if err != nil {
-		return uuid.Nil, errors.WrapCode(err, HandshakeFailure)
+		return uuid.Nil, errors.WrapCode(err, ErrHandshakeFailure)
 	}
 
 	return id, nil
