@@ -25,7 +25,7 @@ func TestIT_Handshake_WhenNoDataSent_ExpectFailure(t *testing.T) {
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, HandshakeTimeout),
+		errors.IsErrorWithCode(err, ErrHandshakeTimeout),
 		"Actual err: %v",
 		err,
 	)
@@ -45,7 +45,7 @@ func TestIT_Handshake_WhenPartialDataSent_ExpectFailure(t *testing.T) {
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, IncompleteHandshake),
+		errors.IsErrorWithCode(err, ErrIncompleteHandshake),
 		"Actual err: %v",
 		err,
 	)
@@ -65,7 +65,7 @@ func TestIT_Handshake_WhenUserIsNotRegisteredInDb_ExpectFailure(t *testing.T) {
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, HandshakeFailure),
+		errors.IsErrorWithCode(err, ErrHandshakeFailure),
 		"Actual err: %v",
 		err,
 	)
