@@ -163,6 +163,48 @@ func TestIT_RoomService_ListMessageForRoom(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestIT_RoomService_CreateMessageForRoom(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	insertUserInRoom(t, conn, user.Id, room.Id)
+
+	messageDtoRequest := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user.Name, room.Id),
+	}
+
+	out, err := service.CreateMessageForRoom(context.Background(), messageDtoRequest)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, messageDtoRequest.User, out.User)
+	assert.Equal(t, messageDtoRequest.Room, out.Room)
+	assert.Equal(t, messageDtoRequest.Message, out.Message)
+	assertMessageExists(t, conn, out.Id)
+}
+
+func TestIT_RoomService_CreateMessageForRoom_InvalidName(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	messageDtoRequest := communication.MessageDtoRequest{
+		User:    uuid.New(),
+		Room:    uuid.New(),
+		Message: "",
+	}
+
+	_, err := service.CreateMessageForRoom(context.Background(), messageDtoRequest)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrEmptyMessage),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_RoomService_Delete(t *testing.T) {
 	service, conn := newTestRoomService(t)
 	defer conn.Close(context.Background())

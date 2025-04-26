@@ -15,6 +15,7 @@ type RoomService interface {
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
 	ListUserForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
 	ListMessageForRoom(ctx context.Context, room uuid.UUID) ([]communication.MessageDtoResponse, error)
+	CreateMessageForRoom(ctx context.Context, messageDto communication.MessageDtoRequest) (communication.MessageDtoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -96,6 +97,24 @@ func (s *roomServiceImpl) ListMessageForRoom(
 		out = append(out, dto)
 	}
 
+	return out, nil
+}
+
+func (s *roomServiceImpl) CreateMessageForRoom(
+	ctx context.Context, messageDto communication.MessageDtoRequest,
+) (communication.MessageDtoResponse, error) {
+	message := communication.FromMessageDtoRequest(messageDto)
+
+	if message.Message == "" {
+		return communication.MessageDtoResponse{}, errors.NewCode(ErrEmptyMessage)
+	}
+
+	createdMessage, err := s.messageRepo.Create(ctx, message)
+	if err != nil {
+		return communication.MessageDtoResponse{}, err
+	}
+
+	out := communication.ToMessageDtoResponse(createdMessage)
 	return out, nil
 }
 

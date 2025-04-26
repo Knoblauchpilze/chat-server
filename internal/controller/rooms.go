@@ -32,6 +32,10 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	listMessageForRoom := rest.NewRoute(http.MethodGet, "/rooms/:id/messages", listMessageForRoomHandler)
 	out = append(out, listMessageForRoom)
 
+	postMessageForRoomHandler := createComponentAwareHttpHandler(postMessageForRoom, service)
+	postMessageForRoom := rest.NewRoute(http.MethodPost, "/rooms/:id/messages", postMessageForRoomHandler)
+	out = append(out, postMessageForRoom)
+
 	deleteHandler := createComponentAwareHttpHandler(deleteRoom, service)
 	delete := rest.NewRoute(http.MethodDelete, "/rooms/:id", deleteHandler)
 	out = append(out, delete)
@@ -107,17 +111,37 @@ func listMessageForRoom(c echo.Context, s service.RoomService) error {
 		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
 	}
 
-	users, err := s.ListMessageForRoom(c.Request().Context(), id)
+	messages, err := s.ListMessageForRoom(c.Request().Context(), id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	out, err := marshalNilToEmptySlice(users)
+	out, err := marshalNilToEmptySlice(messages)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
 	return c.JSONBlob(http.StatusOK, out)
+}
+
+func postMessageForRoom(c echo.Context, s service.RoomService) error {
+	var messageDtoRequest communication.MessageDtoRequest
+	err := c.Bind(&messageDtoRequest)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid message syntax")
+	}
+
+	out, err := s.CreateMessageForRoom(c.Request().Context(), messageDtoRequest)
+	if err != nil {
+		if errors.IsErrorWithCode(err, service.ErrEmptyMessage) {
+			return c.JSON(http.StatusBadRequest, "Invalid empty message")
+		}
+		// TODO: Handle various errors
+
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSON(http.StatusCreated, out)
 }
 
 func deleteRoom(c echo.Context, s service.RoomService) error {

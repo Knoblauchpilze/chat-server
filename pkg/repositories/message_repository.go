@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
 )
@@ -29,6 +31,8 @@ INSERT INTO message (id, chat_user, room, message)
 	VALUES ($1, $2, $3, $4)
 	RETURNING created_at`
 
+const userNotInRoomForeignKey = "message_chat_user_room_fkey"
+
 func (r *messageRepositoryImpl) Create(
 	ctx context.Context, msg persistence.Message,
 ) (persistence.Message, error) {
@@ -43,6 +47,14 @@ func (r *messageRepositoryImpl) Create(
 	)
 
 	msg.CreatedAt = createdAt.UTC()
+
+	if errors.IsErrorWithCode(err, pgx.ForeignKeyValidation) {
+		foreignKey, ok := extractForeignKeyViolation(err)
+
+		if ok && foreignKey == userNotInRoomForeignKey {
+			return msg, errors.WrapCode(err, ErrUserNotRegisteredInRoom)
+		}
+	}
 
 	return msg, err
 }

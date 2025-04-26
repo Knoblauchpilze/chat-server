@@ -216,6 +216,53 @@ func TestIT_RunHttpServer_ListForRoom(t *testing.T) {
 	wg.Wait()
 }
 
+func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
+	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+	props := newTestHttpProps(7204, dbConn)
+
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
+
+	wg := asyncRunHttpServer(t, props, cancellable)
+
+	// Create a new message
+	requestDto := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user.Name, room.Id),
+	}
+
+	url := fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s/messages", room.Id)
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	responseDto := assertResponseAndExtractDetails[communication.MessageDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusCreated, rw.StatusCode)
+	assert.Equal(t, requestDto.User, responseDto.User)
+	assert.Equal(t, requestDto.Room, responseDto.Room)
+	assert.Equal(t, requestDto.Message, responseDto.Message)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7203/v1/chats/rooms/%s/messages", responseDto.Room)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[[]communication.MessageDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, 1, len(getResponseDto))
+	assert.Equal(t, responseDto, getResponseDto[0])
+
+	cancel()
+	wg.Wait()
+}
+
 func newTestHttpConfig(port uint16) Configuration {
 	conf := DefaultConfig()
 	conf.Server.Port = port
