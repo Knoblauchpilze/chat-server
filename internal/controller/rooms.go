@@ -52,7 +52,7 @@ func createRoom(c echo.Context, s service.RoomService) error {
 
 	out, err := s.Create(c.Request().Context(), roomDtoRequest)
 	if err != nil {
-		if errors.IsErrorWithCode(err, service.InvalidName) {
+		if errors.IsErrorWithCode(err, service.ErrInvalidName) {
 			return c.JSON(http.StatusBadRequest, "Invalid room name")
 		}
 		if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {

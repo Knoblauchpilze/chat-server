@@ -42,7 +42,7 @@ func TestIT_UserService_Create_InvalidName(t *testing.T) {
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, InvalidName),
+		errors.IsErrorWithCode(err, ErrInvalidName),
 		"Actual err: %v",
 		err,
 	)

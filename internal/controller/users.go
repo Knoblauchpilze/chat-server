@@ -48,7 +48,7 @@ func createUser(c echo.Context, s service.UserService) error {
 
 	out, err := s.Create(c.Request().Context(), userDtoRequest)
 	if err != nil {
-		if errors.IsErrorWithCode(err, service.InvalidName) {
+		if errors.IsErrorWithCode(err, service.ErrInvalidName) {
 			return c.JSON(http.StatusBadRequest, "Invalid user name")
 		}
 		if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {
