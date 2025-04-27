@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,11 +9,12 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/connection"
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 )
 
 type connectionManager interface {
-	OnClientConnected(net.Conn)
+	OnClientConnected(*websocket.Conn)
 	Close()
 }
 
@@ -49,7 +49,7 @@ func newConnectionManager(config managerConfig, log logger.Logger) connectionMan
 	return m
 }
 
-func (m *managerImpl) OnClientConnected(conn net.Conn) {
+func (m *managerImpl) OnClientConnected(conn *websocket.Conn) {
 	var connId uuid.UUID
 	var err error
 	accepted := m.accepting.Load()
@@ -61,17 +61,16 @@ func (m *managerImpl) OnClientConnected(conn net.Conn) {
 		err = m.callCallbackAndLogError(cb, "Connect", connId)
 	}
 
-	address := conn.RemoteAddr().String()
 	if !accepted {
-		m.log.Infof("OnConnect: denied connection from %v", address)
+		m.log.Infof("OnConnect: denied incoming connection")
 		// Voluntarily ignoring errors
-		conn.Close()
+		conn.Close(websocket.StatusNormalClosure, "connection denied")
 	} else if err != nil {
-		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, address, err)
+		m.log.Infof("OnConnect: %v generated an error (err: %v)", connId, err)
 		// Voluntarily ignoring errors
-		conn.Close()
+		conn.Close(websocket.StatusNormalClosure, "connection error")
 	} else {
-		m.log.Debugf("OnConnect: %v assigned to %v", address, connId)
+		m.log.Debugf("OnConnect: %v assigned to new connection", connId)
 		m.registerListenerForConnection(connId, conn)
 	}
 }
@@ -129,7 +128,9 @@ func (m *managerImpl) prepareListenerOptions(connId uuid.UUID) connection.Listen
 	}
 }
 
-func (m *managerImpl) registerListenerForConnection(connId uuid.UUID, conn net.Conn) {
+func (m *managerImpl) registerListenerForConnection(
+	connId uuid.UUID, conn *websocket.Conn,
+) {
 	opts := m.prepareListenerOptions(connId)
 	listener := connection.New(conn, opts)
 

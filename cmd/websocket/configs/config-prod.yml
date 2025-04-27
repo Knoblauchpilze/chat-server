@@ -1,8 +1,6 @@
 Server:
   Port: 80
-TcpServer:
-  BasePath: "ws"
-  Port: 49152
+TcpPort: 49152
 Database:
   User: chat_server_manager
   Password: comes-from-the-environment

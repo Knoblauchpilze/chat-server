@@ -7,8 +7,10 @@ import (
 )
 
 type acceptorConfig struct {
-	Port      uint16
-	Callbacks ServerCallbacks
+	BasePath        string
+	Port            uint16
+	ShutdownTimeout time.Duration
+	Callbacks       ServerCallbacks
 }
 
 type managerConfig struct {
@@ -18,6 +20,8 @@ type managerConfig struct {
 }
 
 type ServerConfiguration struct {
-	Port      uint16
-	Callbacks clients.Callbacks
+	BasePath        string
+	Port            uint16
+	ShutdownTimeout time.Duration
+	Callbacks       clients.Callbacks
 }

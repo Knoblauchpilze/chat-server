@@ -1,13 +1,13 @@
 package connection
 
 import (
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	bterrors "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 )
 
@@ -55,7 +55,7 @@ type listenerImpl struct {
 	wg      sync.WaitGroup
 }
 
-func New(conn net.Conn, opts ListenerOptions) Listener {
+func New(conn *websocket.Conn, opts ListenerOptions) Listener {
 	connOpts := WithReadTimeout(opts.ReadTimeout)
 
 	l := &listenerImpl{

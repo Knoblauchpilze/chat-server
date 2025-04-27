@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -126,7 +127,7 @@ func TestUnit_Connection_Read_WhenDisconnect_ReturnsExplicitError(t *testing.T) 
 	client, server := newTestConnection(t, 1607)
 	conn := Wrap(server)
 
-	err := client.Close()
+	err := client.Close(websocket.StatusNormalClosure, "test")
 	assert.Nil(t, err, "Actual err: %v", err)
 	actual, err := conn.Read()
 
@@ -193,8 +194,8 @@ func TestUnit_Connection_Write(t *testing.T) {
 	wg.Wait()
 
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, sizeWritten, actual.size)
-	assert.Equal(t, sampleData, actual.data[:actual.size])
+	assert.Equal(t, sizeWritten, len(actual))
+	assert.Equal(t, sampleData, actual)
 }
 
 func TestUnit_Connection_Write_WhenDisconnect_ReturnsNoError(t *testing.T) {
@@ -203,7 +204,7 @@ func TestUnit_Connection_Write_WhenDisconnect_ReturnsNoError(t *testing.T) {
 	client, server := newTestConnection(t, 1611)
 	conn := Wrap(server)
 
-	err := client.Close()
+	err := client.Close(websocket.StatusNormalClosure, "test")
 	assert.Nil(t, err, "Actual err: %v", err)
 	actual, err := conn.Write(sampleData)
 

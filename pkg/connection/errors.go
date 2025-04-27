@@ -7,4 +7,5 @@ const (
 	ErrReadTimeout            errors.ErrorCode = 201
 	ErrTooLargeIncompleteData errors.ErrorCode = 202
 	ErrIncompleteDataTimeout  errors.ErrorCode = 203
+	ErrInvalidMessageFormat   errors.ErrorCode = 204
 )

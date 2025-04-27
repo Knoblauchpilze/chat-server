@@ -1,14 +1,16 @@
 package tcp
 
-import "net"
+import (
+	"github.com/coder/websocket"
+)
 
-type OnConnect func(conn net.Conn)
+type OnConnect func(conn *websocket.Conn)
 
 type ServerCallbacks struct {
 	ConnectCallback OnConnect
 }
 
-func (c ServerCallbacks) OnConnect(conn net.Conn) {
+func (c ServerCallbacks) OnConnect(conn *websocket.Conn) {
 	if c.ConnectCallback == nil {
 		return
 	}

@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"context"
-	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,6 +11,7 @@ import (
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/coder/websocket"
 )
 
 const (
@@ -26,7 +26,7 @@ type Server interface {
 type serverImpl struct {
 	log      logger.Logger
 	manager  connectionManager
-	acceptor connectionAcceptor
+	acceptor websocketAcceptor
 
 	running atomic.Bool
 	wg      sync.WaitGroup
@@ -45,17 +45,18 @@ func NewServer(config ServerConfiguration, log logger.Logger) (Server, error) {
 	s.manager = newConnectionManager(managerConfig, s.log)
 
 	acceptorConfig := acceptorConfig{
-		Port: config.Port,
+		BasePath:        config.BasePath,
+		Port:            config.Port,
+		ShutdownTimeout: config.ShutdownTimeout,
 		Callbacks: ServerCallbacks{
-			ConnectCallback: func(conn net.Conn) {
+			ConnectCallback: func(conn *websocket.Conn) {
 				s.manager.OnClientConnected(conn)
 			},
 		},
 	}
-	var err error
-	s.acceptor, err = newConnectionAcceptor(acceptorConfig, s.log)
+	s.acceptor = newWebsocketAcceptor(acceptorConfig, s.log)
 
-	return &s, err
+	return &s, nil
 }
 
 func (s *serverImpl) Start(ctx context.Context) error {

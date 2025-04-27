@@ -1,8 +1,6 @@
 Server:
   Port: 60001
-TcpServer:
-  BasePath: "ws"
-  Port: 49152
+TcpPort: 49152
 Database:
   User: chat_server_manager
   Password: DB_PASSWORD

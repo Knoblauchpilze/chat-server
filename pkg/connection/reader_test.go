@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,7 +40,7 @@ func TestUnit_ReadFromConnection_ReadTimeout(t *testing.T) {
 
 func TestUnit_ReadFromConnection_Disconnect(t *testing.T) {
 	client, server := newTestConnection(t, 1502)
-	err := server.Close()
+	err := server.Close(websocket.StatusNormalClosure, "test")
 	assert.Nil(t, err, "Actual err: %v", err)
 	conn := Wrap(client)
 
@@ -77,7 +78,7 @@ func TestUnit_ReadFromConnection_ReadWithCallback(t *testing.T) {
 
 func TestUnit_ReadFromConnection_DisconnectWithCallback(t *testing.T) {
 	client, server := newTestConnection(t, 1504)
-	err := server.Close()
+	err := server.Close(websocket.StatusNormalClosure, "test")
 	assert.Nil(t, err, "Actual err: %v", err)
 	conn := Wrap(client)
 
