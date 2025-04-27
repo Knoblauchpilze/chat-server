@@ -10,9 +10,10 @@ import (
 )
 
 type Services struct {
-	Room RoomService
-	User UserService
-	Chat ChatService
+	Room    RoomService
+	User    UserService
+	Message MessageService
+	Chat    ChatService
 }
 
 func New(
@@ -22,8 +23,9 @@ func New(
 	log logger.Logger,
 ) Services {
 	return Services{
-		Room: NewRoomService(conn, repos),
-		User: NewUserService(conn, repos),
+		Room:    NewRoomService(conn, repos),
+		User:    NewUserService(conn, repos),
+		Message: NewMessageService(conn, repos),
 		Chat: NewChatService(
 			clients.NewHandshake(repos.User, connectTimeout),
 			log,

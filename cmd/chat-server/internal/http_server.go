@@ -39,7 +39,7 @@ func RunHttpServer(
 		}
 	}
 
-	for _, route := range controller.MessageEndpoints(props.Services.Room) {
+	for _, route := range controller.MessageEndpoints(props.Services.Message) {
 		if err := s.AddRoute(route); err != nil {
 			return err
 		}
