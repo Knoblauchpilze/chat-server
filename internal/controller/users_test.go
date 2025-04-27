@@ -20,7 +20,8 @@ import (
 )
 
 func TestIT_UserController_CreateUser_WhenUserHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-user-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -39,7 +40,8 @@ func TestIT_UserController_CreateUser_WhenUserHasWrongSyntax_ExpectBadRequest(t 
 }
 
 func TestIT_UserController_CreateUser_WhenUserHasEmptyName_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	requestDto := communication.UserDtoRequest{
 		Name:    "",
 		ApiUser: uuid.New(),
@@ -119,7 +121,8 @@ func TestIT_UserController_GetUser(t *testing.T) {
 }
 
 func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -142,7 +145,8 @@ func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testin
 }
 
 func TestIT_UserController_ListUsers_WhenNoNameProvided_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -206,7 +210,8 @@ func TestIT_UserController_ListUsers_WhenNameHasSpecialCharacters_ExpectSuccess(
 }
 
 func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
@@ -274,7 +279,8 @@ func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *tes
 }
 
 func TestIT_UserController_DeleteUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -310,7 +316,8 @@ func TestIT_UserController_DeleteUser(t *testing.T) {
 }
 
 func TestIT_UserController_DeleteUser_WhenUserDoesNotExist_ExpectSuccess(t *testing.T) {
-	service, _ := newTestUserService(t)
+	service, dbConn := newTestUserService(t)
+	defer dbConn.Close(context.Background())
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)

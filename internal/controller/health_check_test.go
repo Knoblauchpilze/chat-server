@@ -10,12 +10,13 @@ import (
 )
 
 func TestIT_HealthcheckController(t *testing.T) {
-	conn := newTestDbConnection(t)
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
-	err := healthcheck(ctx, conn)
+	err := healthcheck(ctx, dbConn)
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, rw.Code)
@@ -23,13 +24,13 @@ func TestIT_HealthcheckController(t *testing.T) {
 }
 
 func TestIT_HealthcheckController_WhenConnectionClosed_ExpectServiceUnavailable(t *testing.T) {
-	conn := newTestDbConnection(t)
-	conn.Close(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
-	err := healthcheck(ctx, conn)
+	err := healthcheck(ctx, dbConn)
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, rw.Code)

@@ -20,7 +20,8 @@ import (
 )
 
 func TestIT_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-room-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -39,7 +40,8 @@ func TestIT_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(t 
 }
 
 func TestIT_RoomController_CreateRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	requestDto := communication.RoomDtoRequest{
 		Name: "",
 	}
@@ -117,7 +119,8 @@ func TestIT_RoomController_GetRoom(t *testing.T) {
 }
 
 func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -140,7 +143,8 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 }
 
 func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
@@ -211,7 +215,8 @@ func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *
 }
 
 func TestIT_RoomController_ListMessageForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -282,7 +287,8 @@ func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySli
 }
 
 func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 	ctx.SetParamNames("id")
@@ -320,7 +326,8 @@ func TestIT_RoomController_DeleteRoom(t *testing.T) {
 }
 
 func TestIT_RoomController_DeleteRoom_WhenRoomDoesNotExist_ExpectSuccess(t *testing.T) {
-	service, _ := newTestRoomService(t)
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
