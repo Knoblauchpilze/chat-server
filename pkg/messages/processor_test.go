@@ -17,7 +17,7 @@ import (
 )
 
 func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
-	processor, dbConn := newTestProcessor(t)
+	processor, dbConn, _ := newTestProcessor(t)
 	defer dbConn.Close(context.Background())
 
 	user := insertTestUser(t, dbConn)
@@ -38,6 +38,39 @@ func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
 	wg.Wait()
 
 	assertMessageExists(t, dbConn, msg.User, msg.Room, msg.Message)
+}
+
+func TestIT_Processor_EnqueueMessage_ExpectWrittenSentToDispatcher(t *testing.T) {
+	processor, dbConn, mock := newTestProcessor(t)
+	defer dbConn.Close(context.Background())
+
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
+
+	wg := asyncStartProcessorAndAssertNoError(t, processor)
+
+	msg := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("hello %s", room.Name),
+	}
+	processor.Enqueue(msg)
+
+	err := processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, user.Id, mock.receivedId)
+	assert.Equal(t, ROOM_MESSAGE, mock.receivedMsg.Type())
+	actual, err := ToMessageStruct[RoomMessage](mock.receivedMsg)
+	assert.Nil(t, err, "Actual err: %v", err)
+	expectedMessage := RoomMessage{
+		Emitter: user.Id,
+		Room:    room.Id,
+		Content: msg.Message,
+	}
+	assert.Equal(t, expectedMessage, actual)
 }
 
 type mockMessageRepository struct {
@@ -74,7 +107,7 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 	repos := repositories.Repositories{
 		Message: mock,
 	}
-	processor := NewProcessor(1, repos)
+	processor := NewProcessor(1, &mockDispatcher{}, repos)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -121,7 +154,7 @@ func TestIT_Processor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testi
 	repos := repositories.Repositories{
 		Message: mock,
 	}
-	processor := NewProcessor(1, repos)
+	processor := NewProcessor(1, &mockDispatcher{}, repos)
 
 	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
 
@@ -133,8 +166,28 @@ func TestIT_Processor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testi
 	wg.Wait()
 }
 
-func newTestProcessor(t *testing.T) (Processor, db.Connection) {
+type mockDispatcher struct {
+	receivedId  uuid.UUID
+	receivedMsg Message
+}
+
+func (m *mockDispatcher) Broadcast(msg Message) {
+	m.receivedMsg = msg
+}
+
+func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg Message) {
+	m.receivedId = id
+	m.receivedMsg = msg
+}
+
+func (m *mockDispatcher) SendTo(id uuid.UUID, msg Message) {
+	m.receivedId = id
+	m.receivedMsg = msg
+}
+
+func newTestProcessor(t *testing.T) (Processor, db.Connection, *mockDispatcher) {
 	conn := newTestDbConnection(t)
+	mock := &mockDispatcher{}
 
 	repos := repositories.Repositories{
 		User:    repositories.NewUserRepository(conn),
@@ -142,7 +195,7 @@ func newTestProcessor(t *testing.T) (Processor, db.Connection) {
 		Message: repositories.NewMessageRepository(conn),
 	}
 
-	return NewProcessor(1, repos), conn
+	return NewProcessor(1, mock, repos), conn, mock
 }
 
 func asyncStartProcessorAndAssertNoError(

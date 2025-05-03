@@ -18,6 +18,7 @@ type Processor interface {
 type processorImpl struct {
 	queue       chan communication.MessageDtoRequest
 	messageRepo repositories.MessageRepository
+	dispatcher  Dispatcher
 
 	running atomic.Bool
 	quit    chan struct{}
@@ -25,11 +26,14 @@ type processorImpl struct {
 }
 
 func NewProcessor(
-	messageQueueSize int, repos repositories.Repositories,
+	messageQueueSize int,
+	dispatcher Dispatcher,
+	repos repositories.Repositories,
 ) Processor {
 	return &processorImpl{
 		queue:       make(chan communication.MessageDtoRequest, messageQueueSize),
 		messageRepo: repos.Message,
+		dispatcher:  dispatcher,
 
 		quit: make(chan struct{}, 1),
 		done: make(chan struct{}, 1),
@@ -93,7 +97,8 @@ func (p *processorImpl) processMessage(msg communication.MessageDtoRequest) erro
 		return err
 	}
 
-	// TODO: Notify the client manager
+	out := NewRoomMessage(msg.User, msg.Room, msg.Message)
+	p.dispatcher.BroadcastExcept(msg.User, out)
 
 	return nil
 }
