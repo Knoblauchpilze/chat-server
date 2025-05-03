@@ -14,7 +14,9 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
@@ -30,7 +32,7 @@ func TestIT_RunHttpServer_StartAndStopWithContext(t *testing.T) {
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 
-	props := newTestHttpProps(7200, dbConn)
+	props, _ := newTestHttpProps(7200, dbConn)
 
 	err := RunHttpServer(cancellable, props)
 
@@ -43,7 +45,7 @@ func TestIT_RunHttpServer_WhenDbConnectionWorks_ExpectHealthcheckSucceeds(t *tes
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 
-	props := newTestHttpProps(7201, dbConn)
+	props, _ := newTestHttpProps(7201, dbConn)
 
 	wg := asyncRunHttpServer(t, props, cancellable)
 
@@ -68,7 +70,7 @@ func (m *mockDbConn) Ping(ctx context.Context) error {
 func TestUnit_RunHttpServer_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	props := newTestHttpProps(7202, &mockDbConn{})
+	props, _ := newTestHttpProps(7202, &mockDbConn{})
 
 	wg := asyncRunHttpServer(t, props, cancellable)
 
@@ -86,7 +88,7 @@ func TestIT_RunHttpServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
-	props := newTestHttpProps(7203, dbConn)
+	props, _ := newTestHttpProps(7203, dbConn)
 
 	wg := asyncRunHttpServer(t, props, cancellable)
 
@@ -136,7 +138,7 @@ func TestIT_RunHttpServer_User_CreateGetDeleteWorkflow(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
-	props := newTestHttpProps(7203, dbConn)
+	props, _ := newTestHttpProps(7203, dbConn)
 
 	wg := asyncRunHttpServer(t, props, cancellable)
 
@@ -186,7 +188,7 @@ func TestIT_RunHttpServer_ListForRoom(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
-	props := newTestHttpProps(7203, dbConn)
+	props, _ := newTestHttpProps(7203, dbConn)
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -220,13 +222,14 @@ func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
 	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
-	props := newTestHttpProps(7204, dbConn)
+	props, processor := newTestHttpProps(7204, dbConn)
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
 	insertUserInRoom(t, dbConn, user.Id, room.Id)
 
 	wg := asyncRunHttpServer(t, props, cancellable)
+	wgProcessor := asyncRunMessageProcessor(t, processor)
 
 	// Create a new message
 	requestDto := communication.MessageDtoRequest{
@@ -238,17 +241,13 @@ func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:7204/v1/chats/rooms/%s/messages", room.Id)
 	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
 
-	responseDto := assertResponseAndExtractDetails[communication.MessageDtoResponse](
-		t, rw, success,
-	)
+	assert.Equal(t, http.StatusAccepted, rw.StatusCode)
 
-	assert.Equal(t, http.StatusCreated, rw.StatusCode)
-	assert.Equal(t, requestDto.User, responseDto.User)
-	assert.Equal(t, requestDto.Room, responseDto.Room)
-	assert.Equal(t, requestDto.Message, responseDto.Message)
+	// Wait a bit for the processor to persist the message
+	time.Sleep(50 * time.Millisecond)
 
 	// Fetch it
-	url = fmt.Sprintf("http://localhost:7204/v1/chats/rooms/%s/messages", responseDto.Room)
+	url = fmt.Sprintf("http://localhost:7204/v1/chats/rooms/%s/messages", room.Id)
 	rw = doRequest(t, http.MethodGet, url)
 
 	getResponseDto := assertResponseAndExtractDetails[[]communication.MessageDtoResponse](
@@ -257,10 +256,18 @@ func TestIT_RunHttpServer_Message_PostGetWorkflow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
 	assert.Equal(t, 1, len(getResponseDto))
-	assert.Equal(t, responseDto, getResponseDto[0])
+	assert.Len(t, getResponseDto, 1)
+	actual := getResponseDto[0]
+	assert.Equal(t, requestDto.User, actual.User)
+	assert.Equal(t, requestDto.Room, actual.Room)
+	assert.Equal(t, requestDto.Message, actual.Message)
 
 	cancel()
+	err := processor.Stop()
 	wg.Wait()
+	wgProcessor.Wait()
+
+	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func newTestHttpConfig(port uint16) Configuration {
@@ -270,17 +277,36 @@ func newTestHttpConfig(port uint16) Configuration {
 	return conf
 }
 
-func newTestHttpProps(port uint16, dbConn db.Connection) HttpServerProps {
+func newTestHttpProps(
+	port uint16, dbConn db.Connection,
+) (HttpServerProps, messages.Processor) {
 	conf := newTestHttpConfig(port)
 	log := logger.New(os.Stdout)
 	repos := repositories.New(dbConn)
 
-	return HttpServerProps{
-		Config:   conf,
-		DbConn:   dbConn,
-		Services: service.New(conf.ConnectTimeout, dbConn, repos, log),
-		Log:      log,
+	managerProps := clients.ManagerProps{
+		Queue:     nil,
+		Handshake: nil,
+		Log:       log,
 	}
+	manager := clients.NewManager(managerProps)
+
+	processor := messages.NewProcessor(1, manager, repos)
+
+	props := HttpServerProps{
+		Config: conf,
+		DbConn: dbConn,
+		Services: service.New(
+			conf.ConnectTimeout,
+			dbConn,
+			repos,
+			processor,
+			log,
+		),
+		Log: log,
+	}
+
+	return props, processor
 }
 
 func asyncRunHttpServer(
@@ -288,7 +314,6 @@ func asyncRunHttpServer(
 	props HttpServerProps,
 	ctx context.Context,
 ) *sync.WaitGroup {
-	var err error
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -299,7 +324,29 @@ func asyncRunHttpServer(
 				assert.Failf(t, "Server panicked", "Panic details: %v", panicErr)
 			}
 		}()
-		err = RunHttpServer(ctx, props)
+		err := RunHttpServer(ctx, props)
+		assert.Nil(t, err, "Actual err: %v", err)
+	}()
+
+	time.Sleep(reasonableWaitTimeForServerToBeUp)
+
+	return &wg
+}
+
+func asyncRunMessageProcessor(
+	t *testing.T, processor messages.Processor,
+) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if panicErr := recover(); panicErr != nil {
+				assert.Failf(t, "Processor panicked", "Panic details: %v", panicErr)
+			}
+		}()
+		err := processor.Start()
 		assert.Nil(t, err, "Actual err: %v", err)
 	}()
 

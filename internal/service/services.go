@@ -6,6 +6,7 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
+	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 )
 
@@ -20,12 +21,13 @@ func New(
 	connectTimeout time.Duration,
 	conn db.Connection,
 	repos repositories.Repositories,
+	processor messages.Processor,
 	log logger.Logger,
 ) Services {
 	return Services{
 		Room:    NewRoomService(conn, repos),
 		User:    NewUserService(conn, repos),
-		Message: NewMessageService(conn, repos),
+		Message: NewMessageService(conn, processor),
 		Chat: NewChatService(
 			clients.NewHandshake(repos.User, connectTimeout),
 			log,

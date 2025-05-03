@@ -6,40 +6,39 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
-	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 )
 
 type MessageService interface {
-	PostMessage(ctx context.Context, messageDto communication.MessageDtoRequest) (communication.MessageDtoResponse, error)
+	PostMessage(ctx context.Context, messageDto communication.MessageDtoRequest) error
 }
 
 type messageServiceImpl struct {
 	conn db.Connection
 
-	messageRepo repositories.MessageRepository
+	processor messages.Processor
 }
 
-func NewMessageService(conn db.Connection, repos repositories.Repositories) MessageService {
+func NewMessageService(conn db.Connection, processor messages.Processor) MessageService {
 	return &messageServiceImpl{
-		conn:        conn,
-		messageRepo: repos.Message,
+		conn:      conn,
+		processor: processor,
 	}
 }
 
 func (s *messageServiceImpl) PostMessage(
 	ctx context.Context, messageDto communication.MessageDtoRequest,
-) (communication.MessageDtoResponse, error) {
+) error {
 	message := communication.FromMessageDtoRequest(messageDto)
 
 	if message.Message == "" {
-		return communication.MessageDtoResponse{}, errors.NewCode(ErrEmptyMessage)
+		return errors.NewCode(ErrEmptyMessage)
 	}
 
-	createdMessage, err := s.messageRepo.Create(ctx, message)
+	err := s.processor.Enqueue(message)
 	if err != nil {
-		return communication.MessageDtoResponse{}, err
+		return err
 	}
 
-	out := communication.ToMessageDtoResponse(createdMessage)
-	return out, nil
+	return nil
 }
