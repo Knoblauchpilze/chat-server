@@ -5,6 +5,7 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/Knoblauchpilze/chat-server/internal/controller"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
@@ -45,5 +46,10 @@ func RunHttpServer(
 		}
 	}
 
-	return s.Start(ctx)
+	wait, err := process.StartWithSignalHandler(ctx, s)
+	if err != nil {
+		return err
+	}
+
+	return wait()
 }
