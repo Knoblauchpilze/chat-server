@@ -97,26 +97,13 @@ func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uui
 	assert.Equal(t, int64(1), count)
 }
 
-func assertMessageExists(
-	t *testing.T,
-	conn db.Connection,
-	user uuid.UUID,
-	room uuid.UUID,
-	message string,
-) {
-	value, err := db.QueryOne[int](
+func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
-		`SELECT count(*)
-			FROM message
-			WHERE chat_user = $1
-			AND room = $2
-			AND message = $3`,
-		user,
-		room,
-		message,
+		"SELECT id FROM message WHERE id = $1",
+		id,
 	)
-
 	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, 1, value)
+	assert.Equal(t, id, value)
 }

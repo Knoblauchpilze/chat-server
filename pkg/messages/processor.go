@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 )
 
@@ -12,11 +12,11 @@ type Processor interface {
 	Start() error
 	Stop() error
 
-	Enqueue(msg communication.MessageDtoRequest) error
+	Enqueue(msg persistence.Message) error
 }
 
 type processorImpl struct {
-	queue       chan communication.MessageDtoRequest
+	queue       chan persistence.Message
 	messageRepo repositories.MessageRepository
 	dispatcher  Dispatcher
 
@@ -31,7 +31,7 @@ func NewProcessor(
 	repos repositories.Repositories,
 ) Processor {
 	return &processorImpl{
-		queue:       make(chan communication.MessageDtoRequest, messageQueueSize),
+		queue:       make(chan persistence.Message, messageQueueSize),
 		messageRepo: repos.Message,
 		dispatcher:  dispatcher,
 
@@ -59,7 +59,7 @@ func (p *processorImpl) Stop() error {
 	return nil
 }
 
-func (p *processorImpl) Enqueue(msg communication.MessageDtoRequest) error {
+func (p *processorImpl) Enqueue(msg persistence.Message) error {
 	p.queue <- msg
 	return nil
 }
@@ -89,16 +89,14 @@ func (p *processorImpl) activeLoop() error {
 	return err
 }
 
-func (p *processorImpl) processMessage(msg communication.MessageDtoRequest) error {
-	dbMsg := communication.FromMessageDtoRequest(msg)
-
-	_, err := p.messageRepo.Create(context.Background(), dbMsg)
+func (p *processorImpl) processMessage(msg persistence.Message) error {
+	_, err := p.messageRepo.Create(context.Background(), msg)
 	if err != nil {
 		return err
 	}
 
-	out := NewRoomMessage(msg.User, msg.Room, msg.Message)
-	p.dispatcher.BroadcastExcept(msg.User, out)
+	out := NewRoomMessage(msg.ChatUser, msg.Room, msg.Message)
+	p.dispatcher.BroadcastExcept(msg.ChatUser, out)
 
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
@@ -26,10 +25,11 @@ func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
-	msg := communication.MessageDtoRequest{
-		User:    user.Id,
-		Room:    room.Id,
-		Message: fmt.Sprintf("hello %s", room.Name),
+	msg := persistence.Message{
+		Id:       uuid.New(),
+		ChatUser: user.Id,
+		Room:     room.Id,
+		Message:  fmt.Sprintf("hello %s", room.Name),
 	}
 	processor.Enqueue(msg)
 
@@ -37,7 +37,7 @@ func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assertMessageExists(t, dbConn, msg.User, msg.Room, msg.Message)
+	assertMessageExists(t, dbConn, msg.Id)
 }
 
 func TestIT_Processor_EnqueueMessage_ExpectWrittenSentToDispatcher(t *testing.T) {
@@ -50,10 +50,11 @@ func TestIT_Processor_EnqueueMessage_ExpectWrittenSentToDispatcher(t *testing.T)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
-	msg := communication.MessageDtoRequest{
-		User:    user.Id,
-		Room:    room.Id,
-		Message: fmt.Sprintf("hello %s", room.Name),
+	msg := persistence.Message{
+		Id:       uuid.New(),
+		ChatUser: user.Id,
+		Room:     room.Id,
+		Message:  fmt.Sprintf("hello %s", room.Name),
 	}
 	processor.Enqueue(msg)
 
@@ -112,7 +113,7 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
 	enqueueMessage := func() {
-		msg := communication.MessageDtoRequest{}
+		msg := persistence.Message{}
 		processor.Enqueue(msg)
 	}
 
@@ -132,7 +133,7 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 		enqueueMessage()
 	}()
 
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(100 * time.Millisecond)
 	select {
 	case <-timeout:
 	case <-msgEnqueued:
@@ -158,7 +159,7 @@ func TestIT_Processor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testi
 
 	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
 
-	msg := communication.MessageDtoRequest{}
+	msg := persistence.Message{}
 	processor.Enqueue(msg)
 
 	err := processor.Stop()
