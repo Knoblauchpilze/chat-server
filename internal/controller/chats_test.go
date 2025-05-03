@@ -13,7 +13,7 @@ import (
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
-	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -90,18 +90,12 @@ func TestIT_ChatsController_PostMessageForRoom(t *testing.T) {
 	err = postMessage(ctx, service)
 
 	assert.Nil(t, err, "Actual err: %v", err)
-
-	var responseDto communication.MessageDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	assert.Equal(t, http.StatusCreated, rw.Code)
-	assert.Equal(t, requestDto.Message, responseDto.Message)
-	assertMessageExists(t, dbConn, responseDto.Id)
+	assert.Equal(t, http.StatusAccepted, rw.Code)
 }
 
 func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, _ := newTestMessageService(t)
+	service, dbConn := newTestMessageService(t)
+	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
 
@@ -119,8 +113,23 @@ func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRe
 	)
 }
 
-func newTestMessageService(t *testing.T) (service.MessageService, db.Connection) {
+func newTestMessageService(
+	t *testing.T,
+) (service.MessageService, db.Connection) {
 	dbConn := newTestDbConnection(t)
-	repos := repositories.New(dbConn)
-	return service.NewMessageService(dbConn, repos), dbConn
+	return service.NewMessageService(dbConn, &mockProcessor{}), dbConn
+}
+
+type mockProcessor struct{}
+
+func (m *mockProcessor) Start() error {
+	return nil
+}
+
+func (m *mockProcessor) Stop() error {
+	return nil
+}
+
+func (m *mockProcessor) Enqueue(_ persistence.Message) error {
+	return nil
 }

@@ -33,7 +33,7 @@ func postMessage(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusBadRequest, "Invalid message syntax")
 	}
 
-	out, err := s.PostMessage(c.Request().Context(), messageDtoRequest)
+	err = s.PostMessage(c.Request().Context(), messageDtoRequest)
 	if err != nil {
 		if errors.IsErrorWithCode(err, service.ErrEmptyMessage) {
 			return c.JSON(http.StatusBadRequest, "Invalid empty message")
@@ -42,7 +42,7 @@ func postMessage(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusCreated, out)
+	return c.NoContent(http.StatusAccepted)
 }
 
 func subscribeToMessages(c echo.Context, s service.MessageService) error {
