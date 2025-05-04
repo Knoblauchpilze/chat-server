@@ -10,18 +10,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type Client messages.Processor
+
 func New(
 	messageQueueSize int,
 	_ uuid.UUID,
 	rw http.ResponseWriter,
-) messages.Processor {
+) (Client, error) {
+	_, ok := rw.(http.Flusher)
+	if !ok {
+		return nil, errors.NewCode(ErrUnsupportedConnection)
+	}
+
 	callbacks := messages.Callbacks{
 		Start:   generateStartCallback(rw),
 		Message: generateMessageCallback(rw),
 		Finish:  generateFinishCallback(),
 	}
 
-	return messages.NewProcessor(messageQueueSize, callbacks)
+	return messages.NewProcessor(messageQueueSize, callbacks), nil
 }
 
 func generateStartCallback(rw http.ResponseWriter) messages.StartCallback {
@@ -35,6 +42,9 @@ func generateStartCallback(rw http.ResponseWriter) messages.StartCallback {
 }
 
 func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
+	// We verify in New that this conversion will succeed
+	flusher := rw.(http.Flusher)
+
 	return func(msg persistence.Message) error {
 		e, err := fromMessage(msg)
 		if err != nil {
@@ -45,6 +55,8 @@ func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
 		if err != nil {
 			return errors.WrapCode(err, ErrSseStreamFailed)
 		}
+
+		flusher.Flush()
 
 		return nil
 	}
