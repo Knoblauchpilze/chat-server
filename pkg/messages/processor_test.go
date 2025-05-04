@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_Processor_ExpectStartCallbackCalled(t *testing.T) {
+func TestUnit_Processor_ExpectStartCallbackCalled(t *testing.T) {
 	var called int
 	startCb := func() error {
 		called++
@@ -29,7 +29,7 @@ func TestIT_Processor_ExpectStartCallbackCalled(t *testing.T) {
 	assert.Equal(t, 1, called)
 }
 
-func TestIT_Processor_WhenStartCallbackFails_ExpectErrorIsReturned(t *testing.T) {
+func TestUnit_Processor_WhenStartCallbackFails_ExpectErrorIsReturned(t *testing.T) {
 	testErr := fmt.Errorf("some error")
 	startCb := func() error {
 		return testErr
@@ -46,7 +46,7 @@ func TestIT_Processor_WhenStartCallbackFails_ExpectErrorIsReturned(t *testing.T)
 	wg.Wait()
 }
 
-func TestIT_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
+func TestUnit_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
 	var receivedMsg persistence.Message
 	var called int
 	msgCb := func(msg persistence.Message) error {
@@ -76,7 +76,7 @@ func TestIT_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
 	assert.Equal(t, msg, receivedMsg)
 }
 
-func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
+func TestUnit_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 	var block atomic.Bool
 	block.Store(true)
 	unblock := make(chan struct{}, 1)
@@ -129,7 +129,7 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 	wg.Wait()
 }
 
-func TestIT_Processor_WhenMessageFailsToBeProcessed_ExpectProcessingStops(t *testing.T) {
+func TestUnit_Processor_WhenMessageFailsToBeProcessed_ExpectProcessingStops(t *testing.T) {
 	testErr := fmt.Errorf("some error")
 	msgCb := func(msg persistence.Message) error {
 		return testErr
@@ -146,7 +146,7 @@ func TestIT_Processor_WhenMessageFailsToBeProcessed_ExpectProcessingStops(t *tes
 	wg.Wait()
 }
 
-func TestIT_Processor_WhenStopped_ExpectFinishCallbackCalled(t *testing.T) {
+func TestUnit_Processor_WhenStopped_ExpectFinishCallbackCalled(t *testing.T) {
 	var called int
 	finishCb := func() error {
 		called++
@@ -173,7 +173,7 @@ func TestIT_Processor_WhenStopped_ExpectFinishCallbackCalled(t *testing.T) {
 	assert.Equal(t, 1, called)
 }
 
-func TestIT_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T) {
+func TestUnit_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T) {
 	testErr := fmt.Errorf("some error")
 	finishCb := func() error {
 		return testErr
