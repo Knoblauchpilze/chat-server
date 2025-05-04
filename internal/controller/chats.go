@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -52,8 +51,10 @@ func subscribeToMessages(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
 	}
 
-	// TODO: Support this
-	// See: // https://echo.labstack.com/docs/cookbook/sse
-	msg := fmt.Sprintf("Not implemented for: %v", id)
-	return c.JSON(http.StatusInternalServerError, msg)
+	err = s.ServeClient(c.Request().Context(), id, c.Response())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.NoContent(http.StatusOK)
 }
