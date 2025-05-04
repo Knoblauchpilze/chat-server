@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/connection"
-	"github.com/Knoblauchpilze/chat-server/pkg/errors"
 	"github.com/google/uuid"
 )
 
@@ -55,8 +55,9 @@ func (m *managerImpl) OnClientConnected(conn net.Conn) {
 	accepted := m.accepting.Load()
 
 	if accepted {
-		cb := func() {
+		cb := func() error {
 			accepted, connId = m.callbacks.OnConnect(conn)
+			return nil
 		}
 		err = m.callCallbackAndLogError(cb, "Connect", connId)
 	}
@@ -100,8 +101,9 @@ func (m *managerImpl) Close() {
 	for _, data := range allListeners {
 		data.Close()
 
-		cb := func() {
+		cb := func() error {
 			m.callbacks.OnDisconnect(data.listener.Id())
+			return nil
 		}
 		m.callCallbackAndLogError(cb, "Disconnect", data.listener.Id())
 
@@ -152,8 +154,9 @@ func (m *managerImpl) onClientDisconnected(id uuid.UUID) {
 func (m *managerImpl) onReadError(id uuid.UUID, err error) {
 	m.log.Warnf("OnReadError: %v generated an error (err: %v)", id, err)
 
-	cb := func() {
+	cb := func() error {
 		m.callbacks.OnReadError(id, err)
+		return nil
 	}
 	m.callCallbackAndLogError(cb, "OnReadError", id)
 	m.closeConnection(id, true)
@@ -163,8 +166,9 @@ func (m *managerImpl) onReadData(id uuid.UUID, data []byte) int {
 	var processed int
 	var keepAlive bool
 
-	cb := func() {
+	cb := func() error {
 		processed, keepAlive = m.callbacks.OnReadData(id, data)
+		return nil
 	}
 	err := m.callCallbackAndLogError(cb, "OnReadData", id)
 
@@ -197,19 +201,20 @@ func (m *managerImpl) closeConnection(id uuid.UUID, triggerDisconnect bool) {
 	}
 
 	if triggerDisconnect && m.accepting.Load() {
-		cb := func() {
+		cb := func() error {
 			m.callbacks.OnDisconnect(id)
+			return nil
 		}
 		m.callCallbackAndLogError(cb, "Disconnect", id)
 	}
 }
 
 func (m *managerImpl) callCallbackAndLogError(
-	proc errors.Process,
+	proc process.RunFunc,
 	processName string,
 	connId uuid.UUID,
 ) error {
-	err := errors.SafeRunSync(proc)
+	err := process.SafeRunSync(proc)
 	if err != nil {
 		m.log.Warnf("%s callback failed for connection %v with err: %v", processName, connId, err)
 	}

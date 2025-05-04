@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	bterrors "github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/google/uuid"
 )
@@ -44,17 +44,15 @@ func NewManager(props ManagerProps) Manager {
 
 func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	var connId uuid.UUID
-	var handshakeErr error
 
-	err := bterrors.SafeRunSync(func() {
-		connId, handshakeErr = m.handshake.Perform(conn)
+	err := process.SafeRunSync(func() error {
+		var err error
+		connId, err = m.handshake.Perform(conn)
+		return err
 	})
 
 	if err != nil {
-		m.log.Warnf("OnConnect: panic while performing handshake: %v", err)
-		return false, uuid.Nil
-	} else if handshakeErr != nil {
-		m.log.Warnf("OnConnect: handshake failed: %v", handshakeErr)
+		m.log.Warnf("OnConnect: handshake failed: %v", err)
 		return false, uuid.Nil
 	}
 

@@ -8,7 +8,7 @@ import (
 
 	bterr "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
-	"github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 )
 
 type connectionAcceptor interface {
@@ -113,9 +113,10 @@ func (a *acceptorImpl) acceptLoop() error {
 func (a *acceptorImpl) acceptConnection(conn net.Conn) {
 	defer a.wg.Done()
 
-	err := errors.SafeRunSync(
-		func() {
+	err := process.SafeRunSync(
+		func() error {
 			a.callbacks.OnConnect(conn)
+			return nil
 		},
 	)
 

@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	bterrors "github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
-	"github.com/Knoblauchpilze/chat-server/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/google/uuid"
 )
 
@@ -107,10 +107,11 @@ func (l *listenerImpl) activeLoop() {
 	running := true
 	for running {
 		var readResult connectionReadResult
-		var err error
 
-		readPanic := errors.SafeRunSync(func() {
+		readErr := process.SafeRunSync(func() error {
+			var err error
 			readResult, err = readFromConnection(l.id, l.conn, l.callbacks)
+			return err
 		})
 
 		if readResult.timeout {
@@ -121,11 +122,11 @@ func (l *listenerImpl) activeLoop() {
 
 		if err := l.updateLastSuccessfulRead(readResult); err != nil && running {
 			l.callbacks.OnReadError(l.id, err)
-		} else if readPanic != nil {
-			l.callbacks.OnReadError(l.id, readPanic)
+		} else if readErr != nil && !errors.IsErrorWithCode(readErr, ErrClientDisconnected) {
+			l.callbacks.OnReadError(l.id, readErr)
 		}
 
-		if err != nil || readPanic != nil {
+		if readErr != nil {
 			running = false
 		}
 	}
@@ -157,5 +158,5 @@ func (l *listenerImpl) updateLastSuccessfulRead(readResult connectionReadResult)
 	// be that the client is not responsive (network issue) or that it is
 	// misbehaving. In both cases, we want to terminate the connection to not
 	// risk resource hogging.
-	return bterrors.NewCode(ErrIncompleteDataTimeout)
+	return errors.NewCode(ErrIncompleteDataTimeout)
 }
