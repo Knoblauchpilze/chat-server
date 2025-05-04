@@ -2,25 +2,50 @@ package clients
 
 import (
 	"fmt"
+	"net/http"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/google/uuid"
 )
 
 func New(
 	messageQueueSize int,
+	_ uuid.UUID,
+	rw http.ResponseWriter,
 ) messages.Processor {
-	return messages.NewProcessor(
-		messageQueueSize,
-		generateMessageCallback(),
-		generateFinishCallback(),
-	)
+	callbacks := messages.Callbacks{
+		Start:   generateStartCallback(rw),
+		Message: generateMessageCallback(rw),
+		Finish:  generateFinishCallback(),
+	}
+
+	return messages.NewProcessor(messageQueueSize, callbacks)
 }
 
-func generateMessageCallback() messages.MessageCallback {
+func generateStartCallback(rw http.ResponseWriter) messages.StartCallback {
+	return func() error {
+		// https://echo.labstack.com/docs/cookbook/sse
+		rw.Header().Set("Content-Type", "text/event-stream")
+		rw.Header().Set("Cache-Control", "no-cache")
+		rw.Header().Set("Connection", "keep-alive")
+		return nil
+	}
+}
+
+func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
 	return func(msg persistence.Message) error {
-		// TODO: Handle sending through SSE
-		fmt.Printf("[warn] message from %v in room %v: \n\"%s\"\n", msg.ChatUser, msg.Room, msg.Message)
+		e, err := fromMessage(msg)
+		if err != nil {
+			return errors.WrapCode(err, ErrSseStreamFailed)
+		}
+
+		err = e.send(rw)
+		if err != nil {
+			return errors.WrapCode(err, ErrSseStreamFailed)
+		}
+
 		return nil
 	}
 }
