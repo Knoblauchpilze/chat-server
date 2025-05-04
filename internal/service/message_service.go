@@ -15,7 +15,7 @@ import (
 
 type MessageService interface {
 	PostMessage(ctx context.Context, messageDto communication.MessageDtoRequest) error
-	ServeClient(ctx context.Context, user uuid.UUID, response http.ResponseWriter) error
+	ServeClient(ctx context.Context, user uuid.UUID, rw http.ResponseWriter) error
 }
 
 type messageServiceImpl struct {
@@ -49,9 +49,13 @@ func (s *messageServiceImpl) PostMessage(
 }
 
 func (s *messageServiceImpl) ServeClient(
-	ctx context.Context, user uuid.UUID, response http.ResponseWriter,
+	ctx context.Context, user uuid.UUID, rw http.ResponseWriter,
 ) error {
 	// TODO: Make the message queue's size configurable
-	c := clients.New(1, user, response)
+	c, err := clients.New(1, user, rw)
+	if err != nil {
+		return err
+	}
+
 	return process.SafeRunSync(c.Start)
 }
