@@ -51,6 +51,8 @@ func (s *messageServiceImpl) PostMessage(
 func (s *messageServiceImpl) ServeClient(
 	ctx context.Context, user uuid.UUID, rw http.ResponseWriter,
 ) error {
+	// TODO: We could add some ping/pong mechanism. This could serve as a base
+	// for idle checking
 	// TODO: Make the message queue's size configurable
 	c, err := clients.New(1, user, rw)
 	if err != nil {
