@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -11,11 +10,12 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 )
 
 type MessageService interface {
 	PostMessage(ctx context.Context, messageDto communication.MessageDtoRequest) error
-	ServeClient(ctx context.Context, user uuid.UUID, rw http.ResponseWriter) error
+	ServeClient(ctx context.Context, user uuid.UUID, response *echo.Response) error
 }
 
 type messageServiceImpl struct {
@@ -49,15 +49,22 @@ func (s *messageServiceImpl) PostMessage(
 }
 
 func (s *messageServiceImpl) ServeClient(
-	ctx context.Context, user uuid.UUID, rw http.ResponseWriter,
+	ctx context.Context, user uuid.UUID, response *echo.Response,
 ) error {
 	// TODO: We could add some ping/pong mechanism. This could serve as a base
 	// for idle checking
 	// TODO: Make the message queue's size configurable
-	c, err := clients.New(1, user, rw)
+	c, err := clients.New(1, user, response)
 	if err != nil {
 		return err
 	}
 
-	return process.SafeRunSync(c.Start)
+	done := process.SafeRunAsync(c.Start)
+
+	select {
+	case <-ctx.Done():
+	case err = <-done:
+	}
+
+	return err
 }
