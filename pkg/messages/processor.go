@@ -27,7 +27,7 @@ type processorImpl struct {
 	done    chan struct{}
 }
 
-func newProcessor(
+func NewProcessor(
 	messageQueueSize int,
 	msgCallback MessageCallback,
 	finishCallback FinishCallback,

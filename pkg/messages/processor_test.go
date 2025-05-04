@@ -158,5 +158,5 @@ func TestIT_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T
 func newTestProcessorWithCallbacks(
 	msgCallback MessageCallback, finishCallback FinishCallback,
 ) Processor {
-	return newProcessor(1, msgCallback, finishCallback)
+	return NewProcessor(1, msgCallback, finishCallback)
 }

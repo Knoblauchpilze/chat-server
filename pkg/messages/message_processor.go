@@ -12,7 +12,7 @@ func NewMessageProcessor(
 	dispatcher Dispatcher,
 	repos repositories.Repositories,
 ) Processor {
-	return newProcessor(
+	return NewProcessor(
 		messageQueueSize,
 		generateMessageCallback(dispatcher, repos.Message),
 		nil,
