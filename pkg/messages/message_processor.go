@@ -12,11 +12,11 @@ func NewMessageProcessor(
 	dispatcher Dispatcher,
 	repos repositories.Repositories,
 ) Processor {
-	return NewProcessor(
-		messageQueueSize,
-		generateMessageCallback(dispatcher, repos.Message),
-		nil,
-	)
+	callbacks := Callbacks{
+		Message: generateMessageCallback(dispatcher, repos.Message),
+	}
+
+	return NewProcessor(messageQueueSize, callbacks)
 }
 
 func generateMessageCallback(

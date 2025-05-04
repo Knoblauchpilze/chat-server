@@ -7,20 +7,9 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 )
 
-type Processor interface {
-	Start() error
-	Stop() error
-
-	Enqueue(msg persistence.Message) error
-}
-
-type MessageCallback func(msg persistence.Message) error
-type FinishCallback func() error
-
 type processorImpl struct {
-	queue          chan persistence.Message
-	msgCallback    MessageCallback
-	finishCallback FinishCallback
+	queue     chan persistence.Message
+	callbacks Callbacks
 
 	running atomic.Bool
 	quit    chan struct{}
@@ -28,14 +17,11 @@ type processorImpl struct {
 }
 
 func NewProcessor(
-	messageQueueSize int,
-	msgCallback MessageCallback,
-	finishCallback FinishCallback,
+	messageQueueSize int, callbacks Callbacks,
 ) Processor {
 	return &processorImpl{
-		queue:          make(chan persistence.Message, messageQueueSize),
-		msgCallback:    msgCallback,
-		finishCallback: finishCallback,
+		queue:     make(chan persistence.Message, messageQueueSize),
+		callbacks: callbacks,
 
 		quit: make(chan struct{}, 1),
 		done: make(chan struct{}, 1),
@@ -75,6 +61,13 @@ func (p *processorImpl) activeLoop() error {
 		p.done <- struct{}{}
 	}()
 
+	if p.callbacks.Start != nil {
+		err = process.SafeRunSync(process.RunFunc(p.callbacks.Start))
+		if err != nil {
+			return err
+		}
+	}
+
 	for running {
 		select {
 		case <-p.quit:
@@ -88,8 +81,8 @@ func (p *processorImpl) activeLoop() error {
 		}
 	}
 
-	if p.finishCallback != nil {
-		finishErr := process.SafeRunSync(process.RunFunc(p.finishCallback))
+	if p.callbacks.Finish != nil {
+		finishErr := process.SafeRunSync(process.RunFunc(p.callbacks.Finish))
 		if finishErr != nil {
 			return finishErr
 		}
@@ -101,7 +94,8 @@ func (p *processorImpl) activeLoop() error {
 func (p *processorImpl) processMessage(msg persistence.Message) error {
 	return process.SafeRunSync(
 		func() error {
-			return p.msgCallback(msg)
+			// TODO: this is technically unsafe as the callback could be missing.
+			return p.callbacks.Message(msg)
 		},
 	)
 }

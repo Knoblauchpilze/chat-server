@@ -11,6 +11,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIT_Processor_ExpectStartCallbackCalled(t *testing.T) {
+	var called int
+	startCb := func() error {
+		called++
+		return nil
+	}
+
+	processor := newTestProcessorWithCallbacks(startCb, dummyMessageCallback, nil)
+
+	wg := asyncStartProcessorAndAssertNoError(t, processor)
+
+	err := processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, 1, called)
+}
+
+func TestIT_Processor_WhenStartCallbackFails_ExpectErrorIsReturned(t *testing.T) {
+	testErr := fmt.Errorf("some error")
+	startCb := func() error {
+		return testErr
+	}
+	processor := newTestProcessorWithCallbacks(startCb, dummyMessageCallback, nil)
+
+	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
+
+	msg := persistence.Message{}
+	processor.Enqueue(msg)
+
+	err := processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+}
+
 func TestIT_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
 	var receivedMsg persistence.Message
 	var called int
@@ -20,7 +55,7 @@ func TestIT_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
 		return nil
 	}
 
-	processor := newTestProcessorWithCallbacks(msgCb, dummyFinishCallback)
+	processor := newTestProcessorWithCallbacks(nil, msgCb, nil)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -53,7 +88,7 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 
 		return nil
 	}
-	processor := newTestProcessorWithCallbacks(blockingMsgCb, dummyFinishCallback)
+	processor := newTestProcessorWithCallbacks(nil, blockingMsgCb, nil)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -99,7 +134,7 @@ func TestIT_Processor_WhenMessageFailsToBeProcessed_ExpectProcessingStops(t *tes
 	msgCb := func(msg persistence.Message) error {
 		return testErr
 	}
-	processor := newTestProcessorWithCallbacks(msgCb, dummyFinishCallback)
+	processor := newTestProcessorWithCallbacks(nil, msgCb, nil)
 
 	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
 
@@ -118,7 +153,7 @@ func TestIT_Processor_WhenStopped_ExpectFinishCallbackCalled(t *testing.T) {
 		return nil
 	}
 
-	processor := newTestProcessorWithCallbacks(dummyMessageCallback, finishCb)
+	processor := newTestProcessorWithCallbacks(nil, dummyMessageCallback, finishCb)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -143,7 +178,7 @@ func TestIT_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T
 	finishCb := func() error {
 		return testErr
 	}
-	processor := newTestProcessorWithCallbacks(dummyMessageCallback, finishCb)
+	processor := newTestProcessorWithCallbacks(nil, dummyMessageCallback, finishCb)
 
 	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
 
@@ -156,7 +191,14 @@ func TestIT_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T
 }
 
 func newTestProcessorWithCallbacks(
-	msgCallback MessageCallback, finishCallback FinishCallback,
+	startCallback StartCallback,
+	msgCallback MessageCallback,
+	finishCallback FinishCallback,
 ) Processor {
-	return NewProcessor(1, msgCallback, finishCallback)
+	cb := Callbacks{
+		Start:   startCallback,
+		Message: msgCallback,
+		Finish:  finishCallback,
+	}
+	return NewProcessor(1, cb)
 }

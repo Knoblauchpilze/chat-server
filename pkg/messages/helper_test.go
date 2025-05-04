@@ -114,10 +114,6 @@ func dummyMessageCallback(_ persistence.Message) error {
 	return nil
 }
 
-func dummyFinishCallback() error {
-	return nil
-}
-
 func asyncStartProcessorAndAssertNoError(
 	t *testing.T, processor Processor,
 ) *sync.WaitGroup {
