@@ -6,6 +6,9 @@ const (
 	ErrHandshakeTimeout    errors.ErrorCode = 500
 	ErrIncompleteHandshake errors.ErrorCode = 501
 	ErrHandshakeFailure    errors.ErrorCode = 502
+
+	ErrPartialSseWrite errors.ErrorCode = 503
+	ErrSseStreamFailed errors.ErrorCode = 504
 )
 
 func newHandshakeTimeoutError() error {
