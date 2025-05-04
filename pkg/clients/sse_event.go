@@ -48,7 +48,13 @@ func (e sseEvent) send(rw http.ResponseWriter) error {
 		}
 	}
 
-	return e.writeComment(rw)
+	if len(e.Comment) > 0 {
+		if err := e.writeComment(rw); err != nil {
+			return err
+		}
+	}
+
+	return writeToResponseWriter([]byte("\n"), rw)
 }
 
 func (e sseEvent) writeData(rw http.ResponseWriter) error {
