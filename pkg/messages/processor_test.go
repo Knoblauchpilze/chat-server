@@ -1,35 +1,35 @@
 package messages
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
-	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
-	processor, dbConn, _ := newTestProcessor(t)
-	defer dbConn.Close(context.Background())
+func TestIT_Processor_EnqueueMessage_ExpectMessageCallbackCalled(t *testing.T) {
+	var receivedMsg persistence.Message
+	var called int
+	msgCb := func(msg persistence.Message) error {
+		called++
+		receivedMsg = msg
+		return nil
+	}
 
-	user := insertTestUser(t, dbConn)
-	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	processor := newTestProcessorWithCallbacks(msgCb, dummyFinishCallback)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
+	roomId := uuid.New()
 	msg := persistence.Message{
 		Id:       uuid.New(),
-		ChatUser: user.Id,
-		Room:     room.Id,
-		Message:  fmt.Sprintf("hello %s", room.Name),
+		ChatUser: uuid.New(),
+		Room:     roomId,
+		Message:  fmt.Sprintf("hello %s", roomId),
 	}
 	processor.Enqueue(msg)
 
@@ -37,78 +37,23 @@ func TestIT_Processor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assertMessageExists(t, dbConn, msg.Id)
-}
-
-func TestIT_Processor_EnqueueMessage_ExpectWrittenSentToDispatcher(t *testing.T) {
-	processor, dbConn, mock := newTestProcessor(t)
-	defer dbConn.Close(context.Background())
-
-	user := insertTestUser(t, dbConn)
-	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
-
-	wg := asyncStartProcessorAndAssertNoError(t, processor)
-
-	msg := persistence.Message{
-		Id:       uuid.New(),
-		ChatUser: user.Id,
-		Room:     room.Id,
-		Message:  fmt.Sprintf("hello %s", room.Name),
-	}
-	processor.Enqueue(msg)
-
-	err := processor.Stop()
-	assert.Nil(t, err, "Actual err: %v", err)
-	wg.Wait()
-
-	assert.Equal(t, user.Id, mock.receivedId)
-	assert.Equal(t, ROOM_MESSAGE, mock.receivedMsg.Type())
-	actual, err := ToMessageStruct[RoomMessage](mock.receivedMsg)
-	assert.Nil(t, err, "Actual err: %v", err)
-	expectedMessage := RoomMessage{
-		Emitter: user.Id,
-		Room:    room.Id,
-		Content: msg.Message,
-	}
-	assert.Equal(t, expectedMessage, actual)
-}
-
-type mockMessageRepository struct {
-	block   atomic.Bool
-	unblock chan struct{}
-
-	err error
-}
-
-func newMockMessageRepository(block bool, err error) *mockMessageRepository {
-	m := &mockMessageRepository{
-		err:     err,
-		unblock: make(chan struct{}, 1),
-	}
-
-	m.block.Store(block)
-	return m
-}
-
-func (m *mockMessageRepository) Create(ctx context.Context, msg persistence.Message) (persistence.Message, error) {
-	if m.block.Load() {
-		<-m.unblock
-	}
-
-	return persistence.Message{}, m.err
-}
-
-func (m *mockMessageRepository) ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error) {
-	return []persistence.Message{}, m.err
+	assert.Equal(t, 1, called)
+	assert.Equal(t, msg, receivedMsg)
 }
 
 func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
-	mock := newMockMessageRepository(true, nil)
-	repos := repositories.Repositories{
-		Message: mock,
+	var block atomic.Bool
+	block.Store(true)
+	unblock := make(chan struct{}, 1)
+
+	blockingMsgCb := func(msg persistence.Message) error {
+		if block.Load() {
+			<-unblock
+		}
+
+		return nil
 	}
-	processor := NewProcessor(1, &mockDispatcher{}, repos)
+	processor := newTestProcessorWithCallbacks(blockingMsgCb, dummyFinishCallback)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -141,21 +86,20 @@ func TestIT_Processor_WhenMessageQueueIsFull_ExpectCallBlocks(t *testing.T) {
 	}
 
 	// We need to unblock the message repository
-	mock.block.Store(false)
-	mock.unblock <- struct{}{}
+	block.Store(false)
+	unblock <- struct{}{}
 
 	err := processor.Stop()
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 }
 
-func TestIT_Processor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testing.T) {
+func TestIT_Processor_WhenMessageFailsToBeProcessed_ExpectProcessingStops(t *testing.T) {
 	testErr := fmt.Errorf("some error")
-	mock := newMockMessageRepository(false, testErr)
-	repos := repositories.Repositories{
-		Message: mock,
+	msgCb := func(msg persistence.Message) error {
+		return testErr
 	}
-	processor := NewProcessor(1, &mockDispatcher{}, repos)
+	processor := newTestProcessorWithCallbacks(msgCb, dummyFinishCallback)
 
 	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
 
@@ -167,65 +111,52 @@ func TestIT_Processor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testi
 	wg.Wait()
 }
 
-type mockDispatcher struct {
-	receivedId  uuid.UUID
-	receivedMsg Message
-}
-
-func (m *mockDispatcher) Broadcast(msg Message) {
-	m.receivedMsg = msg
-}
-
-func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg Message) {
-	m.receivedId = id
-	m.receivedMsg = msg
-}
-
-func (m *mockDispatcher) SendTo(id uuid.UUID, msg Message) {
-	m.receivedId = id
-	m.receivedMsg = msg
-}
-
-func newTestProcessor(t *testing.T) (Processor, db.Connection, *mockDispatcher) {
-	conn := newTestDbConnection(t)
-	mock := &mockDispatcher{}
-
-	repos := repositories.Repositories{
-		User:    repositories.NewUserRepository(conn),
-		Room:    repositories.NewRoomRepository(conn),
-		Message: repositories.NewMessageRepository(conn),
+func TestIT_Processor_WhenStopped_ExpectFinishCallbackCalled(t *testing.T) {
+	var called int
+	finishCb := func() error {
+		called++
+		return nil
 	}
 
-	return NewProcessor(1, mock, repos), conn, mock
+	processor := newTestProcessorWithCallbacks(dummyMessageCallback, finishCb)
+
+	wg := asyncStartProcessorAndAssertNoError(t, processor)
+
+	roomId := uuid.New()
+	msg := persistence.Message{
+		Id:       uuid.New(),
+		ChatUser: uuid.New(),
+		Room:     roomId,
+		Message:  fmt.Sprintf("hello %s", roomId),
+	}
+	processor.Enqueue(msg)
+
+	err := processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, 1, called)
 }
 
-func asyncStartProcessorAndAssertNoError(
-	t *testing.T, processor Processor,
-) *sync.WaitGroup {
-	return asyncStartProcessorAndAssertError(t, processor, nil)
+func TestIT_Processor_WhenFinishCallbackFails_ExpectErrorIsReturned(t *testing.T) {
+	testErr := fmt.Errorf("some error")
+	finishCb := func() error {
+		return testErr
+	}
+	processor := newTestProcessorWithCallbacks(dummyMessageCallback, finishCb)
+
+	wg := asyncStartProcessorAndAssertError(t, processor, testErr)
+
+	msg := persistence.Message{}
+	processor.Enqueue(msg)
+
+	err := processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
 }
 
-func asyncStartProcessorAndAssertError(
-	t *testing.T, processor Processor, expectedErr error,
-) *sync.WaitGroup {
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("Processor panicked: %v", r)
-			}
-		}()
-
-		err := processor.Start()
-		assert.Equal(t, expectedErr, err, "Actual err: %v", err)
-	}()
-
-	// Wait a bit for the processor to start
-	time.Sleep(50 * time.Millisecond)
-
-	return &wg
+func newTestProcessorWithCallbacks(
+	msgCallback MessageCallback, finishCallback FinishCallback,
+) Processor {
+	return newProcessor(1, msgCallback, finishCallback)
 }

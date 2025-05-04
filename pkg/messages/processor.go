@@ -1,11 +1,10 @@
 package messages
 
 import (
-	"context"
 	"sync/atomic"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
-	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 )
 
 type Processor interface {
@@ -15,25 +14,28 @@ type Processor interface {
 	Enqueue(msg persistence.Message) error
 }
 
+type MessageCallback func(msg persistence.Message) error
+type FinishCallback func() error
+
 type processorImpl struct {
-	queue       chan persistence.Message
-	messageRepo repositories.MessageRepository
-	dispatcher  Dispatcher
+	queue          chan persistence.Message
+	msgCallback    MessageCallback
+	finishCallback FinishCallback
 
 	running atomic.Bool
 	quit    chan struct{}
 	done    chan struct{}
 }
 
-func NewProcessor(
+func newProcessor(
 	messageQueueSize int,
-	dispatcher Dispatcher,
-	repos repositories.Repositories,
+	msgCallback MessageCallback,
+	finishCallback FinishCallback,
 ) Processor {
 	return &processorImpl{
-		queue:       make(chan persistence.Message, messageQueueSize),
-		messageRepo: repos.Message,
-		dispatcher:  dispatcher,
+		queue:          make(chan persistence.Message, messageQueueSize),
+		msgCallback:    msgCallback,
+		finishCallback: finishCallback,
 
 		quit: make(chan struct{}, 1),
 		done: make(chan struct{}, 1),
@@ -86,17 +88,20 @@ func (p *processorImpl) activeLoop() error {
 		}
 	}
 
+	if p.finishCallback != nil {
+		finishErr := process.SafeRunSync(process.RunFunc(p.finishCallback))
+		if finishErr != nil {
+			return finishErr
+		}
+	}
+
 	return err
 }
 
 func (p *processorImpl) processMessage(msg persistence.Message) error {
-	_, err := p.messageRepo.Create(context.Background(), msg)
-	if err != nil {
-		return err
-	}
-
-	out := NewRoomMessage(msg.ChatUser, msg.Room, msg.Message)
-	p.dispatcher.BroadcastExcept(msg.ChatUser, out)
-
-	return nil
+	return process.SafeRunSync(
+		func() error {
+			return p.msgCallback(msg)
+		},
+	)
 }
