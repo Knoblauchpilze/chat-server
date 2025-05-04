@@ -291,7 +291,7 @@ func newTestHttpProps(
 	}
 	manager := clients.NewManager(managerProps)
 
-	processor := messages.NewProcessor(1, manager, repos)
+	processor := messages.NewMessageProcessor(1, manager, repos)
 
 	props := HttpServerProps{
 		Config: conf,
