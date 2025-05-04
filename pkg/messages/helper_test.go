@@ -3,7 +3,9 @@ package messages
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
@@ -106,4 +108,43 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
+}
+
+func dummyMessageCallback(_ persistence.Message) error {
+	return nil
+}
+
+func dummyFinishCallback() error {
+	return nil
+}
+
+func asyncStartProcessorAndAssertNoError(
+	t *testing.T, processor Processor,
+) *sync.WaitGroup {
+	return asyncStartProcessorAndAssertError(t, processor, nil)
+}
+
+func asyncStartProcessorAndAssertError(
+	t *testing.T, processor Processor, expectedErr error,
+) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("Processor panicked: %v", r)
+			}
+		}()
+
+		err := processor.Start()
+		assert.Equal(t, expectedErr, err, "Actual err: %v", err)
+	}()
+
+	// Wait a bit for the processor to start
+	time.Sleep(50 * time.Millisecond)
+
+	return &wg
 }
