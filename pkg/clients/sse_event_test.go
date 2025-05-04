@@ -42,6 +42,35 @@ func TestUnit_SseEvent_CommentWithoutData(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []byte(`: my-comment
+
+`)
+	assert.Equal(
+		t,
+		expected,
+		body,
+		"Expected %s, got: %s",
+		string(expected),
+		string(body),
+	)
+}
+
+func TestUnit_SseEvent_DataWithNewLine(t *testing.T) {
+	e := sseEvent{
+		Data: []byte("line 1\nline 2"),
+	}
+
+	rec := httptest.NewRecorder()
+	err := e.send(rec)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body, err := io.ReadAll(rec.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := []byte(`id: 
+data: line 1
+data: line 2
+
 `)
 	assert.Equal(
 		t,
@@ -98,6 +127,7 @@ func TestUnit_SseEvent_WriteMessage(t *testing.T) {
 	expected := fmt.Sprintf(
 		`id: %s
 data: %s
+
 `,
 		msg.Id.String(),
 		msgAsJson,
