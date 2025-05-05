@@ -21,7 +21,8 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 
 	repos := repositories.New(dbConn)
 	// TODO: Correctly setup the message processor
-	services := service.New(config.ConnectTimeout, dbConn, repos, nil, log)
+	// TODO: Correctly setup the client manager
+	services := service.New(config.ConnectTimeout, dbConn, repos, nil, nil, log)
 
 	var tcpErr error
 	var wg sync.WaitGroup

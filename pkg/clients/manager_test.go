@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
-	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +40,6 @@ func TestUnit_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
 	err = manager.Stop()
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	// TODO: Will fail because manager is not started
 	assert.Equal(t, 1, mock.stopCalled)
 }
 
@@ -53,35 +51,18 @@ func TestUnit_Manager_WhenBroadcast_ExpectMessageReceived(t *testing.T) {
 	err := manager.OnConnect(id, mock)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	emitter := uuid.New()
-	room := uuid.New()
-	msg := messages.NewRoomMessage(emitter, room, "Hello")
-
+	msg := persistence.Message{
+		Id:        uuid.New(),
+		ChatUser:  uuid.New(),
+		Room:      uuid.New(),
+		Message:   "Hello",
+		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
+	}
 	manager.Broadcast(msg)
 
 	assert.Equal(t, 1, mock.enqueueCalled)
-	assert.Len(t, mock.enqueued, 1)
-	actual := mock.enqueued[0]
-	assert.Equal(t, emitter, actual.ChatUser)
-	assert.Equal(t, room, actual.Room)
-	assert.Equal(t, "Hello", actual.Message)
-}
-
-func TestUnit_Manager_WhenMessageIsNotARoomMessage_ExpectNOMessageReceived(t *testing.T) {
-	manager := NewManager()
-	id := uuid.New()
-	mock := &mockClient{}
-
-	err := manager.OnConnect(id, mock)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	emitter := uuid.New()
-	receiver := uuid.New()
-	msg := messages.NewDirectMessage(emitter, receiver, "Hello")
-
-	manager.Broadcast(msg)
-
-	assert.Equal(t, 0, mock.enqueueCalled)
+	expected := []persistence.Message{msg}
+	assert.Equal(t, expected, mock.enqueued, 1)
 }
 
 func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *testing.T) {
@@ -93,10 +74,13 @@ func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *te
 	assert.Nil(t, err, "Actual err: %v", err)
 	manager.OnDisconnect(id)
 
-	emitter := uuid.New()
-	room := uuid.New()
-	msg := messages.NewRoomMessage(emitter, room, "Hello")
-
+	msg := persistence.Message{
+		Id:        uuid.New(),
+		ChatUser:  uuid.New(),
+		Room:      uuid.New(),
+		Message:   "Hello",
+		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
+	}
 	manager.Broadcast(msg)
 
 	assert.Equal(t, 0, mock.enqueueCalled)
@@ -114,18 +98,18 @@ func TestUnit_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *tes
 	err = manager.OnConnect(clientId2, mock2)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	emitter := uuid.New()
-	room := uuid.New()
-	msg := messages.NewRoomMessage(emitter, room, "Hello")
-
+	msg := persistence.Message{
+		Id:        uuid.New(),
+		ChatUser:  uuid.New(),
+		Room:      uuid.New(),
+		Message:   "Hello",
+		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
+	}
 	manager.BroadcastExcept(clientId2, msg)
 
 	assert.Equal(t, 1, mock1.enqueueCalled)
-	assert.Len(t, mock1.enqueued, 1)
-	actual := mock1.enqueued[0]
-	assert.Equal(t, emitter, actual.ChatUser)
-	assert.Equal(t, room, actual.Room)
-	assert.Equal(t, "Hello", actual.Message)
+	expected := []persistence.Message{msg}
+	assert.Equal(t, expected, mock1.enqueued, 1)
 
 	assert.Equal(t, 0, mock2.enqueueCalled)
 }
@@ -142,18 +126,18 @@ func TestUnit_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t
 	err = manager.OnConnect(clientId2, mock2)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	emitter := uuid.New()
-	room := uuid.New()
-	msg := messages.NewRoomMessage(emitter, room, "Hello")
-
+	msg := persistence.Message{
+		Id:        uuid.New(),
+		ChatUser:  uuid.New(),
+		Room:      uuid.New(),
+		Message:   "Hello",
+		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
+	}
 	manager.SendTo(clientId1, msg)
 
 	assert.Equal(t, 1, mock1.enqueueCalled)
-	assert.Len(t, mock1.enqueued, 1)
-	actual := mock1.enqueued[0]
-	assert.Equal(t, emitter, actual.ChatUser)
-	assert.Equal(t, room, actual.Room)
-	assert.Equal(t, "Hello", actual.Message)
+	expected := []persistence.Message{msg}
+	assert.Equal(t, expected, mock1.enqueued, 1)
 
 	assert.Equal(t, 0, mock2.enqueueCalled)
 }

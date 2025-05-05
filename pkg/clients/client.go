@@ -53,6 +53,7 @@ func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
 
 		// TODO: We should probably have some synchronization mechanism here.
 		// Or at least check if this is already handled.
+		fmt.Printf("sending message to socket: %+v\n", msg)
 		err = e.send(rw)
 		if err != nil {
 			return errors.WrapCode(err, ErrSseStreamFailed)
