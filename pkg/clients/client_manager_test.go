@@ -258,19 +258,19 @@ func newHandshakeWithRandomUuid() Handshake {
 	}
 }
 
-func newTestClientManager(queue chan messages.Message) Manager {
+func newTestClientManager(queue chan messages.Message) ClientManager {
 	return newTestClientManagerWithHandshake(
 		queue, newTestHandshakeWithFixedUuid(sampleUuid))
 }
 
 func newTestClientManagerWithHandshake(
 	queue chan messages.Message, handshake Handshake,
-) Manager {
+) ClientManager {
 	props := ManagerProps{
 		Queue:     queue,
 		Handshake: handshake,
 		Log:       logger.New(os.Stdout),
 	}
 
-	return NewManager(props)
+	return NewClientManager(props)
 }
