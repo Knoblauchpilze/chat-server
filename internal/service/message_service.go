@@ -59,10 +59,13 @@ func (s *messageServiceImpl) ServeClient(
 		return err
 	}
 
+	// TODO: Register the client in the manager
+
 	done := process.SafeRunAsync(c.Start)
 
 	select {
 	case <-ctx.Done():
+		err = c.Stop()
 	case err = <-done:
 	}
 
