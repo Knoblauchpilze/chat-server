@@ -32,6 +32,8 @@ func postMessage(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusBadRequest, "Invalid message syntax")
 	}
 
+	// TODO: Override the room id with the one from the path
+
 	err = s.PostMessage(c.Request().Context(), messageDtoRequest)
 	if err != nil {
 		if errors.IsErrorWithCode(err, service.ErrEmptyMessage) {
