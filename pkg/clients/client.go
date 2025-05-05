@@ -51,6 +51,8 @@ func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
 			return errors.WrapCode(err, ErrSseStreamFailed)
 		}
 
+		// TODO: We should probably have some synchronization mechanism here.
+		// Or at least check if this is already handled.
 		err = e.send(rw)
 		if err != nil {
 			return errors.WrapCode(err, ErrSseStreamFailed)
