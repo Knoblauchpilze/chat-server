@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Manager interface {
+type ClientManager interface {
 	OnConnect(conn net.Conn) (bool, uuid.UUID)
 	OnDisconnect(id uuid.UUID)
 	OnReadError(id uuid.UUID, err error)
@@ -33,7 +33,7 @@ type ManagerProps struct {
 	Log       logger.Logger
 }
 
-func NewManager(props ManagerProps) Manager {
+func NewClientManager(props ManagerProps) ClientManager {
 	return &clientManagerImpl{
 		log:       props.Log,
 		queue:     props.Queue,

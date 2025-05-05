@@ -15,7 +15,7 @@ type ChatService interface {
 const incomingMessagesBufferSize = 5
 
 type chatServiceImpl struct {
-	clientManager            clients.Manager
+	clientManager            clients.ClientManager
 	messageParser            messages.Parser
 	messageProcessingService messages.ProcessingService
 }
@@ -29,7 +29,7 @@ func NewChatService(
 		Handshake: handshake,
 		Log:       log,
 	}
-	manager := clients.NewManager(props)
+	manager := clients.NewClientManager(props)
 
 	return &chatServiceImpl{
 		clientManager:            manager,
