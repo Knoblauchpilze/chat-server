@@ -6,7 +6,7 @@ type Processor interface {
 	Start() error
 	Stop() error
 
-	Enqueue(msg persistence.Message) error
+	Enqueue(msg persistence.Message)
 }
 
 type StartCallback func() error

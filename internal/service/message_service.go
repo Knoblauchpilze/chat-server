@@ -40,10 +40,7 @@ func (s *messageServiceImpl) PostMessage(
 		return errors.NewCode(ErrEmptyMessage)
 	}
 
-	err := s.processor.Enqueue(message)
-	if err != nil {
-		return err
-	}
+	s.processor.Enqueue(message)
 
 	return nil
 }

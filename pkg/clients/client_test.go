@@ -49,8 +49,7 @@ func TestUnit_Client_SendsMessageAsSse(t *testing.T) {
 		Message:   "Hello",
 		CreatedAt: time.Date(2025, 5, 4, 20, 56, 16, 0, time.UTC),
 	}
-	err = client.Enqueue(msg)
-	assert.Nil(t, err, "Actual err: %v", err)
+	client.Enqueue(msg)
 
 	// Wait for the message to be sent
 	time.Sleep(50 * time.Millisecond)
