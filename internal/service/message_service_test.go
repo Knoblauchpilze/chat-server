@@ -3,13 +3,16 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,6 +57,21 @@ func TestIT_MessageService_PostMessage_InvalidName(t *testing.T) {
 		"Actual err: %v",
 		err,
 	)
+}
+
+func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *testing.T) {
+	service, conn, _ := newTestMessageService(t)
+	defer conn.Close(context.Background())
+
+	rec := httptest.NewRecorder()
+	response := echo.NewResponse(rec, echo.New())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	err := service.ServeClient(ctx, uuid.New(), response)
+
+	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func newTestMessageService(
