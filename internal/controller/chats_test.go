@@ -130,6 +130,4 @@ func (m *mockProcessor) Stop() error {
 	return nil
 }
 
-func (m *mockProcessor) Enqueue(_ persistence.Message) error {
-	return nil
-}
+func (m *mockProcessor) Enqueue(_ persistence.Message) {}

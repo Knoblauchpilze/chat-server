@@ -47,9 +47,8 @@ func (p *processorImpl) Stop() error {
 	return nil
 }
 
-func (p *processorImpl) Enqueue(msg persistence.Message) error {
+func (p *processorImpl) Enqueue(msg persistence.Message) {
 	p.queue <- msg
-	return nil
 }
 
 func (p *processorImpl) activeLoop() error {

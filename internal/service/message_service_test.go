@@ -94,7 +94,6 @@ func (m *mockProcessor) Stop() error {
 	return nil
 }
 
-func (m *mockProcessor) Enqueue(msg persistence.Message) error {
+func (m *mockProcessor) Enqueue(msg persistence.Message) {
 	m.enqueued = append(m.enqueued, msg)
-	return nil
 }
