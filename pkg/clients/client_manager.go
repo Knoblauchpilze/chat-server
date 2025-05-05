@@ -18,7 +18,7 @@ type Manager interface {
 	messages.Dispatcher
 }
 
-type managerImpl struct {
+type clientManagerImpl struct {
 	log       logger.Logger
 	queue     messages.OutgoingQueue
 	handshake Handshake
@@ -34,7 +34,7 @@ type ManagerProps struct {
 }
 
 func NewManager(props ManagerProps) Manager {
-	return &managerImpl{
+	return &clientManagerImpl{
 		log:       props.Log,
 		queue:     props.Queue,
 		handshake: props.Handshake,
@@ -42,7 +42,7 @@ func NewManager(props ManagerProps) Manager {
 	}
 }
 
-func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
+func (m *clientManagerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	var connId uuid.UUID
 
 	err := process.SafeRunSync(func() error {
@@ -69,7 +69,7 @@ func (m *managerImpl) OnConnect(conn net.Conn) (bool, uuid.UUID) {
 	return true, connId
 }
 
-func (m *managerImpl) OnDisconnect(id uuid.UUID) {
+func (m *clientManagerImpl) OnDisconnect(id uuid.UUID) {
 	func() {
 		m.lock.Lock()
 		defer m.lock.Unlock()
@@ -81,7 +81,7 @@ func (m *managerImpl) OnDisconnect(id uuid.UUID) {
 	m.queue <- msg
 }
 
-func (m *managerImpl) OnReadError(id uuid.UUID, err error) {
+func (m *clientManagerImpl) OnReadError(id uuid.UUID, err error) {
 	func() {
 		m.lock.Lock()
 		defer m.lock.Unlock()
@@ -93,7 +93,7 @@ func (m *managerImpl) OnReadError(id uuid.UUID, err error) {
 	m.queue <- msg
 }
 
-func (m *managerImpl) Broadcast(msg messages.Message) {
+func (m *clientManagerImpl) Broadcast(msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
 		m.log.Warnf("Broadcast: failed to broadcast message %s: %v", msg.Type(), err)
@@ -115,7 +115,7 @@ func (m *managerImpl) Broadcast(msg messages.Message) {
 	}
 }
 
-func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
+func (m *clientManagerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
 		m.log.Warnf("BroadcastExcept: failed to broadcast message %s: %v", msg.Type(), err)
@@ -139,7 +139,7 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 	}
 }
 
-func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
+func (m *clientManagerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 	encoded, err := messages.Encode(msg)
 	if err != nil {
 		m.log.Warnf("SendTo: failed to broadcast message %s to %v: %v", msg.Type(), id, err)
