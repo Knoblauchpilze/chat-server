@@ -289,7 +289,7 @@ func newTestHttpProps(
 		Handshake: nil,
 		Log:       log,
 	}
-	manager := clients.NewManager(managerProps)
+	manager := clients.NewClientManager(managerProps)
 
 	processor := messages.NewMessageProcessor(1, manager, repos)
 
