@@ -7,13 +7,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
+	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -113,12 +119,128 @@ func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRe
 	)
 }
 
+func TestIT_ChatsController_SubsrcibeToMessage_ReceivesPostedMessage(t *testing.T) {
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+	repos := repositories.New(dbConn)
+	manager := clients.NewManager()
+	processor := messages.NewMessageProcessor(1, manager, repos)
+	service := service.NewMessageService(
+		dbConn,
+		processor,
+		manager,
+	)
+
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	requestDto := communication.MessageDtoRequest{
+		User:    user2.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user2.Name, room.Id),
+	}
+
+	wg := asyncStartProcessorAndAssertNoError(t, processor)
+
+	// Post a message with a delay to let the user the time to subscribe
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+
+		var body bytes.Buffer
+		err := json.NewEncoder(&body).Encode(requestDto)
+		assert.Nil(t, err, "Actual err: %v", err)
+
+		req := httptest.NewRequest(http.MethodPost, "/", &body)
+		req.Header.Set("Content-Type", "application/json")
+		ctx, rw := generateTestEchoContextFromRequest(req)
+
+		fmt.Printf("posting message\n")
+		err = postMessage(ctx, service)
+		fmt.Printf("posted: %v, %d\n", err, rw.Code)
+		assert.Nil(t, err, "Actual err: %v", err)
+		assert.Equal(t, http.StatusAccepted, rw.Code)
+	}()
+
+	// Give the message a bit of time to be processed
+	reqCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	req := httptest.NewRequestWithContext(reqCtx, http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(user1.Id.String())
+
+	fmt.Printf("subscribing to messages\n")
+	err := subscribeToMessages(ctx, service)
+	fmt.Printf("done: %v\n", err)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	err = processor.Stop()
+	assert.Nil(t, err, "Actual err: %v", err)
+	wg.Wait()
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// We don't know the id of the message so we need to use a regex
+	// https://ihateregex.io/expr/uuid/
+	const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+	const timePatten = "[0-9-]+T[0-9:.]+\\+[0-9:]+"
+	expectedBodyRegex := fmt.Sprintf(
+		`id: %s
+data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
+
+`,
+		uuidPattern,
+		uuidPattern,
+		user2.Id.String(),
+		room.Id.String(),
+		requestDto.Message,
+		timePatten,
+	)
+	actual := rw.Body.String()
+	assert.Regexp(
+		t,
+		regexp.MustCompile(expectedBodyRegex),
+		actual,
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
 func newTestMessageService(
 	t *testing.T,
 ) (service.MessageService, db.Connection) {
 	dbConn := newTestDbConnection(t)
 	// TODO: Correctly setup the client manager
 	return service.NewMessageService(dbConn, &mockProcessor{}, nil), dbConn
+}
+
+func asyncStartProcessorAndAssertNoError(
+	t *testing.T, processor messages.Processor,
+) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("Processor panicked: %v", r)
+			}
+		}()
+
+		err := processor.Start()
+		assert.Nil(t, err, "Actual err: %v", err)
+	}()
+
+	// Wait a bit for the processor to start
+	time.Sleep(50 * time.Millisecond)
+
+	return &wg
 }
 
 type mockProcessor struct{}
