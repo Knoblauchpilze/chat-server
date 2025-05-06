@@ -157,9 +157,7 @@ func TestIT_ChatsController_SubsrcibeToMessage_ReceivesPostedMessage(t *testing.
 		req.Header.Set("Content-Type", "application/json")
 		ctx, rw := generateTestEchoContextFromRequest(req)
 
-		fmt.Printf("posting message\n")
 		err = postMessage(ctx, service)
-		fmt.Printf("posted: %v, %d\n", err, rw.Code)
 		assert.Nil(t, err, "Actual err: %v", err)
 		assert.Equal(t, http.StatusAccepted, rw.Code)
 	}()
@@ -173,9 +171,7 @@ func TestIT_ChatsController_SubsrcibeToMessage_ReceivesPostedMessage(t *testing.
 	ctx.SetParamNames("id")
 	ctx.SetParamValues(user1.Id.String())
 
-	fmt.Printf("subscribing to messages\n")
 	err := subscribeToMessages(ctx, service)
-	fmt.Printf("done: %v\n", err)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	err = processor.Stop()

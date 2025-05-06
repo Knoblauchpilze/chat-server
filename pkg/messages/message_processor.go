@@ -2,7 +2,6 @@ package messages
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
@@ -30,9 +29,6 @@ func generateMessageCallback(
 			return err
 		}
 
-		fmt.Printf("received message: %+v (err: %v)\n", msg, err)
-
-		fmt.Printf("broadcasting except to %s\n", msg.ChatUser)
 		dispatcher.BroadcastExcept(msg.ChatUser, msg)
 
 		return nil

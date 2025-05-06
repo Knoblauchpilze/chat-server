@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -63,23 +62,18 @@ func (s *messageServiceImpl) ServeClient(
 		return err
 	}
 
-	fmt.Printf("connecting %s\n", user)
 	if err := s.manager.OnConnect(user, client); err != nil {
 		return err
 	}
 
-	fmt.Printf("starting %s\n", user)
 	done := process.SafeRunAsync(client.Start)
 
 	select {
 	case <-ctx.Done():
 		err = client.Stop()
-		fmt.Printf("done, err: %v\n", err)
 	case err = <-done:
-		fmt.Printf("client failed, err: %v\n", err)
 	}
 
-	fmt.Printf("disconnecting: %s (err: %v)\n", user, err)
 	s.manager.OnDisconnect(user)
 
 	return err
