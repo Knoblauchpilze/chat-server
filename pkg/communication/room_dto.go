@@ -19,7 +19,7 @@ type RoomDtoResponse struct {
 }
 
 func FromRoomDtoRequest(room RoomDtoRequest) persistence.Room {
-	t := time.Now()
+	t := time.Now().UTC()
 	return persistence.Room{
 		Id:   uuid.New(),
 		Name: room.Name,

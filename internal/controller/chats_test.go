@@ -183,7 +183,7 @@ func TestIT_ChatsController_SubsrcibeToMessage_ReceivesPostedMessage(t *testing.
 	// We don't know the id of the message so we need to use a regex
 	// https://ihateregex.io/expr/uuid/
 	const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-	const timePatten = "[0-9-]+T[0-9:.]+\\+[0-9:]+"
+	const timePatten = "[0-9-]+T[0-9:.]+Z"
 	expectedBodyRegex := fmt.Sprintf(
 		`id: %s
 data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
