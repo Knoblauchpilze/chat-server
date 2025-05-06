@@ -25,6 +25,13 @@ func generateMessageCallback(
 ) MessageCallback {
 	return func(msg persistence.Message) error {
 		_, err := messageRepo.Create(context.Background(), msg)
+		// TODO: Returning an error here means the processing of messages
+		// will stop. Probably we should not do that and just go on
+		// At this point we can't return an error to the client anyway
+		// We should solve this by verifying in the message_service that
+		// the user is allowed to send the message
+		// More generally we should probably not allow users to access to
+		// rooms that they did not join
 		if err != nil {
 			return err
 		}
