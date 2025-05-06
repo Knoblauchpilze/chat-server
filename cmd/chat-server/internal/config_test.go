@@ -25,6 +25,12 @@ func TestUnit_DefaultConfig_DefinesReasonableConnectTimeout(t *testing.T) {
 	assert.Equal(t, 1*time.Second, config.ConnectTimeout)
 }
 
+func TestUnit_DefaultConfig_DefinesReasonableMessageQueueSize(t *testing.T) {
+	config := DefaultConfig()
+
+	assert.Equal(t, 10, config.MessageQueueSize)
+}
+
 func TestUnit_DefaultConfig_UsesTcpPort49152(t *testing.T) {
 	config := DefaultConfig()
 
