@@ -93,7 +93,8 @@ func (p *processorImpl) activeLoop() error {
 func (p *processorImpl) processMessage(msg persistence.Message) error {
 	return process.SafeRunSync(
 		func() error {
-			// TODO: this is technically unsafe as the callback could be missing.
+			// Note: this is technically unsafe as we don't verify that the
+			// callback is set, unlike the other ones
 			return p.callbacks.Message(msg)
 		},
 	)
