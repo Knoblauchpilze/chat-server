@@ -29,8 +29,7 @@ func fromMessage(msg persistence.Message) (sseEvent, error) {
 	}
 
 	e := sseEvent{
-		Id: []byte(msg.Id.String()),
-		// TODO: Verify the SSE configuration and see if it make sense
+		Id:   []byte(msg.Id.String()),
 		Data: data,
 	}
 
