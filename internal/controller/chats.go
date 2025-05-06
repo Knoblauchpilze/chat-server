@@ -15,7 +15,7 @@ func MessageEndpoints(service service.MessageService) rest.Routes {
 	var out rest.Routes
 
 	getHandler := createComponentAwareHttpHandler(subscribeToMessages, service)
-	get := rest.NewRoute(http.MethodGet, "/users/:id/subscribe", getHandler)
+	get := rest.NewRawRoute(http.MethodGet, "/users/:id/subscribe", getHandler)
 	out = append(out, get)
 
 	postHandler := createComponentAwareHttpHandler(postMessage, service)
