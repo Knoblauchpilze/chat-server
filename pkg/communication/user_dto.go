@@ -21,7 +21,7 @@ type UserDtoResponse struct {
 }
 
 func FromUserDtoRequest(user UserDtoRequest) persistence.User {
-	t := time.Now()
+	t := time.Now().UTC()
 	return persistence.User{
 		Id:      uuid.New(),
 		Name:    user.Name,

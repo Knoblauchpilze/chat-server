@@ -23,7 +23,7 @@ type MessageDtoResponse struct {
 }
 
 func FromMessageDtoRequest(message MessageDtoRequest) persistence.Message {
-	t := time.Now()
+	t := time.Now().UTC()
 	return persistence.Message{
 		Id:       uuid.New(),
 		ChatUser: message.User,
