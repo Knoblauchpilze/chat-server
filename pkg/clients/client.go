@@ -24,7 +24,6 @@ func New(
 	callbacks := messages.Callbacks{
 		Start:   generateStartCallback(rw),
 		Message: generateMessageCallback(rw),
-		Finish:  generateFinishCallback(),
 	}
 
 	return messages.NewProcessor(messageQueueSize, callbacks), nil
@@ -59,13 +58,6 @@ func generateMessageCallback(rw http.ResponseWriter) messages.MessageCallback {
 
 		flusher.Flush()
 
-		return nil
-	}
-}
-
-func generateFinishCallback() messages.FinishCallback {
-	return func() error {
-		// TODO: Handle closing through SSE
 		return nil
 	}
 }
