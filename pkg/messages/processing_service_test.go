@@ -14,7 +14,7 @@ import (
 const reasonableWaitTimeForServiceToBeUp = 50 * time.Millisecond
 
 type dispatcherMock struct {
-	Dispatcher
+	MessageDispatcher
 
 	broadcastMsgs       []Message
 	broadcastExceptMsgs []Message
@@ -25,7 +25,7 @@ type dispatcherMock struct {
 
 func TestUnit_ProcessingService_StartStop(t *testing.T) {
 	var queue IncomingQueue
-	var manager Dispatcher
+	var manager MessageDispatcher
 	service := NewProcessingService(queue, manager, logger.New(os.Stdout))
 
 	wg := asyncRunProcessingService(t, service)

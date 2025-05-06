@@ -15,7 +15,7 @@ type ClientManager interface {
 	OnDisconnect(id uuid.UUID)
 	OnReadError(id uuid.UUID, err error)
 
-	messages.Dispatcher
+	messages.MessageDispatcher
 }
 
 type clientManagerImpl struct {

@@ -284,14 +284,8 @@ func newTestHttpProps(
 	log := logger.New(os.Stdout)
 	repos := repositories.New(dbConn)
 
-	managerProps := clients.ManagerProps{
-		Queue:     nil,
-		Handshake: nil,
-		Log:       log,
-	}
-	manager := clients.NewClientManager(managerProps)
-
-	processor := messages.NewMessageProcessor(1, manager, repos)
+	clientManager := clients.NewManager()
+	processor := messages.NewMessageProcessor(1, clientManager, repos)
 
 	props := HttpServerProps{
 		Config: conf,
@@ -301,6 +295,7 @@ func newTestHttpProps(
 			dbConn,
 			repos,
 			processor,
+			clientManager,
 			log,
 		),
 		Log: log,

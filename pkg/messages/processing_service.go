@@ -17,7 +17,7 @@ const timeoutForMessageProcessing = 1 * time.Second
 
 type processingServiceImpl struct {
 	queue      IncomingQueue
-	dispatcher Dispatcher
+	dispatcher MessageDispatcher
 
 	log logger.Logger
 
@@ -27,7 +27,7 @@ type processingServiceImpl struct {
 
 func NewProcessingService(
 	queue IncomingQueue,
-	dispatcher Dispatcher,
+	dispatcher MessageDispatcher,
 	log logger.Logger,
 ) ProcessingService {
 	return &processingServiceImpl{

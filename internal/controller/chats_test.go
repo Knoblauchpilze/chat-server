@@ -117,7 +117,8 @@ func newTestMessageService(
 	t *testing.T,
 ) (service.MessageService, db.Connection) {
 	dbConn := newTestDbConnection(t)
-	return service.NewMessageService(dbConn, &mockProcessor{}), dbConn
+	// TODO: Correctly setup the client manager
+	return service.NewMessageService(dbConn, &mockProcessor{}, nil), dbConn
 }
 
 type mockProcessor struct{}

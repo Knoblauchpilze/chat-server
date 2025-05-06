@@ -61,15 +61,7 @@ func TestIT_MessageProcessor_EnqueueMessage_ExpectSentToDispatcher(t *testing.T)
 	wg.Wait()
 
 	assert.Equal(t, user.Id, mock.receivedId)
-	assert.Equal(t, ROOM_MESSAGE, mock.receivedMsg.Type())
-	actual, err := ToMessageStruct[RoomMessage](mock.receivedMsg)
-	assert.Nil(t, err, "Actual err: %v", err)
-	expectedMessage := RoomMessage{
-		Emitter: user.Id,
-		Room:    room.Id,
-		Content: msg.Message,
-	}
-	assert.Equal(t, expectedMessage, actual)
+	assert.Equal(t, msg, mock.receivedMsg)
 }
 
 func TestIT_MessageProcessor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t *testing.T) {
@@ -105,19 +97,19 @@ func newTestMessageProcessor(t *testing.T) (Processor, db.Connection, *mockDispa
 
 type mockDispatcher struct {
 	receivedId  uuid.UUID
-	receivedMsg Message
+	receivedMsg persistence.Message
 }
 
-func (m *mockDispatcher) Broadcast(msg Message) {
+func (m *mockDispatcher) Broadcast(msg persistence.Message) {
 	m.receivedMsg = msg
 }
 
-func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg Message) {
+func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg persistence.Message) {
 	m.receivedId = id
 	m.receivedMsg = msg
 }
 
-func (m *mockDispatcher) SendTo(id uuid.UUID, msg Message) {
+func (m *mockDispatcher) SendTo(id uuid.UUID, msg persistence.Message) {
 	m.receivedId = id
 	m.receivedMsg = msg
 }

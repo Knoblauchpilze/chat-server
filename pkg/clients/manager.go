@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -99,30 +98,16 @@ func (m *managerImpl) OnDisconnect(id uuid.UUID) {
 	delete(m.clients, id)
 }
 
-func (m *managerImpl) Broadcast(msg messages.Message) {
-	out, err := convertToEntity(msg)
-	if err != nil {
-		// TODO: This cannot happen but we can simplify it.
-		fmt.Printf("[error] received unexpected message type %v\n", msg.Type())
-		return
-	}
-
+func (m *managerImpl) Broadcast(msg persistence.Message) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
 	for _, client := range m.clients {
-		client.Enqueue(out)
+		client.Enqueue(msg)
 	}
 }
 
-func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
-	out, err := convertToEntity(msg)
-	if err != nil {
-		// TODO: This cannot happen but we can simplify it.
-		fmt.Printf("[error] received unexpected message type %v\n", msg.Type())
-		return
-	}
-
+func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg persistence.Message) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -131,18 +116,11 @@ func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg messages.Message) {
 			continue
 		}
 
-		client.Enqueue(out)
+		client.Enqueue(msg)
 	}
 }
 
-func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
-	out, err := convertToEntity(msg)
-	if err != nil {
-		// TODO: This cannot happen but we can simplify it.
-		fmt.Printf("[error] received unexpected message type %v\n", msg.Type())
-		return
-	}
-
+func (m *managerImpl) SendTo(id uuid.UUID, msg persistence.Message) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -151,22 +129,5 @@ func (m *managerImpl) SendTo(id uuid.UUID, msg messages.Message) {
 		return
 	}
 
-	client.Enqueue(out)
-}
-
-// TODO: Remove this conversion and just change the interface type
-func convertToEntity(msg messages.Message) (persistence.Message, error) {
-	in, err := messages.ToMessageStruct[messages.RoomMessage](msg)
-	if err != nil {
-		return persistence.Message{}, err
-	}
-
-	out := persistence.Message{
-		Id:       uuid.New(),
-		ChatUser: in.Emitter,
-		Room:     in.Room,
-		Message:  in.Content,
-	}
-
-	return out, nil
+	client.Enqueue(msg)
 }
