@@ -22,12 +22,13 @@ func New(
 	conn db.Connection,
 	repos repositories.Repositories,
 	processor messages.Processor,
+	manager clients.Manager,
 	log logger.Logger,
 ) Services {
 	return Services{
 		Room:    NewRoomService(conn, repos),
 		User:    NewUserService(conn, repos),
-		Message: NewMessageService(conn, processor),
+		Message: NewMessageService(conn, processor, manager),
 		Chat: NewChatService(
 			clients.NewHandshake(repos.User, connectTimeout),
 			log,
