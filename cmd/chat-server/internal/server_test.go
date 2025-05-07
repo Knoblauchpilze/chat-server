@@ -3,8 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
@@ -191,6 +193,81 @@ func TestIT_RunServer_Message_PostGetWorkflow(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+}
+
+func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
+	props := newTestServerConfig(7605)
+	cancellable, cancelServer := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
+
+	requestDto := communication.MessageDtoRequest{
+		User:    user2.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user2.Name, room.Id),
+	}
+
+	// Post a message with a delay to let the user the time to subscribe
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+
+		url := fmt.Sprintf("http://localhost:7605/v1/chats/rooms/%s/messages", room.Id)
+		rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+		assert.Equal(t, http.StatusAccepted, rw.StatusCode)
+	}()
+
+	// Give the message a bit of time to be processed
+	reqCtx, cancelReq := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelReq()
+
+	url := fmt.Sprintf("http://localhost:7605/v1/chats/users/%s/subscribe", user1.Id)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	client := &http.Client{}
+	rw, err := client.Do(req)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	cancelServer()
+	wg.Wait()
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+
+	// We don't know the id of the message so we need to use a regex
+	// https://ihateregex.io/expr/uuid/
+	const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+	const timePatten = "[0-9-]+T[0-9:.]+Z"
+	expectedBodyRegex := fmt.Sprintf(
+		`id: %s
+data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
+
+`,
+		uuidPattern,
+		uuidPattern,
+		user2.Id.String(),
+		room.Id.String(),
+		requestDto.Message,
+		timePatten,
+	)
+	body, err := io.ReadAll(rw.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+	actual := string(body)
+	assert.Regexp(
+		t,
+		regexp.MustCompile(expectedBodyRegex),
+		actual,
+		"Actual body: %s",
+		actual,
+	)
 }
 
 func newTestServerConfig(httpPort uint16) Configuration {
