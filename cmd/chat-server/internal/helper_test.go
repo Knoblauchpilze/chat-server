@@ -206,6 +206,8 @@ func doRequestWithData[T any](
 func doRequestWithBody(
 	t *testing.T, method string, url string, body []byte,
 ) *http.Response {
+	t.Helper()
+
 	client := &http.Client{}
 
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
