@@ -2,120 +2,288 @@ package internal
 
 import (
 	"context"
-	"net"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
+	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_RunServer_StartAndStopWithContext(t *testing.T) {
-	conf := newTestServerConfig(7300, 7301)
+func TestIT_RunServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
+	props := newTestServerConfig(7601)
 	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncListenAndServe(t, conf, cancellable)
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
-	time.Sleep(50 * time.Millisecond)
-	cancel()
-	wg.Wait()
-}
+	// Create a new room
+	requestDto := communication.RoomDtoRequest{
+		Name: fmt.Sprintf("my-room-%v", uuid.New()),
+	}
 
-func TestIT_RunServer_CanConnectOnHttpPort(t *testing.T) {
-	conf := newTestServerConfig(7302, 7303)
-	cancellable, cancel := context.WithCancel(context.Background())
+	url := "http://localhost:7601/v1/chats/rooms"
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
 
-	wg := asyncListenAndServe(t, conf, cancellable)
+	responseDto := assertResponseAndExtractDetails[communication.RoomDtoResponse](
+		t, rw, success,
+	)
 
-	url := "http://localhost:7303/v1/chats/healthcheck"
-	rw := doRequest(t, http.MethodGet, url)
+	assert.Equal(t, http.StatusCreated, rw.StatusCode)
+	assert.Equal(t, requestDto.Name, responseDto.Name)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7601/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[communication.RoomDtoResponse](
+		t, rw, success,
+	)
+
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
-	assertResponseContainsDetails(t, rw, success, `"OK"`)
+	assert.Equal(t, responseDto, getResponseDto)
+
+	// Delete it
+	url = fmt.Sprintf("http://localhost:7601/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodDelete, url)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Get it again
+	url = fmt.Sprintf("http://localhost:7601/v1/chats/rooms/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	assert.Equal(t, http.StatusNotFound, rw.StatusCode)
 
 	cancel()
 	wg.Wait()
 }
 
-func TestIT_RunServer_CanConnectOnTcpPort(t *testing.T) {
-	conf := newTestServerConfig(7304, 7305)
+func TestIT_RunServer_User_CreateGetDeleteWorkflow(t *testing.T) {
+	props := newTestServerConfig(7602)
+	cancellable, cancel := context.WithCancel(context.Background())
+
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
+
+	// Create a new user
+	requestDto := communication.UserDtoRequest{
+		Name: fmt.Sprintf("my-user-%v", uuid.New()),
+	}
+
+	url := "http://localhost:7602/v1/chats/users"
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	responseDto := assertResponseAndExtractDetails[communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusCreated, rw.StatusCode)
+	assert.Equal(t, requestDto.Name, responseDto.Name)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7602/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, responseDto, getResponseDto)
+
+	// Delete it
+	url = fmt.Sprintf("http://localhost:7602/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodDelete, url)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Get it again
+	url = fmt.Sprintf("http://localhost:7602/v1/chats/users/%s", responseDto.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	assert.Equal(t, http.StatusNotFound, rw.StatusCode)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestIT_RunServer_ListForRoom(t *testing.T) {
+	props := newTestServerConfig(7603)
+	cancellable, cancel := context.WithCancel(context.Background())
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
-	cancellable, cancel := context.WithCancel(context.Background())
 
-	wg := asyncListenAndServe(t, conf, cancellable)
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
 
-	conn, _ := connectToServerAndSendHandshake(t, 7304, dbConn)
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
-	clientId := uuid.New()
-	n, err := conn.Write(clientId[:])
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, len(clientId), n)
+	url := fmt.Sprintf("http://localhost:7603/v1/chats/rooms/%s/users", room.Id)
+	rw := doRequest(t, http.MethodGet, url)
 
-	time.Sleep(100 * time.Millisecond)
-	assertConnectionIsStillOpen(t, conn)
+	responseDto := assertResponseAndExtractDetails[[]communication.UserDtoResponse](
+		t, rw, success,
+	)
 
-	cancel()
-	wg.Wait()
-
-	assertConnectionIsClosed(t, conn)
-}
-
-func TestIT_RunServer_WhenClientDoesNotPerformHandshake_ExpectConnectionToBeTerminated(t *testing.T) {
-	conf := newTestServerConfig(7306, 7307)
-	conf.ConnectTimeout = 50 * time.Millisecond
-	cancellable, cancel := context.WithCancel(context.Background())
-
-	wg := asyncListenAndServe(t, conf, cancellable)
-
-	conn, err := net.Dial("tcp", ":7306")
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	// Wait long enough for the handshake timeout to kick in
-	time.Sleep(100 * time.Millisecond)
-	assertConnectionIsClosed(t, conn)
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Len(t, responseDto, 1)
+	expected := communication.ToUserDtoResponse(user)
+	assert.True(
+		t,
+		eassert.EqualsIgnoringFields(expected, responseDto[0]),
+		"Expected: %v, actual: %v",
+		expected,
+		responseDto,
+	)
 
 	cancel()
 	wg.Wait()
 }
 
-func TestIT_RunServer_WhenClientIsNotRegistered_ExpectConnectionToBeTerminated(t *testing.T) {
-	conf := newTestServerConfig(7306, 7307)
-	conf.ConnectTimeout = 50 * time.Millisecond
+func TestIT_RunServer_Message_PostGetWorkflow(t *testing.T) {
+	props := newTestServerConfig(7604)
 	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
 
-	wg := asyncListenAndServe(t, conf, cancellable)
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
 
-	conn, err := net.Dial("tcp", ":7306")
-	assert.Nil(t, err, "Actual err: %v", err)
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
-	// Wait long enough for the handshake timeout to kick in
-	time.Sleep(100 * time.Millisecond)
-	assertConnectionIsClosed(t, conn)
+	// Create a new message
+	requestDto := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user.Name, room.Id),
+	}
+
+	url := fmt.Sprintf("http://localhost:7604/v1/chats/rooms/%s/messages", room.Id)
+	rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	assert.Equal(t, http.StatusAccepted, rw.StatusCode)
+
+	// Wait a bit for the processor to persist the message
+	time.Sleep(50 * time.Millisecond)
+
+	// Fetch it
+	url = fmt.Sprintf("http://localhost:7604/v1/chats/rooms/%s/messages", room.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	getResponseDto := assertResponseAndExtractDetails[[]communication.MessageDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, 1, len(getResponseDto))
+	assert.Len(t, getResponseDto, 1)
+	actual := getResponseDto[0]
+	assert.Equal(t, requestDto.User, actual.User)
+	assert.Equal(t, requestDto.Room, actual.Room)
+	assert.Equal(t, requestDto.Message, actual.Message)
 
 	cancel()
 	wg.Wait()
 }
 
-func newTestServerConfig(tcpPort uint16, httpPort uint16) Configuration {
+func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
+	props := newTestServerConfig(7605)
+	cancellable, cancelServer := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
+
+	requestDto := communication.MessageDtoRequest{
+		User:    user2.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user2.Name, room.Id),
+	}
+
+	// Post a message with a delay to let the user the time to subscribe
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+
+		url := fmt.Sprintf("http://localhost:7605/v1/chats/rooms/%s/messages", room.Id)
+		rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+		assert.Equal(t, http.StatusAccepted, rw.StatusCode)
+	}()
+
+	// Give the message a bit of time to be processed
+	reqCtx, cancelReq := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelReq()
+
+	url := fmt.Sprintf("http://localhost:7605/v1/chats/users/%s/subscribe", user1.Id)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	client := &http.Client{}
+	rw, err := client.Do(req)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	cancelServer()
+	wg.Wait()
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+
+	// We don't know the id of the message so we need to use a regex
+	// https://ihateregex.io/expr/uuid/
+	const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+	const timePatten = "[0-9-]+T[0-9:.]+Z"
+	expectedBodyRegex := fmt.Sprintf(
+		`id: %s
+data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
+
+`,
+		uuidPattern,
+		uuidPattern,
+		user2.Id.String(),
+		room.Id.String(),
+		requestDto.Message,
+		timePatten,
+	)
+	body, err := io.ReadAll(rw.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+	actual := string(body)
+	assert.Regexp(
+		t,
+		regexp.MustCompile(expectedBodyRegex),
+		actual,
+		"Actual body: %s",
+		actual,
+	)
+}
+
+func newTestServerConfig(httpPort uint16) Configuration {
 	baseConfig := DefaultConfig()
 	baseConfig.Server.Port = httpPort
 
 	return Configuration{
-		Server:         baseConfig.Server,
-		ConnectTimeout: baseConfig.ConnectTimeout,
-		TcpPort:        tcpPort,
-		Database:       dbTestConfig,
+		Server:   baseConfig.Server,
+		Database: dbTestConfig,
 	}
 }
 
-func asyncListenAndServe(
+func asyncRunServerAndAssertNoError(
 	t *testing.T,
-	config Configuration,
 	ctx context.Context,
+	config Configuration,
 ) *sync.WaitGroup {
 	var err error
 	var wg sync.WaitGroup

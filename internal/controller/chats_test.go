@@ -119,7 +119,7 @@ func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRe
 	)
 }
 
-func TestIT_ChatsController_SubsrcibeToMessage_ReceivesPostedMessage(t *testing.T) {
+func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	repos := repositories.New(dbConn)
@@ -202,7 +202,7 @@ data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
 		regexp.MustCompile(expectedBodyRegex),
 		actual,
 		"Actual body: %s",
-		rw.Body.String(),
+		actual,
 	)
 }
 
