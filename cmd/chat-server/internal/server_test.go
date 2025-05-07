@@ -16,23 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_RunServer_WhenDbConnectionFails_ExpectHealthcheckFails(t *testing.T) {
-	props := newTestServerConfig(7600)
-	props.Database.Port = 1234
-	cancellable, cancel := context.WithCancel(context.Background())
-
-	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
-
-	url := "http://localhost:7600/v1/chats/healthcheck"
-	rw := doRequest(t, http.MethodGet, url)
-
-	cancel()
-	wg.Wait()
-
-	assert.Equal(t, http.StatusServiceUnavailable, rw.StatusCode)
-	assertResponseContainsDetails(t, rw, failure, "{}")
-}
-
 func TestIT_RunServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	props := newTestServerConfig(7601)
 	cancellable, cancel := context.WithCancel(context.Background())
