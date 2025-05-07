@@ -27,7 +27,7 @@ func main() {
 	}
 
 	if err := internal.RunServer(context.Background(), conf, log); err != nil {
-		log.Errorf("Error while serving TCP: %+v", err)
+		log.Errorf("Error while serving: %+v", err)
 		os.Exit(1)
 	}
 }
