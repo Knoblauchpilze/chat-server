@@ -36,6 +36,8 @@ func generateMessageCallback(
 			return err
 		}
 
+		// TODO: We probably don't want to broadcast but have a SendToMultiple
+		// with a list of people to handle the room messages.
 		dispatcher.BroadcastExcept(msg.ChatUser, msg)
 
 		return nil
