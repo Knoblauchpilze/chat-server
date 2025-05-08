@@ -1,6 +1,5 @@
 Server:
   Port: 80
-TcpPort: 49152
 Database:
   User: chat_server_manager
   Password: comes-from-the-environment

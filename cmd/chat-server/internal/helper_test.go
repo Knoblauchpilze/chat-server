@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -35,77 +34,6 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"chat_server_manager",
 	"manager_password",
 )
-
-var errSample = fmt.Errorf("some error")
-var sampleData = []byte("hello\n")
-
-func asyncCancelContext(delay time.Duration, cancel context.CancelFunc) {
-	go func() {
-		time.Sleep(delay)
-		cancel()
-	}()
-}
-
-func assertConnectionIsClosed(t *testing.T, conn net.Conn) {
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-
-	oneByte := make([]byte, 1)
-	_, err := conn.Read(oneByte)
-	assert.Equal(t, io.EOF, err, "Actual err: %v", err)
-}
-
-func assertConnectionIsStillOpen(t *testing.T, conn net.Conn) {
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-
-	oneByte := make([]byte, 1)
-	_, err := conn.Read(oneByte)
-
-	opErr, ok := err.(*net.OpError)
-	assert.True(t, ok, "Actual err: %v", err)
-	if ok {
-		assert.True(t, opErr.Timeout(), "Actual err: %v", opErr)
-	}
-}
-
-func readFromConnection(t *testing.T, conn net.Conn) []byte {
-	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
-
-	out := make([]byte, reasonableReadSizeInBytes)
-	n, err := conn.Read(out)
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	return out[:n]
-}
-
-func assertNoDataReceived(t *testing.T, conn net.Conn) {
-	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
-
-	oneByte := make([]byte, 1)
-	_, err := conn.Read(oneByte)
-
-	assert.True(t, isTimeoutError(err), "Actual err: %v", err)
-}
-
-func drainConnection(t *testing.T, conn net.Conn) []byte {
-	conn.SetReadDeadline(time.Now().Add(reasonableReadTimeout))
-
-	out := make([]byte, reasonableReadSizeInBytes)
-	n, err := conn.Read(out)
-	if err != nil && err != io.EOF && !isTimeoutError(err) {
-		assert.Nil(t, err, "Actual err: %v", err)
-	}
-
-	return out[:n]
-}
-
-func isTimeoutError(err error) bool {
-	opErr, ok := err.(*net.OpError)
-	if !ok {
-		return false
-	}
-
-	return opErr.Timeout()
-}
 
 func newTestDbConnection(t *testing.T) db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
@@ -243,19 +171,4 @@ func assertResponseAndExtractDetails[T any](
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	return out
-}
-
-func connectToServerAndSendHandshake(
-	t *testing.T, port uint16, dbConn db.Connection,
-) (net.Conn, persistence.User) {
-	user := insertTestUser(t, dbConn)
-
-	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port))
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	n, err := conn.Write(user.Id[:])
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, len(user.Id), n)
-
-	return conn, user
 }
