@@ -295,7 +295,6 @@ func newTestMessageService(
 	t *testing.T,
 ) (service.MessageService, db.Connection, *mockProcessor) {
 	dbConn := newTestDbConnection(t)
-	// TODO: Correctly setup the client manager
 	mock := &mockProcessor{}
 	return service.NewMessageService(dbConn, mock, nil), dbConn, mock
 }
