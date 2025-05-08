@@ -20,14 +20,17 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIT_ChatsController_PostMessageForRoom_WhenMessageHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, dbConn := newTestMessageService(t)
+	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-message-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(uuid.NewString())
 
 	err := postMessage(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -44,7 +47,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenMessageHasWrongSyntax_ExpectB
 }
 
 func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *testing.T) {
-	service, dbConn := newTestMessageService(t)
+	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	requestDto := communication.MessageDtoRequest{
 		Message: "",
@@ -57,6 +60,8 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadReq
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(uuid.NewString())
 
 	err = postMessage(ctx, service)
 
@@ -72,8 +77,8 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadReq
 	)
 }
 
-func TestIT_ChatsController_PostMessageForRoom(t *testing.T) {
-	service, dbConn := newTestMessageService(t)
+func TestIT_ChatsController_PostMessageForRoom_ReturnsAccepted(t *testing.T) {
+	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -92,6 +97,8 @@ func TestIT_ChatsController_PostMessageForRoom(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
 
 	err = postMessage(ctx, service)
 
@@ -99,8 +106,84 @@ func TestIT_ChatsController_PostMessageForRoom(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, rw.Code)
 }
 
+func TestIT_ChatsController_PostMessageForRoom_SendsMessageToProcessor(t *testing.T) {
+	service, dbConn, mock := newTestMessageService(t)
+	defer dbConn.Close(context.Background())
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
+
+	requestDto := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user.Name, room.Id),
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(requestDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", &body)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err = postMessage(ctx, service)
+
+	// Wait for message to be processed
+	time.Sleep(50 * time.Millisecond)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, http.StatusAccepted, rw.Code)
+
+	assert.Len(t, mock.enqueued, 1)
+	actual := mock.enqueued[0]
+	assert.Equal(t, requestDto.User, actual.ChatUser)
+	assert.Equal(t, requestDto.Room, actual.Room)
+	assert.Equal(t, requestDto.Message, actual.Message)
+}
+
+func TestIT_ChatsController_PostMessageForRoom_WhenRoomInRequestDoesNotMatchRoute_ExpectOverridden(t *testing.T) {
+	service, dbConn, mock := newTestMessageService(t)
+	defer dbConn.Close(context.Background())
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user.Id, room.Id)
+
+	otherId := uuid.New()
+	assert.NotEqual(t, otherId, room.Id)
+	requestDto := communication.MessageDtoRequest{
+		User:    user.Id,
+		Room:    otherId,
+		Message: fmt.Sprintf("%s says hello", user.Name),
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(requestDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", &body)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(room.Id.String())
+
+	err = postMessage(ctx, service)
+
+	// Wait for message to be processed
+	time.Sleep(50 * time.Millisecond)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, http.StatusAccepted, rw.Code)
+
+	assert.Len(t, mock.enqueued, 1)
+	actual := mock.enqueued[0]
+	assert.Equal(t, room.Id, actual.Room)
+}
+
 func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
-	service, dbConn := newTestMessageService(t)
+	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
@@ -156,6 +239,8 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 		req := httptest.NewRequest(http.MethodPost, "/", &body)
 		req.Header.Set("Content-Type", "application/json")
 		ctx, rw := generateTestEchoContextFromRequest(req)
+		ctx.SetParamNames("id")
+		ctx.SetParamValues(room.Id.String())
 
 		err = postMessage(ctx, service)
 		assert.Nil(t, err, "Actual err: %v", err)
@@ -208,10 +293,11 @@ data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
 
 func newTestMessageService(
 	t *testing.T,
-) (service.MessageService, db.Connection) {
+) (service.MessageService, db.Connection, *mockProcessor) {
 	dbConn := newTestDbConnection(t)
 	// TODO: Correctly setup the client manager
-	return service.NewMessageService(dbConn, &mockProcessor{}, nil), dbConn
+	mock := &mockProcessor{}
+	return service.NewMessageService(dbConn, mock, nil), dbConn, mock
 }
 
 func asyncStartProcessorAndAssertNoError(
@@ -239,7 +325,9 @@ func asyncStartProcessorAndAssertNoError(
 	return &wg
 }
 
-type mockProcessor struct{}
+type mockProcessor struct {
+	enqueued []persistence.Message
+}
 
 func (m *mockProcessor) Start() error {
 	return nil
@@ -249,4 +337,6 @@ func (m *mockProcessor) Stop() error {
 	return nil
 }
 
-func (m *mockProcessor) Enqueue(_ persistence.Message) {}
+func (m *mockProcessor) Enqueue(msg persistence.Message) {
+	m.enqueued = append(m.enqueued, msg)
+}

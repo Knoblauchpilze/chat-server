@@ -26,13 +26,19 @@ func MessageEndpoints(service service.MessageService) rest.Routes {
 }
 
 func postMessage(c echo.Context, s service.MessageService) error {
+	maybeId := c.Param("id")
+	id, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
 	var messageDtoRequest communication.MessageDtoRequest
-	err := c.Bind(&messageDtoRequest)
+	err = c.Bind(&messageDtoRequest)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid message syntax")
 	}
 
-	// TODO: Override the room id with the one from the path
+	messageDtoRequest.Room = id
 
 	err = s.PostMessage(c.Request().Context(), messageDtoRequest)
 	if err != nil {
