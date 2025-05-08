@@ -13,6 +13,7 @@ import (
 type RoomRepository interface {
 	Create(ctx context.Context, room persistence.Room) (persistence.Room, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
+	UserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) (bool, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
 	RegisterUserInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
 	RegisterUserInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
@@ -75,6 +76,23 @@ func (r *roomRepositoryImpl) Get(
 	}
 
 	return room, err
+}
+
+const userInRoomSqlTemplate = `
+SELECT
+	COUNT(*)
+FROM
+	room_user
+WHERE
+	chat_user = $1
+	AND room = $2`
+
+func (r *roomRepositoryImpl) UserInRoom(
+	ctx context.Context, user uuid.UUID, room uuid.UUID,
+) (bool, error) {
+
+	count, err := db.QueryOne[int](ctx, r.conn, userInRoomSqlTemplate, user, room)
+	return count > 0, err
 }
 
 const listForUserSqlTemplate = `
