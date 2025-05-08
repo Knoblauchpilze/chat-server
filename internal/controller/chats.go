@@ -61,6 +61,7 @@ func subscribeToMessages(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
 	}
 
+	// TODO: We could pass on the logger taken from the context
 	err = s.ServeClient(c.Request().Context(), id, c.Response())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
