@@ -68,6 +68,26 @@ func TestIT_MessageService_PostMessage_InvalidName(t *testing.T) {
 	)
 }
 
+func TestIT_MessageService_PostMessage_WhenUserNotInRoom_ExpectError(t *testing.T) {
+	mock := &mockProcessor{}
+	service, dbConn := newTestMessageService(t, mock, nil)
+	defer dbConn.Close(context.Background())
+	messageDtoRequest := communication.MessageDtoRequest{
+		User:    uuid.New(),
+		Room:    uuid.New(),
+		Message: "hello there",
+	}
+
+	err := service.PostMessage(context.Background(), messageDtoRequest)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrUserNotInRoom),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *testing.T) {
 	manager := clients.NewManager()
 	service, dbConn := newTestMessageService(t, nil, manager)
@@ -90,7 +110,7 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 	repos := repositories.New(dbConn)
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(1, manager, repos)
-	service := NewMessageService(dbConn, processor, manager)
+	service := NewMessageService(dbConn, repos, processor, manager)
 
 	user1 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -158,7 +178,7 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	repos := repositories.New(dbConn)
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(1, manager, repos)
-	service := NewMessageService(dbConn, processor, manager)
+	service := NewMessageService(dbConn, repos, processor, manager)
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -205,7 +225,8 @@ func newTestMessageService(
 	manager clients.Manager,
 ) (MessageService, db.Connection) {
 	dbConn := newTestDbConnection(t)
-	return NewMessageService(dbConn, processor, manager), dbConn
+	repos := repositories.New(dbConn)
+	return NewMessageService(dbConn, repos, processor, manager), dbConn
 }
 
 func asyncStartMessageProcessorAndAssertNoError(

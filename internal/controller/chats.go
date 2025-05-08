@@ -44,6 +44,8 @@ func postMessage(c echo.Context, s service.MessageService) error {
 	if err != nil {
 		if errors.IsErrorWithCode(err, service.ErrEmptyMessage) {
 			return c.JSON(http.StatusBadRequest, "Invalid empty message")
+		} else if errors.IsErrorWithCode(err, service.ErrUserNotInRoom) {
+			return c.JSON(http.StatusBadRequest, "User is not registered in the room")
 		}
 
 		return c.JSON(http.StatusInternalServerError, err)

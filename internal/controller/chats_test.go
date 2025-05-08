@@ -77,6 +77,39 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadReq
 	)
 }
 
+func TestIT_ChatsController_PostMessageForRoom_WhenUserIsNotInRoom_ExpectBadRequest(t *testing.T) {
+	service, dbConn, _ := newTestMessageService(t)
+	defer dbConn.Close(context.Background())
+	requestDto := communication.MessageDtoRequest{
+		User:    uuid.New(),
+		Room:    uuid.New(),
+		Message: "hello there",
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(requestDto)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", &body)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("id")
+	ctx.SetParamValues(uuid.NewString())
+
+	err = postMessage(ctx, service)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, http.StatusBadRequest, rw.Code)
+	expectedBody := []byte("\"User is not registered in the room\"\n")
+	assert.Equal(
+		t,
+		expectedBody,
+		rw.Body.Bytes(),
+		"Actual body: %s",
+		rw.Body.String(),
+	)
+}
+
 func TestIT_ChatsController_PostMessageForRoom_ReturnsAccepted(t *testing.T) {
 	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
@@ -210,6 +243,7 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 	processor := messages.NewMessageProcessor(1, manager, repos)
 	service := service.NewMessageService(
 		dbConn,
+		repos,
 		processor,
 		manager,
 	)
@@ -295,8 +329,9 @@ func newTestMessageService(
 	t *testing.T,
 ) (service.MessageService, db.Connection, *mockProcessor) {
 	dbConn := newTestDbConnection(t)
+	repos := repositories.New(dbConn)
 	mock := &mockProcessor{}
-	return service.NewMessageService(dbConn, mock, nil), dbConn, mock
+	return service.NewMessageService(dbConn, repos, mock, nil), dbConn, mock
 }
 
 func asyncStartProcessorAndAssertNoError(

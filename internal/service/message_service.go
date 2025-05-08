@@ -9,6 +9,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -19,7 +20,8 @@ type MessageService interface {
 }
 
 type messageServiceImpl struct {
-	conn db.Connection
+	conn     db.Connection
+	roomRepo repositories.RoomRepository
 
 	processor messages.Processor
 	manager   clients.Manager
@@ -27,11 +29,13 @@ type messageServiceImpl struct {
 
 func NewMessageService(
 	conn db.Connection,
+	repos repositories.Repositories,
 	processor messages.Processor,
 	manager clients.Manager,
 ) MessageService {
 	return &messageServiceImpl{
 		conn:      conn,
+		roomRepo:  repos.Room,
 		processor: processor,
 		manager:   manager,
 	}
@@ -44,6 +48,14 @@ func (s *messageServiceImpl) PostMessage(
 
 	if message.Message == "" {
 		return errors.NewCode(ErrEmptyMessage)
+	}
+
+	registered, err := s.roomRepo.UserInRoom(ctx, message.ChatUser, message.Room)
+	if err != nil {
+		return err
+	}
+	if !registered {
+		return errors.NewCode(ErrUserNotInRoom)
 	}
 
 	s.processor.Enqueue(message)
