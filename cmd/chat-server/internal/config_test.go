@@ -19,22 +19,10 @@ func TestUnit_DefaultConfig_DefinesCorrectRestConfiguration(t *testing.T) {
 	assert.Equal(t, expectedConf, config.Server)
 }
 
-func TestUnit_DefaultConfig_DefinesReasonableConnectTimeout(t *testing.T) {
-	config := DefaultConfig()
-
-	assert.Equal(t, 1*time.Second, config.ConnectTimeout)
-}
-
 func TestUnit_DefaultConfig_DefinesReasonableMessageQueueSize(t *testing.T) {
 	config := DefaultConfig()
 
 	assert.Equal(t, 10, config.MessageQueueSize)
-}
-
-func TestUnit_DefaultConfig_UsesTcpPort49152(t *testing.T) {
-	config := DefaultConfig()
-
-	assert.Equal(t, uint16(49152), config.TcpPort)
 }
 
 func TestUnit_DefaultConfig_SetsExpectedDbConnection(t *testing.T) {
@@ -49,13 +37,4 @@ func TestUnit_DefaultConfig_DoesNotSetDbPassword(t *testing.T) {
 	config := DefaultConfig()
 
 	assert.Equal(t, "comes-from-the-environment", config.Database.Password)
-}
-
-func TestUnit_DefaultConfig_DoesNotSetAnyCallbacks(t *testing.T) {
-	config := DefaultConfig()
-
-	assert.Nil(t, config.Callbacks.ConnectCallback)
-	assert.Nil(t, config.Callbacks.DisconnectCallback)
-	assert.Nil(t, config.Callbacks.ReadErrorCallback)
-	assert.Nil(t, config.Callbacks.ReadDataCallback)
 }

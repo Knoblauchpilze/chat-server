@@ -1,8 +1,6 @@
 package service
 
 import (
-	"time"
-
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/clients"
@@ -14,11 +12,9 @@ type Services struct {
 	Room    RoomService
 	User    UserService
 	Message MessageService
-	Chat    ChatService
 }
 
 func New(
-	connectTimeout time.Duration,
 	conn db.Connection,
 	repos repositories.Repositories,
 	processor messages.Processor,
@@ -29,9 +25,5 @@ func New(
 		Room:    NewRoomService(conn, repos),
 		User:    NewUserService(conn, repos),
 		Message: NewMessageService(conn, processor, manager),
-		Chat: NewChatService(
-			clients.NewHandshake(repos.User, connectTimeout),
-			log,
-		),
 	}
 }
