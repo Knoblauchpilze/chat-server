@@ -30,7 +30,7 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	services := service.Services{
 		Room:    service.NewRoomService(dbConn, repos),
 		User:    service.NewUserService(dbConn, repos),
-		Message: service.NewMessageService(dbConn, processor, manager),
+		Message: service.NewMessageService(dbConn, repos, processor, manager),
 	}
 
 	s, err := configureHttpServer(config.Server, dbConn, services, log)
