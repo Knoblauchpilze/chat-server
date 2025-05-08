@@ -64,5 +64,6 @@ func subscribeToMessages(c echo.Context, s service.MessageService) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.NoContent(http.StatusOK)
+	// https://echo.labstack.com/docs/cookbook/sse#server
+	return nil
 }
