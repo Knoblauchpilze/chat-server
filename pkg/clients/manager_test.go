@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnit_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
+func TestIT_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	id := uuid.New()
@@ -31,7 +31,7 @@ func TestUnit_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
 	)
 }
 
-func TestUnit_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
+func TestIT_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	id := uuid.New()
@@ -48,7 +48,7 @@ func TestUnit_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
 	assert.Equal(t, 1, mock.stopCalled)
 }
 
-func TestUnit_Manager_WhenUserInRoomAndBroadcast_ExpectMessageReceived(t *testing.T) {
+func TestIT_Manager_WhenUserInRoomAndBroadcast_ExpectMessageReceived(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	mock := &mockClient{}
@@ -74,7 +74,7 @@ func TestUnit_Manager_WhenUserInRoomAndBroadcast_ExpectMessageReceived(t *testin
 	assert.Equal(t, expected, mock.enqueued, 1)
 }
 
-func TestUnit_Manager_WhenUserNotInRoomAndBroadcast_ExpectMessageNotReceived(t *testing.T) {
+func TestIT_Manager_WhenUserNotInRoomAndBroadcast_ExpectMessageNotReceived(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	mock := &mockClient{}
@@ -97,7 +97,7 @@ func TestUnit_Manager_WhenUserNotInRoomAndBroadcast_ExpectMessageNotReceived(t *
 	assert.Equal(t, 0, mock.enqueueCalled)
 }
 
-func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *testing.T) {
+func TestIT_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	mock := &mockClient{}
@@ -122,7 +122,7 @@ func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *te
 	assert.Equal(t, 0, mock.enqueueCalled)
 }
 
-func TestUnit_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *testing.T) {
+func TestIT_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	mock1 := &mockClient{}
@@ -155,7 +155,7 @@ func TestUnit_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *tes
 	assert.Equal(t, 0, mock2.enqueueCalled)
 }
 
-func TestUnit_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t *testing.T) {
+func TestIT_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t *testing.T) {
 	manager, dbConn := newTestManager(t)
 	defer dbConn.Close(context.Background())
 	clientId1 := uuid.New()
