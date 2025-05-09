@@ -238,7 +238,7 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 
 	room1 := insertTestRoom(t, dbConn)
 	insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room1.Id)
+	registerUserInRoom(t, dbConn, user.Id, room1.Id)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)

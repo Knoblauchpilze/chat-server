@@ -19,7 +19,7 @@ func TestIT_MessageProcessor_EnqueueMessage_ExpectWrittenToDatabase(t *testing.T
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 
@@ -44,7 +44,7 @@ func TestIT_MessageProcessor_EnqueueMessage_ExpectSentToDispatcher(t *testing.T)
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	wg := asyncStartProcessorAndAssertNoError(t, processor)
 

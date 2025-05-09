@@ -29,7 +29,7 @@ func TestIT_MessageService_PostMessage_SendsMessageToProcessor(t *testing.T) {
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	messageDtoRequest := communication.MessageDtoRequest{
 		User:    user.Id,
@@ -130,9 +130,9 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 
 	user1 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
 	user2 := insertTestUser(t, dbConn)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	rec := httptest.NewRecorder()
 	response := echo.NewResponse(rec, echo.New())
@@ -205,7 +205,7 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	rec := httptest.NewRecorder()
 	response := echo.NewResponse(rec, echo.New())

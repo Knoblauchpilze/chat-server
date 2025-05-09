@@ -172,8 +172,8 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	insertTestUser(t, dbConn)
 
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user1.Id, room.Id)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
@@ -241,8 +241,8 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
-	insertUserInRoom(t, dbConn, user1.Id, room.Id)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	msg1 := insertTestMessage(t, dbConn, user1.Id, room.Id)
 	msg2 := insertTestMessage(t, dbConn, user2.Id, room.Id)

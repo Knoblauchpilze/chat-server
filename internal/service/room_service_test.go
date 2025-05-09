@@ -112,8 +112,8 @@ func TestIT_RoomService_ListUserForRoom(t *testing.T) {
 
 	room := insertTestRoom(t, conn)
 
-	insertUserInRoom(t, conn, user1.Id, room.Id)
-	insertUserInRoom(t, conn, user2.Id, room.Id)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
 
 	actual, err := service.ListUserForRoom(context.Background(), room.Id)
 
@@ -145,9 +145,9 @@ func TestIT_RoomService_ListMessageForRoom(t *testing.T) {
 	room1 := insertTestRoom(t, conn)
 	room2 := insertTestRoom(t, conn)
 
-	insertUserInRoom(t, conn, user1.Id, room1.Id)
-	insertUserInRoom(t, conn, user2.Id, room1.Id)
-	insertUserInRoom(t, conn, user3.Id, room2.Id)
+	registerUserInRoom(t, conn, user1.Id, room1.Id)
+	registerUserInRoom(t, conn, user2.Id, room1.Id)
+	registerUserInRoom(t, conn, user3.Id, room2.Id)
 
 	msg1 := insertTestMessage(t, conn, user1.Id, room1.Id)
 	msg2 := insertTestMessage(t, conn, user2.Id, room1.Id)
