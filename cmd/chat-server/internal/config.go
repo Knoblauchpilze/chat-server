@@ -8,9 +8,10 @@ import (
 )
 
 type Configuration struct {
-	Server           server.Config
-	MessageQueueSize int
-	Database         postgresql.Config
+	Server                 server.Config
+	MessageQueueSize       int
+	ClientMessageQueueSize int
+	Database               postgresql.Config
 }
 
 func DefaultConfig() Configuration {
@@ -23,7 +24,8 @@ func DefaultConfig() Configuration {
 			Port:            uint16(80),
 			ShutdownTimeout: 3 * time.Second,
 		},
-		MessageQueueSize: 10,
+		MessageQueueSize:       10,
+		ClientMessageQueueSize: 2,
 		Database: postgresql.NewConfigForDockerContainer(
 			defaultDatabaseName,
 			defaultDatabaseUser,
