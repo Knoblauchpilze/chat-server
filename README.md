@@ -95,6 +95,8 @@ The diagram below presents the architecture of the server and how it handles mes
 
 ![Server architecture](resources/server-architecture.png)
 
+ℹ️ the diagram above is best seen with dark theme.
+
 The clients need to establish two connections:
 
 - a long-lasting `GET` connection to the `subscribe` endpoint to receive updates
