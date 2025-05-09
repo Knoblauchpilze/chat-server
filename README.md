@@ -26,9 +26,9 @@ There are multiple ways to implement a chat server. Common practices include:
 
 Each solution has advantages and drawbacks. During the research phase, some projects stood out. One which
 
-- [go-random-chat](https://github.com/minghsu0107/go-random-chat): a fully scalable chat app with backend and frontend relying on websockets
-- [gorilla chat example](https://github.com/gorilla/websocket/tree/main/examples/chat) using websockets
-- [coder/websocket chat example](https://github.com/coder/websocket/blob/master/internal/examples/chat/chat.go) also relying on websockets
+- [go-random-chat](https://github.com/minghsu0107/go-random-chat), a fully scalable chat app with backend and frontend relying on websockets
+- [gorilla chat example](https://github.com/gorilla/websocket/tree/main/examples/chat), using websockets
+- [coder/websocket chat example](https://github.com/coder/websocket/blob/master/internal/examples/chat/chat.go), also relying on websockets
 
 Initially we also explored having a chat using raw TCP sockets (see removal commit [885d53f](https://github.com/Knoblauchpilze/chat-server/commit/885d53fd49c0afcf6d868fa9eba494b4eca79202)).
 
