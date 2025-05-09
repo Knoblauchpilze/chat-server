@@ -100,13 +100,15 @@ type mockDispatcher struct {
 	receivedMsg persistence.Message
 }
 
-func (m *mockDispatcher) Broadcast(msg persistence.Message) {
+func (m *mockDispatcher) Broadcast(msg persistence.Message) error {
 	m.receivedMsg = msg
+	return nil
 }
 
-func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg persistence.Message) {
+func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg persistence.Message) error {
 	m.receivedId = id
 	m.receivedMsg = msg
+	return nil
 }
 
 func (m *mockDispatcher) SendTo(id uuid.UUID, msg persistence.Message) {

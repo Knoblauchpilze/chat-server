@@ -6,7 +6,7 @@ import (
 )
 
 type Dispatcher interface {
-	Broadcast(msg persistence.Message)
-	BroadcastExcept(id uuid.UUID, msg persistence.Message)
+	Broadcast(msg persistence.Message) error
+	BroadcastExcept(id uuid.UUID, msg persistence.Message) error
 	SendTo(id uuid.UUID, msg persistence.Message)
 }

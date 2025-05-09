@@ -270,6 +270,63 @@ data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
 	)
 }
 
+func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t *testing.T) {
+	props := newTestServerConfig(7606)
+	cancellable, cancelServer := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
+
+	requestDto := communication.MessageDtoRequest{
+		User:    user2.Id,
+		Room:    room.Id,
+		Message: fmt.Sprintf("%s says hello to %s", user2.Name, room.Id),
+	}
+
+	// Post a message with a delay to let the user the time to subscribe
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+
+		url := fmt.Sprintf("http://localhost:7606/v1/chats/rooms/%s/messages", room.Id)
+		rw := doRequestWithData(t, http.MethodPost, url, requestDto)
+
+		assert.Equal(t, http.StatusAccepted, rw.StatusCode)
+	}()
+
+	// Terminate server after a while so that the request can be finish
+	// successfully
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		cancelServer()
+	}()
+
+	// Give the message a bit of time to be processed
+	reqCtx, cancelReq := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelReq()
+
+	url := fmt.Sprintf("http://localhost:7606/v1/chats/users/%s/subscribe", user1.Id)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	client := &http.Client{}
+	rw, err := client.Do(req)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	wg.Wait()
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+
+	body, err := io.ReadAll(rw.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []byte{}, body, "Actual body: %s", string(body))
+}
+
 func newTestServerConfig(httpPort uint16) Configuration {
 	baseConfig := DefaultConfig()
 	baseConfig.Server.Port = httpPort

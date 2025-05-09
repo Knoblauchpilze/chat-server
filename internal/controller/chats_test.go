@@ -239,7 +239,7 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	repos := repositories.New(dbConn)
-	manager := clients.NewManager()
+	manager := clients.NewManager(repos)
 	processor := messages.NewMessageProcessor(1, manager, repos)
 	opts := service.MessageServiceOpts{
 		DbConn:                 dbConn,
