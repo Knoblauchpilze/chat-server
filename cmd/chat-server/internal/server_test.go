@@ -243,7 +243,6 @@ func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
 
 	// We don't know the id of the message so we need to use a regex
-	// https://ihateregex.io/expr/uuid/
 	const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 	const timePatten = "[0-9-]+T[0-9:.]+Z"
 	expectedBodyRegex := fmt.Sprintf(
