@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2025-02-22T16:05:17.869Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0" etag="M_a_ZKiUiHH3oQfCKoDr" version="24.0.1" type="device">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0" version="27.0.2">
   <diagram name="Page-1" id="RYfBJ_GkV-N5yO0ot97l">
-    <mxGraphModel dx="1715" dy="958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -100,6 +100,90 @@
         </mxCell>
         <mxCell id="8hK2ABjLkPhwPhNSrNZY-33" value="Database" style="shape=datastore;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="560" y="870" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-4" value="V1" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry y="-20" width="700" height="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-5" target="YseXCvkxjifxJaVSMTME-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-5" target="YseXCvkxjifxJaVSMTME-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-5" value="Clients" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="1630" y="-40" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-6" target="YseXCvkxjifxJaVSMTME-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-6" value="POST /v1/chats/rooms/:id/message" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="105" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-7" target="YseXCvkxjifxJaVSMTME-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-34" value="OnConnect" style="edgeLabel;html=1;align=left;verticalAlign=middle;resizable=0;points=[];" connectable="0" vertex="1" parent="YseXCvkxjifxJaVSMTME-24">
+          <mxGeometry x="0.1299" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-7" value="GET /v1/chats/users/:id/subscribe" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="140" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-10" value="Database" style="shape=datastore;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1615" y="690" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1474" y="639.9999999999995" as="sourcePoint" />
+            <mxPoint x="1644" y="690" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1644" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-11" target="YseXCvkxjifxJaVSMTME-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-32" value="Broadcast" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];" connectable="0" vertex="1" parent="YseXCvkxjifxJaVSMTME-25">
+          <mxGeometry x="-0.4641" y="4" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-11" value="&lt;div&gt;MessageProcessor&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;- persist messages to the DB&lt;/div&gt;&lt;div&gt;- broadcast messages&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="560" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-13" target="YseXCvkxjifxJaVSMTME-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-33" value="&lt;div&gt;Send&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];" connectable="0" vertex="1" parent="YseXCvkxjifxJaVSMTME-27">
+          <mxGeometry x="0.3228" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-13" value="&lt;div&gt;Manager&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;- handle list of clients&lt;/div&gt;&lt;div&gt;- dispatch messages to appropriate clients&lt;/div&gt;&lt;div&gt;- gracefully terminates clients when the server shutdowns&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="330" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-14" target="YseXCvkxjifxJaVSMTME-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-31" value="Enqueue" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];" connectable="0" vertex="1" parent="YseXCvkxjifxJaVSMTME-21">
+          <mxGeometry x="0.0421" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-14" value="&lt;div&gt;MessageService&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;- validate messages (is the user allowed to post in this room, etc.)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="946.25" y="260" width="357.5" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-26" value="&lt;div&gt;Client&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;- individual representation of a client&lt;/div&gt;&lt;div&gt;- handle buffering and formatting to SSE&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1930" y="342.5" width="250" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="YseXCvkxjifxJaVSMTME-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="YseXCvkxjifxJaVSMTME-26" target="YseXCvkxjifxJaVSMTME-5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2085" y="-10" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

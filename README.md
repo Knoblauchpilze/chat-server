@@ -18,26 +18,76 @@ Chat rooms can be created by users and should have a unique name. A user is free
 
 ## Technology overview
 
-The chat server uses persistent TCP connections to receive messages from users and send them messages concerning them. The connection can either be closed by the user (which the server detects) or by the server in case the user misbehave.
+There are multiple ways to implement a chat server. Common practices include:
+
+- using TCP sockets
+- using websockets
+- using SSE
+
+Each solution has advantages and drawbacks. During the research phase, some projects stood out. One which
+
+- [go-random-chat](https://github.com/minghsu0107/go-random-chat): a fully scalable chat app with backend and frontend relying on websockets
+- [gorilla chat example](https://github.com/gorilla/websocket/tree/main/examples/chat) using websockets
+- [coder/websocket chat example](https://github.com/coder/websocket/blob/master/internal/examples/chat/chat.go) also relying on websockets
+
+Initially we also explored having a chat using raw TCP sockets (see removal commit [885d53f](https://github.com/Knoblauchpilze/chat-server/commit/885d53fd49c0afcf6d868fa9eba494b4eca79202)).
+
+The current implementation uses [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) to handle the publishing of messages to the client.
+
+This comes from a reasoning that:
+
+- websockets are not [super widely adopted](https://stackoverflow.com/questions/28582935/does-http-2-make-websockets-obsolete) and (as for everything) it seems they are a bit clunky
+- they don't cleanly support authentication although some [hacky ways exist](https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api) around it
+- it was generally a pain to make it work in the browser, especially after the move from raw TCP sockets
+
+For all these reasons we decided to go for SSE.
+
+The approach is similar to what is done in the [websocket example](https://github.com/coder/websocket/blob/master/internal/examples/chat/chat.go#L114) of `coder/websocket`. The idea is that each client needs to subscribe to receive updates and uses a regular HTTP endpoint to post new messages.
+
+In order to decouple message processing and publishing and allow scalability, the server defines an internal message bus which handles:
+
+- saving messages to the database
+- pushing messages to connected clients
+
+This might allow to use a message driven architecture in the future?
 
 Messages, rooms and concepts of the server are saved in a database to guarantee the persistence of the data.
 
-## The TCP server
+## Receiving messages
 
-The general idea is that the server is listening on a specific port to which clients can connect to. As soon as a connection is established, some callbacks are triggered to know if the user should be denied or granted the connection.
+To receive update and messages, clients needs to perform a `GET` request at `/v1/chats/users/:id/subscribe`. This connection will use SSE to send updates in a format looking like so:
 
-The connection stays open for the duration of the session and is used as a bidirectional communication channel between the server and the user.
+```
+id: 8f102c70-8eba-4094-bd4d-7f70d71b21f2
+data: {"id":"8f102c70-8eba-4094-bd4d-7f70d71b21f2","user":"f2d9ce22-179d-431c-b63d-43d5a8ab5e18","room":"111838db-a871-47be-9149-c974fd356316","message":"Hello","created_at":"2025-05-04T20:56:16Z"}
 
-We want to handle graceful shutdown of the server. This means making sure that all connections are properly terminated (with a message sent to the client). Additionally this also means persisting any state to the database before closing the server. This [tutorial](https://eli.thegreenplace.net/2020/graceful-shutdown-of-a-tcp-server-in-go/) is useful to describe the mechanism we followed.
+id: c67d411c-e62d-4e2b-8008-415028538ee6
+data: {"id":"c67d411c-e62d-4e2b-8008-415028538ee6","user":"3322ed83-cce4-49da-a1cb-2219990af50c","room":"111838db-a871-47be-9149-c974fd356316","message":"Hello back","created_at":"2025-05-04T20:57:16Z"}
+
+...
+```
+
+The messages are formatted in a JSON format and respect the syntax expected for such events. We used heavily what is provided in the [echo documentation](https://echo.labstack.com/docs/cookbook/sse) about SSE to implement the logic in this project.
+
+The user should only receive messages that are relevant to them: no messages for rooms that they don't belong to should be transmitted.
+
+## Posting new messages
+
+For a chat server it might be beneficial to use websockets to send messages: the idea is that it can be a relatively frequent operation and it might be nice to not reopen a connection each time.
+
+In this project we threw those concerns away and just provided a HTTP endpoint to post a message: `v1/chats/rooms/:id/messages`. It is expected to provided a body containing the message to create.
+
+The response will be (if everything goes well) `202` (Accetped) to indicate that the message has been taken into consideration by the server and will be processed later on. As we have an asynchronous process we don't create it immediately in the database but rather post it to the internal message bus.
+
+In the future, this might be posted to a message broker (such as Kafka).
 
 ## Connection lifecycle
 
-When a connection has been accepted, the server listens to events happening on it. This typically includes:
+The `POST` requests to send messages are only lasting the time it takes for the server to read the message's body and close the connection.
 
-- data received from the user
-- disconnection
+It is different for the `GET` request to subscribe to updates. This connection typically stays open for the duration of the chat session and will be used to send messages update to the client.
 
-On top of this there are internal events that will produce data to send through the connection. This mainly includes messages for rooms that the user belongs to or direct messages from other users.
+We currently don't have a ping/pong mechanism but this would be a good addition to make sure that we don't keep stale connections.
 
 ## Processing of messages
 
@@ -45,29 +95,20 @@ The diagram below presents the architecture of the server and how it handles mes
 
 ![Server architecture](resources/server-architecture.png)
 
-The clients are initially received by the `ConnectionAcceptor`, which forwards the connection request to the `ConnectionManager` which in turn forwards it to the `ClientManager`.
+The clients need to establish two connections:
 
-The `ClientManager` is the central authority keeping track of the clients connected to a node of the chat server. It also performs the filtering to allow/deny connection requests from certain clients (typically if a client is banned).
+- a long-lasting `GET` connection to the `subscribe` endpoint to receive updates
+- ephemeral `POST` connections to publish messages to the server
 
-It also handles the handshake with new clients: this means trying to communicate in a predefined way to establish that the conneciton is legit and that we have a genuine client trying to interact with the chat and not some attacker/bot probing the connection.
+The `MessageService` has the responbility to validate messages and publish them to the internal message processor. This is currently represented by a channel but could be made more scalable by using a message bus.
 
-When the connection is approved, the `ClientManager` will send a message to the internal message queue (see following paragraphs) and the `ConnectionManager` will start a dedicated process to receive data from the client.
+The `Manager` is notified whenever a client establishes a new subscribe request and keeps track of the connected clients to a specific pod (in the current state, always 1). This would allow to scale in the future. It is also notified by the `MessageProcessor` of incoming messages. This could be achieved by using a message broker such as Kafka.
 
-Each time such data is received, the `MessageParser` will be notified and will try to decode it: if it fails to do so, the connection will be terminated. If it succeeds, the message will be sent to the `InputMessageQueue`.
+Finally the `Client` is a little convenience structure which also contains a buffer of messages to send to the client. It handles:
 
-The `InputMessageQueue`'s role is to dispatch the messages and to allow their processing. It's not doing any processing itself but rather acts as a synchronization mechanism bewteen the `ClientManager`/`MessageParser` and the `MessageProcessor`s.
-
-The `MessageProcessor`s are designed to be executed concurrently: they each listen to the message queue and grab messages as they appear. They handle the necessary processing for the message which includes:
-
-- persisting information to the database
-- creating new messages
-- route the messages to the concerned clients
-
-Depending on the message some of the above operations might not happen.
-
-When a message needs to be sent to the customer, the `MessageProcessor` forwards the call to the `ClientManager` as it is the only actor which knows about the connections.
-
-At any point if a client disconnects, the `ConnectionManager` will notify the `ClientManager`, which will take the appropriate actions to reflect this in the database and notify other clients.
+- formatting messages in a way compatible with SSE syntax
+- regularly ping the client to make sure it's still alive
+  Hopefully it can keep up with the amount of messages to send even for slow clients. In case it can't we could implement a mechanism to terminate slow clients.
 
 # Ideas
 
@@ -76,3 +117,7 @@ At any point if a client disconnects, the `ConnectionManager` will notify the `C
 - Do not allow users to leave private rooms (or delete them)
 - Implement invitation to a room
 - Login and logout system
+- Distributed architecture through a message broker
+- Read/unread messages
+- User-123-has-come-online type notifications
+- Allow/disallow lists (e.g. ban)
