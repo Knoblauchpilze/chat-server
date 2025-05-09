@@ -115,7 +115,7 @@ func TestIT_ChatsController_PostMessageForRoom_ReturnsAccepted(t *testing.T) {
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	requestDto := communication.MessageDtoRequest{
 		User:    user.Id,
@@ -144,7 +144,7 @@ func TestIT_ChatsController_PostMessageForRoom_SendsMessageToProcessor(t *testin
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	requestDto := communication.MessageDtoRequest{
 		User:    user.Id,
@@ -182,7 +182,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomInRequestDoesNotMatchRout
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	otherId := uuid.New()
 	assert.NotEqual(t, otherId, room.Id)
@@ -253,8 +253,8 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user1.Id, room.Id)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	requestDto := communication.MessageDtoRequest{
 		User:    user2.Id,

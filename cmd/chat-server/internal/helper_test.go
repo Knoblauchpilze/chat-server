@@ -102,7 +102,7 @@ func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(

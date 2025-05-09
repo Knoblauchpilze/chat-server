@@ -155,7 +155,7 @@ func TestIT_UserService_ListForUser(t *testing.T) {
 	room1 := insertTestRoom(t, conn)
 	insertTestRoom(t, conn)
 
-	insertUserInRoom(t, conn, user.Id, room1.Id)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
 
 	actual, err := service.ListForUser(context.Background(), user.Id)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -252,7 +252,7 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Zero(t, value)
 }
 
-func insertUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(

@@ -122,7 +122,7 @@ func TestIT_RunServer_ListForRoom(t *testing.T) {
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
@@ -156,7 +156,7 @@ func TestIT_RunServer_Message_PostGetWorkflow(t *testing.T) {
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user.Id, room.Id)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
@@ -204,8 +204,8 @@ func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user1.Id, room.Id)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
@@ -279,7 +279,7 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
-	insertUserInRoom(t, dbConn, user2.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
 
