@@ -1,18 +1,22 @@
 package clients
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUnit_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
-	manager := NewManager()
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	id := uuid.New()
 
 	err := manager.OnConnect(id, nil)
@@ -28,7 +32,8 @@ func TestUnit_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
 }
 
 func TestUnit_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
-	manager := NewManager()
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	id := uuid.New()
 	mock := &mockClient{}
 
@@ -43,18 +48,22 @@ func TestUnit_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
 	assert.Equal(t, 1, mock.stopCalled)
 }
 
-func TestUnit_Manager_WhenBroadcast_ExpectMessageReceived(t *testing.T) {
-	manager := NewManager()
-	id := uuid.New()
+func TestUnit_Manager_WhenUserInRoomAndBroadcast_ExpectMessageReceived(t *testing.T) {
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	mock := &mockClient{}
 
-	err := manager.OnConnect(id, mock)
+	user1 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+
+	err := manager.OnConnect(user1.Id, mock)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	msg := persistence.Message{
 		Id:        uuid.New(),
 		ChatUser:  uuid.New(),
-		Room:      uuid.New(),
+		Room:      room.Id,
 		Message:   "Hello",
 		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
 	}
@@ -65,19 +74,46 @@ func TestUnit_Manager_WhenBroadcast_ExpectMessageReceived(t *testing.T) {
 	assert.Equal(t, expected, mock.enqueued, 1)
 }
 
-func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *testing.T) {
-	manager := NewManager()
-	id := uuid.New()
+func TestUnit_Manager_WhenUserNotInRoomAndBroadcast_ExpectMessageNotReceived(t *testing.T) {
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	mock := &mockClient{}
 
-	err := manager.OnConnect(id, mock)
+	user1 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+
+	err := manager.OnConnect(user1.Id, mock)
 	assert.Nil(t, err, "Actual err: %v", err)
-	manager.OnDisconnect(id)
 
 	msg := persistence.Message{
 		Id:        uuid.New(),
 		ChatUser:  uuid.New(),
-		Room:      uuid.New(),
+		Room:      room.Id,
+		Message:   "Hello",
+		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
+	}
+	manager.Broadcast(msg)
+
+	assert.Equal(t, 0, mock.enqueueCalled)
+}
+
+func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *testing.T) {
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
+	mock := &mockClient{}
+
+	user1 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+
+	err := manager.OnConnect(user1.Id, mock)
+	assert.Nil(t, err, "Actual err: %v", err)
+	manager.OnDisconnect(user1.Id)
+
+	msg := persistence.Message{
+		Id:        uuid.New(),
+		ChatUser:  uuid.New(),
+		Room:      room.Id,
 		Message:   "Hello",
 		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
 	}
@@ -87,25 +123,30 @@ func TestUnit_Manager_WhenBroadcastAfterDisconnect_ExpectNoMessageReceived(t *te
 }
 
 func TestUnit_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *testing.T) {
-	manager := NewManager()
-	clientId1 := uuid.New()
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	mock1 := &mockClient{}
-	clientId2 := uuid.New()
 	mock2 := &mockClient{}
 
-	err := manager.OnConnect(clientId1, mock1)
+	user1 := insertTestUser(t, dbConn)
+	user2 := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	registerUserInRoom(t, dbConn, user1.Id, room.Id)
+	registerUserInRoom(t, dbConn, user2.Id, room.Id)
+
+	err := manager.OnConnect(user1.Id, mock1)
 	assert.Nil(t, err, "Actual err: %v", err)
-	err = manager.OnConnect(clientId2, mock2)
+	err = manager.OnConnect(user2.Id, mock2)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	msg := persistence.Message{
 		Id:        uuid.New(),
 		ChatUser:  uuid.New(),
-		Room:      uuid.New(),
+		Room:      room.Id,
 		Message:   "Hello",
 		CreatedAt: time.Date(2025, 5, 5, 21, 44, 20, 0, time.UTC),
 	}
-	manager.BroadcastExcept(clientId2, msg)
+	manager.BroadcastExcept(user2.Id, msg)
 
 	assert.Equal(t, 1, mock1.enqueueCalled)
 	expected := []persistence.Message{msg}
@@ -115,7 +156,8 @@ func TestUnit_Manager_WhenBroadcastExceptToClient_ExpectNoMessageReceived(t *tes
 }
 
 func TestUnit_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t *testing.T) {
-	manager := NewManager()
+	manager, dbConn := newTestManager(t)
+	defer dbConn.Close(context.Background())
 	clientId1 := uuid.New()
 	mock1 := &mockClient{}
 	clientId2 := uuid.New()
@@ -140,6 +182,15 @@ func TestUnit_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t
 	assert.Equal(t, expected, mock1.enqueued, 1)
 
 	assert.Equal(t, 0, mock2.enqueueCalled)
+}
+
+func newTestManager(t *testing.T) (Manager, db.Connection) {
+	dbConn := newTestDbConnection(t)
+	repos := repositories.New(dbConn)
+
+	manager := NewManager(repos)
+
+	return manager, dbConn
 }
 
 func asyncStartManagerAndAssertNoError(

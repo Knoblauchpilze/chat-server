@@ -89,9 +89,18 @@ func TestIT_MessageService_PostMessage_WhenUserNotInRoom_ExpectError(t *testing.
 }
 
 func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *testing.T) {
-	manager := clients.NewManager()
-	service, dbConn := newTestMessageService(t, nil, manager)
+	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
+	repos := repositories.New(dbConn)
+	manager := clients.NewManager(repos)
+	opts := MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repositories.New(dbConn),
+		Processor:              nil,
+		Manager:                manager,
+		ClientMessageQueueSize: 1,
+	}
+	service := NewMessageService(opts)
 
 	rec := httptest.NewRecorder()
 	response := echo.NewResponse(rec, echo.New())
@@ -108,7 +117,7 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	repos := repositories.New(dbConn)
-	manager := clients.NewManager()
+	manager := clients.NewManager(repos)
 	processor := messages.NewMessageProcessor(1, manager, repos)
 	opts := MessageServiceOpts{
 		DbConn:                 dbConn,
@@ -183,7 +192,7 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	repos := repositories.New(dbConn)
-	manager := clients.NewManager()
+	manager := clients.NewManager(repos)
 	processor := messages.NewMessageProcessor(1, manager, repos)
 	opts := MessageServiceOpts{
 		DbConn:                 dbConn,

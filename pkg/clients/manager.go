@@ -1,12 +1,14 @@
 package clients
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
+	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 )
 
@@ -25,14 +27,18 @@ type managerImpl struct {
 	quit    chan struct{}
 	done    chan struct{}
 
+	userRepo repositories.UserRepository
+
 	lock    sync.RWMutex
 	clients map[uuid.UUID]Client
 }
 
-func NewManager() Manager {
+func NewManager(repos repositories.Repositories) Manager {
 	return &managerImpl{
 		quit: make(chan struct{}, 1),
 		done: make(chan struct{}, 1),
+
+		userRepo: repos.User,
 
 		clients: make(map[uuid.UUID]Client),
 	}
@@ -98,26 +104,40 @@ func (m *managerImpl) OnDisconnect(id uuid.UUID) {
 	delete(m.clients, id)
 }
 
-func (m *managerImpl) Broadcast(msg persistence.Message) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-
-	for _, client := range m.clients {
-		client.Enqueue(msg)
+func (m *managerImpl) Broadcast(msg persistence.Message) error {
+	users, err := m.userRepo.ListForRoom(context.Background(), msg.Room)
+	if err != nil {
+		return errors.WrapCode(err, ErrBroadcastFailure)
 	}
+
+	ids := make([]uuid.UUID, 0, len(users))
+	for _, user := range users {
+		ids = append(ids, user.Id)
+	}
+
+	m.sendToMultiple(ids, msg)
+
+	return nil
 }
 
-func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg persistence.Message) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
+func (m *managerImpl) BroadcastExcept(id uuid.UUID, msg persistence.Message) error {
+	users, err := m.userRepo.ListForRoom(context.Background(), msg.Room)
+	if err != nil {
+		return errors.WrapCode(err, ErrBroadcastFailure)
+	}
 
-	for clientId, client := range m.clients {
-		if id == clientId {
+	ids := make([]uuid.UUID, 0, len(users))
+	for _, user := range users {
+		if user.Id == id {
 			continue
 		}
 
-		client.Enqueue(msg)
+		ids = append(ids, user.Id)
 	}
+
+	m.sendToMultiple(ids, msg)
+
+	return nil
 }
 
 func (m *managerImpl) SendTo(id uuid.UUID, msg persistence.Message) {
@@ -130,4 +150,18 @@ func (m *managerImpl) SendTo(id uuid.UUID, msg persistence.Message) {
 	}
 
 	client.Enqueue(msg)
+}
+
+func (m *managerImpl) sendToMultiple(ids []uuid.UUID, msg persistence.Message) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	for _, id := range ids {
+		client, ok := m.clients[id]
+		if !ok {
+			continue
+		}
+
+		client.Enqueue(msg)
+	}
 }

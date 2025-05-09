@@ -24,7 +24,7 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 
 	repos := repositories.New(dbConn)
 
-	manager := clients.NewManager()
+	manager := clients.NewManager(repos)
 	processor := messages.NewMessageProcessor(config.MessageQueueSize, manager, repos)
 
 	opts := service.MessageServiceOpts{
