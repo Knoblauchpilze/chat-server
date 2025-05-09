@@ -19,25 +19,30 @@ type MessageService interface {
 	ServeClient(ctx context.Context, user uuid.UUID, response *echo.Response) error
 }
 
+type MessageServiceOpts struct {
+	DbConn                 db.Connection
+	Repos                  repositories.Repositories
+	Processor              messages.Processor
+	Manager                clients.Manager
+	ClientMessageQueueSize int
+}
+
 type messageServiceImpl struct {
 	conn     db.Connection
 	roomRepo repositories.RoomRepository
 
-	processor messages.Processor
-	manager   clients.Manager
+	processor              messages.Processor
+	manager                clients.Manager
+	clientMessageQueueSize int
 }
 
-func NewMessageService(
-	conn db.Connection,
-	repos repositories.Repositories,
-	processor messages.Processor,
-	manager clients.Manager,
-) MessageService {
+func NewMessageService(opts MessageServiceOpts) MessageService {
 	return &messageServiceImpl{
-		conn:      conn,
-		roomRepo:  repos.Room,
-		processor: processor,
-		manager:   manager,
+		conn:                   opts.DbConn,
+		roomRepo:               opts.Repos.Room,
+		processor:              opts.Processor,
+		manager:                opts.Manager,
+		clientMessageQueueSize: opts.ClientMessageQueueSize,
 	}
 }
 
@@ -68,8 +73,7 @@ func (s *messageServiceImpl) ServeClient(
 ) error {
 	// TODO: We could add some ping/pong mechanism. This could serve as a base
 	// for idle checking
-	// TODO: Make the message queue's size configurable
-	client, err := clients.New(1, user, response)
+	client, err := clients.New(s.clientMessageQueueSize, user, response)
 	if err != nil {
 		return err
 	}

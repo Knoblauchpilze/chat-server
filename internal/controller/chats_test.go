@@ -241,12 +241,14 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 	repos := repositories.New(dbConn)
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(1, manager, repos)
-	service := service.NewMessageService(
-		dbConn,
-		repos,
-		processor,
-		manager,
-	)
+	opts := service.MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repos,
+		Processor:              processor,
+		Manager:                manager,
+		ClientMessageQueueSize: 1,
+	}
+	service := service.NewMessageService(opts)
 
 	user1 := insertTestUser(t, dbConn)
 	user2 := insertTestUser(t, dbConn)
@@ -331,7 +333,14 @@ func newTestMessageService(
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 	mock := &mockProcessor{}
-	return service.NewMessageService(dbConn, repos, mock, nil), dbConn, mock
+	opts := service.MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repos,
+		Processor:              mock,
+		Manager:                nil,
+		ClientMessageQueueSize: 1,
+	}
+	return service.NewMessageService(opts), dbConn, mock
 }
 
 func asyncStartProcessorAndAssertNoError(

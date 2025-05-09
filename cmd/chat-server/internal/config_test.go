@@ -25,6 +25,12 @@ func TestUnit_DefaultConfig_DefinesReasonableMessageQueueSize(t *testing.T) {
 	assert.Equal(t, 10, config.MessageQueueSize)
 }
 
+func TestUnit_DefaultConfig_DefinesReasonableClientMessageQueueSize(t *testing.T) {
+	config := DefaultConfig()
+
+	assert.Equal(t, 2, config.ClientMessageQueueSize)
+}
+
 func TestUnit_DefaultConfig_SetsExpectedDbConnection(t *testing.T) {
 	config := DefaultConfig()
 

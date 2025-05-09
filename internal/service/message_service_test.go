@@ -110,7 +110,14 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 	repos := repositories.New(dbConn)
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(1, manager, repos)
-	service := NewMessageService(dbConn, repos, processor, manager)
+	opts := MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repos,
+		Processor:              processor,
+		Manager:                manager,
+		ClientMessageQueueSize: 1,
+	}
+	service := NewMessageService(opts)
 
 	user1 := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -178,7 +185,14 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	repos := repositories.New(dbConn)
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(1, manager, repos)
-	service := NewMessageService(dbConn, repos, processor, manager)
+	opts := MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repos,
+		Processor:              processor,
+		Manager:                manager,
+		ClientMessageQueueSize: 1,
+	}
+	service := NewMessageService(opts)
 
 	user := insertTestUser(t, dbConn)
 	room := insertTestRoom(t, dbConn)
@@ -225,8 +239,16 @@ func newTestMessageService(
 	manager clients.Manager,
 ) (MessageService, db.Connection) {
 	dbConn := newTestDbConnection(t)
-	repos := repositories.New(dbConn)
-	return NewMessageService(dbConn, repos, processor, manager), dbConn
+
+	opts := MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repositories.New(dbConn),
+		Processor:              processor,
+		Manager:                manager,
+		ClientMessageQueueSize: 1,
+	}
+
+	return NewMessageService(opts), dbConn
 }
 
 func asyncStartMessageProcessorAndAssertNoError(

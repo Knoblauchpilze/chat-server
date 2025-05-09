@@ -27,10 +27,18 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	manager := clients.NewManager()
 	processor := messages.NewMessageProcessor(config.MessageQueueSize, manager, repos)
 
+	opts := service.MessageServiceOpts{
+		DbConn:                 dbConn,
+		Repos:                  repos,
+		Processor:              processor,
+		Manager:                manager,
+		ClientMessageQueueSize: config.ClientMessageQueueSize,
+	}
+
 	services := service.Services{
 		Room:    service.NewRoomService(dbConn, repos),
 		User:    service.NewUserService(dbConn, repos),
-		Message: service.NewMessageService(dbConn, repos, processor, manager),
+		Message: service.NewMessageService(opts),
 	}
 
 	s, err := configureHttpServer(config.Server, dbConn, services, log)
