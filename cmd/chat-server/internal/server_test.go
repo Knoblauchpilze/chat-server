@@ -298,7 +298,7 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 		assert.Equal(t, http.StatusAccepted, rw.StatusCode)
 	}()
 
-	// Terminate server after a while so that the request can be finish
+	// Terminate server after a while so that the request can be finished
 	// successfully
 	go func() {
 		time.Sleep(200 * time.Millisecond)
