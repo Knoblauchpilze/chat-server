@@ -30,11 +30,16 @@ func New(
 }
 
 func generateStartCallback(rw http.ResponseWriter) messages.StartCallback {
+	flusher := rw.(http.Flusher)
+
 	return func() error {
 		// https://echo.labstack.com/docs/cookbook/sse
 		rw.Header().Set("Content-Type", "text/event-stream")
 		rw.Header().Set("Cache-Control", "no-cache")
 		rw.Header().Set("Connection", "keep-alive")
+
+		// https://github.com/tmaxmax/go-sse/blob/e429bb3114f36f65a121c25918e1131b8de6affe/session.go#L69
+		flusher.Flush()
 		return nil
 	}
 }
