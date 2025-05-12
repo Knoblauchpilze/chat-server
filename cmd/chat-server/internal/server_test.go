@@ -231,11 +231,16 @@ func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
 
 	url := fmt.Sprintf("http://localhost:7605/v1/chats/users/%s/subscribe", user1.Id)
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Connection", "keep-alive")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	client := &http.Client{}
 	rw, err := client.Do(req)
 	assert.Nil(t, err, "Actual err: %v", err)
+
+	// Wait a bit for the message to be processed and sent to the client
+	time.Sleep(200 * time.Millisecond)
 
 	cancelServer()
 	wg.Wait()
@@ -298,13 +303,6 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 		assert.Equal(t, http.StatusAccepted, rw.StatusCode)
 	}()
 
-	// Terminate server after a while so that the request can be finished
-	// successfully
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		cancelServer()
-	}()
-
 	// Give the message a bit of time to be processed
 	reqCtx, cancelReq := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancelReq()
@@ -317,13 +315,16 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 	rw, err := client.Do(req)
 	assert.Nil(t, err, "Actual err: %v", err)
 
+	// Wait a bit for the message to be processed and sent to the client
+	time.Sleep(200 * time.Millisecond)
+
+	cancelServer()
 	wg.Wait()
 
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
 
-	body, err := io.ReadAll(rw.Body)
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, []byte{}, body, "Actual body: %s", string(body))
+	_, err = io.ReadAll(rw.Body)
+	assert.Equal(t, io.ErrUnexpectedEOF, err, "Actual err: %v", err)
 }
 
 func newTestServerConfig(httpPort uint16) Configuration {
