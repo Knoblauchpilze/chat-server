@@ -60,7 +60,7 @@ func TestIT_MessageProcessor_EnqueueMessage_ExpectSentToDispatcher(t *testing.T)
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assert.Equal(t, user.Id, mock.receivedId)
+	// Expect no uuid received
 	assert.Equal(t, msg, mock.receivedMsg)
 }
 
@@ -96,24 +96,14 @@ func newTestMessageProcessor(t *testing.T) (Processor, db.Connection, *mockDispa
 }
 
 type mockDispatcher struct {
-	receivedId  uuid.UUID
+	Dispatcher
+
 	receivedMsg persistence.Message
 }
 
 func (m *mockDispatcher) Broadcast(msg persistence.Message) error {
 	m.receivedMsg = msg
 	return nil
-}
-
-func (m *mockDispatcher) BroadcastExcept(id uuid.UUID, msg persistence.Message) error {
-	m.receivedId = id
-	m.receivedMsg = msg
-	return nil
-}
-
-func (m *mockDispatcher) SendTo(id uuid.UUID, msg persistence.Message) {
-	m.receivedId = id
-	m.receivedMsg = msg
 }
 
 type mockMessageRepository struct {

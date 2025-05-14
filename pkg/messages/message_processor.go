@@ -33,7 +33,7 @@ func generateMessageCallback(
 		}
 
 		// TODO: Also here, we probably don't want to return the error
-		err = dispatcher.BroadcastExcept(msg.ChatUser, msg)
+		err = dispatcher.Broadcast(msg)
 		if err != nil {
 			return err
 		}
