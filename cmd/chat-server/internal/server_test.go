@@ -231,8 +231,6 @@ func TestIT_RunServer_SubscribeToMessage_ReceivesPostedMessage(t *testing.T) {
 
 	url := fmt.Sprintf("http://localhost:7605/v1/chats/users/%s/subscribe", user1.Id)
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Connection", "keep-alive")
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	client := &http.Client{}
