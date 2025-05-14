@@ -188,7 +188,7 @@ data: %s
 	)
 }
 
-func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClientDoesNotReceiveIt(t *testing.T) {
+func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClientReceivesIt(t *testing.T) {
 	dbConn := newTestDbConnection(t)
 	defer dbConn.Close(context.Background())
 	repos := repositories.New(dbConn)
@@ -239,7 +239,26 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	body, err := io.ReadAll(rec.Body)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Len(t, body, 0, "Received unexpected body: %s", string(body))
+	received := communication.ToMessageDtoResponse(msg)
+	msgAsJson, err := json.Marshal(received)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := fmt.Sprintf(
+		`id: %s
+data: %s
+
+`,
+		msg.Id.String(),
+		msgAsJson,
+	)
+	assert.Equal(
+		t,
+		[]byte(expected),
+		body,
+		"Expected %s, got: %s",
+		string(expected),
+		string(body),
+	)
 }
 
 func newTestMessageService(
