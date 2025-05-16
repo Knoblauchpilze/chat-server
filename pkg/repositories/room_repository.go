@@ -19,7 +19,6 @@ type RoomRepository interface {
 	RegisterUserInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 	RegisterUserByNameInRoom(ctx context.Context, tx db.Transaction, user string, room uuid.UUID) error
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
-	DeleteUserFromRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 	DeleteUserFromRooms(ctx context.Context, tx db.Transaction, user uuid.UUID) error
 }
 
@@ -214,25 +213,6 @@ func (r *roomRepositoryImpl) Delete(
 	ctx context.Context, tx db.Transaction, id uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteRoomSqlTemplate, id)
-	return err
-}
-
-const deleteUserFromByNameSqlTemplate = `
-DELETE FROM
-	room_user AS rud
-USING
-	room_user AS ru
-	LEFT JOIN room AS r ON r.id = ru.room
-WHERE
-	rud.room = ru.room
-	AND rud.chat_user = ru.chat_user
-	AND ru.chat_user = $1
-	AND r.name = $2`
-
-func (r *roomRepositoryImpl) DeleteUserFromRoomByName(
-	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
-) error {
-	_, err := tx.Exec(ctx, deleteUserFromByNameSqlTemplate, user, room)
 	return err
 }
 
