@@ -62,12 +62,16 @@ func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 	repo := repositories.NewRoomRepository(conn)
 
+	tx, err := conn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
 	id := uuid.New()
 	room := persistence.Room{
 		Id:   id,
 		Name: fmt.Sprintf("my-room-%s", id),
 	}
-	out, err := repo.Create(context.Background(), room)
+	out, err := repo.Create(context.Background(), tx, room)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertRoomExists(t, conn, out.Id)
