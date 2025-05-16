@@ -11,7 +11,7 @@ import (
 )
 
 type RoomRepository interface {
-	Create(ctx context.Context, room persistence.Room) (persistence.Room, error)
+	Create(ctx context.Context, tx db.Transaction, room persistence.Room) (persistence.Room, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
 	UserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) (bool, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
@@ -38,11 +38,11 @@ INSERT INTO room (id, name)
 	RETURNING created_at, updated_at`
 
 func (r *roomRepositoryImpl) Create(
-	ctx context.Context, room persistence.Room,
+	ctx context.Context, tx db.Transaction, room persistence.Room,
 ) (persistence.Room, error) {
-	times, err := db.QueryOne[createdAtUpdatedAt](
+	times, err := db.QueryOneTx[createdAtUpdatedAt](
 		ctx,
-		r.conn,
+		tx,
 		createRoomSqlTemplate,
 		room.Id,
 		room.Name,
