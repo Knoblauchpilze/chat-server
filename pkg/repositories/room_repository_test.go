@@ -354,62 +354,6 @@ func TestIT_RoomRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	assertRoomExists(t, conn, room.Id)
 }
 
-func TestIT_RoomRepository_DeleteUserFromRoomByName(t *testing.T) {
-	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
-	defer conn.Close(context.Background())
-
-	user := insertTestUser(t, conn)
-	room := insertTestRoom(t, conn)
-	registerUserInRoom(t, conn, user.Id, room.Id)
-
-	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
-	tx.Close(context.Background())
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Id)
-}
-
-func TestIT_RoomRepository_DeleteUserFromRoomByName_DoesNotDeleteUser(t *testing.T) {
-	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
-	defer conn.Close(context.Background())
-
-	user := insertTestUser(t, conn)
-	room := insertTestRoom(t, conn)
-
-	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
-	tx.Close(context.Background())
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assertUserExists(t, conn, user.Id)
-}
-
-func TestIT_RoomRepository_DeleteUserFromRoomByName_DoesNotDeleteRoom(t *testing.T) {
-	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
-	defer conn.Close(context.Background())
-
-	user := insertTestUser(t, conn)
-	room := insertTestRoom(t, conn)
-
-	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
-	tx.Close(context.Background())
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assertRoomExists(t, conn, room.Id)
-}
-
-func TestIT_RoomRepository_DeleteUserFromRoomByName_WhenNotFound_ExpectSuccess(t *testing.T) {
-	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
-	defer conn.Close(context.Background())
-
-	user := uuid.New()
-	room := fmt.Sprintf("my-room-%s", uuid.NewString())
-
-	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user, room)
-	tx.Close(context.Background())
-
-	assert.Nil(t, err, "Actual err: %v", err)
-}
-
 func TestIT_RoomRepository_DeleteUserFromRooms(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
