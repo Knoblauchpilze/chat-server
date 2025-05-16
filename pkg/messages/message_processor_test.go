@@ -107,6 +107,8 @@ func (m *mockDispatcher) Broadcast(msg persistence.Message) error {
 }
 
 type mockMessageRepository struct {
+	repositories.MessageRepository
+
 	block   atomic.Bool
 	unblock chan struct{}
 
@@ -129,8 +131,4 @@ func (m *mockMessageRepository) Create(ctx context.Context, msg persistence.Mess
 	}
 
 	return persistence.Message{}, m.err
-}
-
-func (m *mockMessageRepository) ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error) {
-	return []persistence.Message{}, m.err
 }
