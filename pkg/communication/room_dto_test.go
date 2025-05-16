@@ -74,3 +74,18 @@ func TestUnit_ToRoomDtoResponse(t *testing.T) {
 	assert.Equal(t, "my-room", actual.Name)
 	assert.Equal(t, someTime, actual.CreatedAt)
 }
+
+func TestUnit_RoomRegistrationDtoRequest_MarshalsToCamelCase(t *testing.T) {
+	dto := RoomRegistrationDtoRequest{
+		User: uuid.MustParse("ebebaf8a-704c-4a83-a6e6-95f6f194c4eb"),
+	}
+
+	out, err := json.Marshal(dto)
+
+	assert.Nil(t, err)
+	expectedJson := `
+	{
+		"chat_user": "ebebaf8a-704c-4a83-a6e6-95f6f194c4eb"
+	}`
+	assert.JSONEq(t, expectedJson, string(out))
+}

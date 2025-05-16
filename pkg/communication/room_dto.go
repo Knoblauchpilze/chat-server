@@ -18,6 +18,10 @@ type RoomDtoResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type RoomRegistrationDtoRequest struct {
+	User uuid.UUID `json:"chat_user"`
+}
+
 func FromRoomDtoRequest(room RoomDtoRequest) persistence.Room {
 	t := time.Now().UTC()
 	return persistence.Room{
