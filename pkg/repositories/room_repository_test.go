@@ -362,7 +362,7 @@ func TestIT_RoomRepository_DeleteUserFromRooms(t *testing.T) {
 	room := insertTestRoom(t, conn)
 	registerUserInRoom(t, conn, user.Id, room.Id)
 
-	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
+	err := repo.DeleteUserFromRooms(context.Background(), tx, user.Id)
 	tx.Close(context.Background())
 
 	assert.Nil(t, err, "Actual err: %v", err)
