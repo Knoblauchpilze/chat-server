@@ -153,7 +153,7 @@ func TestIT_RoomRepository_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectFailure
 	tx.Close(context.Background())
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrNoSuchRoom),
 		"Actual err: %v",
 		err,
 	)
@@ -171,7 +171,7 @@ func TestIT_RoomRepository_RegisterUserInRoom_WhenUserDoesNotExist_ExpectFailure
 	tx.Close(context.Background())
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrNoSuchUser),
 		"Actual err: %v",
 		err,
 	)
@@ -190,7 +190,7 @@ func TestIT_RoomRepository_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectFa
 	tx.Close(context.Background())
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
+		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
 		"Actual err: %v",
 		err,
 	)
@@ -235,7 +235,7 @@ func TestIT_RoomRepository_RegisterUserInRoomByName_WhenUserDoesNotExist_ExpectF
 	tx.Close(context.Background())
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		errors.IsErrorWithCode(err, ErrNoSuchUser),
 		"Actual err: %v",
 		err,
 	)
@@ -254,7 +254,7 @@ func TestIT_RoomRepository_RegisterUserInRoomByName_WhenUserAlreadyRegistered_Ex
 	tx.Close(context.Background())
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
+		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
 		"Actual err: %v",
 		err,
 	)

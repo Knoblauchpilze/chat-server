@@ -2,9 +2,9 @@ package repositories
 
 import (
 	"context"
-	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
@@ -131,7 +131,7 @@ func (r *roomRepositoryImpl) RegisterUserInRoom(
 	ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, registerUserInRoomSqlTemplate, user, room)
-	return err
+	return handleRegistrationError(err)
 }
 
 const registerUserInRoomByNameSqlTemplate = `
@@ -143,18 +143,38 @@ SELECT
 FROM
 	room
 WHERE
-	name = $2
-RETURNING created_at`
+	name = $2`
 
 func (r *roomRepositoryImpl) RegisterUserInRoomByName(
 	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
 ) error {
-	_, err := db.QueryOneTx[time.Time](
-		ctx, tx, registerUserInRoomByNameSqlTemplate, user, room,
-	)
+	inserted, err := tx.Exec(ctx, registerUserInRoomByNameSqlTemplate, user, room)
 
-	if errors.IsErrorWithCode(err, db.NoMatchingRows) {
-		return errors.NewCode(ErrNoSuchRoom)
+	if err == nil && inserted == 0 {
+		return errors.WrapCode(err, ErrNoSuchRoom)
+	}
+	return handleRegistrationError(err)
+}
+
+const noSuchUserForeignKey = "room_user_chat_user_fkey"
+const noSuchRoomForeignKey = "room_user_room_fkey"
+
+func handleRegistrationError(err error) error {
+
+	if errors.IsErrorWithCode(err, pgx.ForeignKeyValidation) {
+		if foreignKey, ok := extractForeignKeyViolation(err); ok {
+			switch foreignKey {
+			case noSuchUserForeignKey:
+				return errors.WrapCode(err, ErrNoSuchUser)
+			case noSuchRoomForeignKey:
+				return errors.WrapCode(err, ErrNoSuchRoom)
+			default:
+			}
+		}
+	}
+
+	if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {
+		return errors.WrapCode(err, ErrUserAlreadyRegisteredInRoom)
 	}
 
 	return err
