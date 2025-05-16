@@ -16,16 +16,18 @@ import (
 )
 
 func TestIT_RoomRepository_Create(t *testing.T) {
-	repo, conn := newTestRoomRepository(t)
-	defer conn.Close(context.Background())
 	beforeInsertion := time.Now()
+
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
 
 	room := persistence.Room{
 		Id:   uuid.New(),
 		Name: "my-room-" + uuid.New().String(),
 	}
 
-	actual, err := repo.Create(context.Background(), room)
+	actual, err := repo.Create(context.Background(), tx, room)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.True(t, eassert.EqualsIgnoringFields(actual, room, "CreatedAt", "UpdatedAt"))
@@ -35,7 +37,7 @@ func TestIT_RoomRepository_Create(t *testing.T) {
 }
 
 func TestIT_RoomRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) {
-	repo, conn := newTestRoomRepository(t)
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
 	room := insertTestRoom(t, conn)
 
@@ -44,7 +46,8 @@ func TestIT_RoomRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 		Name: room.Name,
 	}
 
-	_, err := repo.Create(context.Background(), newRoom)
+	_, err := repo.Create(context.Background(), tx, newRoom)
+	tx.Close(context.Background())
 
 	assert.True(
 		t,
