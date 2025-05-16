@@ -149,6 +149,30 @@ func TestIT_MessageRepository_UpdateMessagesOwner(t *testing.T) {
 	assertMessageOwner(t, conn, msg.Id, userNew.Id)
 }
 
+func TestIT_MessageRepository_UpdateMessagesOwner_DoesNotUpdateOtherMessages(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	userOld := insertTestUser(t, conn)
+	userNew := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, userOld.Id, room.Id)
+	registerUserInRoom(t, conn, userNew.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
+
+	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
+	msg2 := insertTestMessage(t, conn, user2.Id, room.Id)
+
+	err := repo.UpdateMessagesOwner(
+		context.Background(), tx, userOld.Id, userNew.Id,
+	)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertMessageOwner(t, conn, msg.Id, userNew.Id)
+	assertMessageOwner(t, conn, msg2.Id, user2.Id)
+}
+
 func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
