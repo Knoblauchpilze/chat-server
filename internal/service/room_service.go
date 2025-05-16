@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const ghostUserName = "ghost"
-
 type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
