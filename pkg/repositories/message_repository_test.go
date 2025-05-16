@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -141,7 +142,7 @@ func TestIT_MessageRepository_UpdateMessagesOwner(t *testing.T) {
 	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
 
 	err := repo.UpdateMessagesOwner(
-		context.Background(), tx, userOld.Id, userNew.Id,
+		context.Background(), tx, userOld.Id, userNew.Name,
 	)
 	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -164,7 +165,7 @@ func TestIT_MessageRepository_UpdateMessagesOwner_DoesNotUpdateOtherMessages(t *
 	msg2 := insertTestMessage(t, conn, user2.Id, room.Id)
 
 	err := repo.UpdateMessagesOwner(
-		context.Background(), tx, userOld.Id, userNew.Id,
+		context.Background(), tx, userOld.Id, userNew.Name,
 	)
 	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -173,11 +174,11 @@ func TestIT_MessageRepository_UpdateMessagesOwner_DoesNotUpdateOtherMessages(t *
 	assertMessageOwner(t, conn, msg2.Id, user2.Id)
 }
 
-func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserDoesNotExist_ExpectNoError(t *testing.T) {
 	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
 	userOld := insertTestUser(t, conn)
-	userNew := uuid.New()
+	userNew := fmt.Sprintf("my-inexistent-user-%s", uuid.NewString())
 	room := insertTestRoom(t, conn)
 	registerUserInRoom(t, conn, userOld.Id, room.Id)
 
@@ -187,12 +188,7 @@ func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserDoesNotExist_ExpectFai
 		context.Background(), tx, userOld.Id, userNew,
 	)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
-		"Actual err: %v",
-		err,
-	)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertMessageOwner(t, conn, msg.Id, userOld.Id)
 }
@@ -208,7 +204,7 @@ func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserIsNotRegisteredInRoom_
 	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
 
 	err := repo.UpdateMessagesOwner(
-		context.Background(), tx, userOld.Id, userNew.Id,
+		context.Background(), tx, userOld.Id, userNew.Name,
 	)
 	tx.Close(context.Background())
 	assert.True(
@@ -219,6 +215,21 @@ func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserIsNotRegisteredInRoom_
 	)
 
 	assertMessageOwner(t, conn, msg.Id, userOld.Id)
+}
+
+func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserHasNoMessage_ExpectNoError(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	userOld := insertTestUser(t, conn)
+	userNew := fmt.Sprintf("my-inexistent-user-%s", uuid.NewString())
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, userOld.Id, room.Id)
+
+	err := repo.UpdateMessagesOwner(
+		context.Background(), tx, userOld.Id, userNew,
+	)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
 }
 
 func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySlice(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 type MessageRepository interface {
 	Create(ctx context.Context, msg persistence.Message) (persistence.Message, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error)
-	UpdateMessagesOwner(ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser uuid.UUID) error
+	UpdateMessagesOwner(ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string) error
 }
 
 type messageRepositoryImpl struct {
@@ -92,14 +92,20 @@ func (r *messageRepositoryImpl) ListForRoom(
 	return messages, err
 }
 
+// https://stackoverflow.com/questions/7869592/how-to-do-an-update-join-in-postgresql
 const updateMessagesOwnerSqlTemplate = `
+WITH new_user AS (
+	SELECT id FROM chat_user WHERE name = $1
+)
 UPDATE message SET
-	chat_user = $1
+	chat_user = new_user.id
+FROM
+	new_user
 WHERE
 	chat_user = $2`
 
 func (r *messageRepositoryImpl) UpdateMessagesOwner(
-	ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser uuid.UUID,
+	ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string,
 ) error {
 	_, err := tx.Exec(ctx, updateMessagesOwnerSqlTemplate, newUser, oldUser)
 	return err
