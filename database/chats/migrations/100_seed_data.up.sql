@@ -28,3 +28,18 @@ INSERT INTO chat_server_schema.message ("id", "chat_user", "room", "message")
     'b2c0d9c8-c5bd-42ea-88e2-15b66fffdd68',
     'Welcome to chatterly!'
   );
+
+-- ghost user to assign messages of deleted users to
+INSERT INTO chat_server_schema.chat_user ("id", "name", "api_user")
+  VALUES (
+    '62a23b20-d28b-427f-85b0-db8f8feed0be',
+    'ghost',
+    '0ac3a469-2257-4989-9a4c-5539cd004776'
+  );
+
+-- register the system user in the general room
+INSERT INTO chat_server_schema.room_user ("room", "chat_user")
+  VALUES (
+    'b2c0d9c8-c5bd-42ea-88e2-15b66fffdd68',
+    '62a23b20-d28b-427f-85b0-db8f8feed0be'
+  );
