@@ -263,6 +263,69 @@ func TestIT_RoomRepository_RegisterUserInRoomByName_WhenUserAlreadyRegistered_Ex
 	)
 }
 
+func TestIT_RoomRepository_RegisterUserByNameInRoom(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserByNameInRoom(context.Background(), tx, user.Name, room.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RoomRepository_RegisterUserByNameInRoom_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := uuid.New()
+
+	err := repo.RegisterUserByNameInRoom(context.Background(), tx, user.Name, room)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrNoSuchRoom),
+		"Actual err: %v",
+		err,
+	)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room)
+}
+
+func TestIT_RoomRepository_RegisterUserByNameInRoom_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := fmt.Sprintf("my-inexistent-user-%s", uuid.New().String())
+	room := insertTestRoom(t, conn)
+
+	err := repo.RegisterUserByNameInRoom(context.Background(), tx, user, room.Id)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrNoSuchUser),
+		"Actual err: %v",
+		err,
+	)
+}
+
+func TestIT_RoomRepository_RegisterByNameUserInRoom_WhenUserAlreadyRegistered_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.RegisterUserByNameInRoom(context.Background(), tx, user.Name, room.Id)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_RoomRepository_Delete(t *testing.T) {
 	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
