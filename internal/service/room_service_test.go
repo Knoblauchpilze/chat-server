@@ -31,6 +31,23 @@ func TestIT_RoomService_Create(t *testing.T) {
 	assertRoomExists(t, conn, out.Id)
 }
 
+func TestIT_RoomService_Create_RegistersGhostUserInRoom(t *testing.T) {
+	id := uuid.New()
+	roomDtoRequest := communication.RoomDtoRequest{
+		Name: fmt.Sprintf("my-room-%s", id),
+	}
+
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	out, err := service.Create(context.Background(), roomDtoRequest)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, roomDtoRequest.Name, out.Name)
+	assertRoomExists(t, conn, out.Id)
+	assertUserNameRegisteredInRoom(t, conn, "ghost", out.Id)
+}
+
 func TestIT_RoomService_Create_InvalidName(t *testing.T) {
 	roomDtoRequest := communication.RoomDtoRequest{
 		Name: "",
@@ -261,12 +278,16 @@ func newTestRoomService(t *testing.T) (RoomService, db.Connection) {
 func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 	repo := repositories.NewRoomRepository(conn)
 
+	tx, err := conn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
 	id := uuid.New()
 	room := persistence.Room{
 		Id:   id,
 		Name: fmt.Sprintf("my-room-%s", id),
 	}
-	out, err := repo.Create(context.Background(), room)
+	out, err := repo.Create(context.Background(), tx, room)
+	tx.Close(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assertRoomExists(t, conn, out.Id)
