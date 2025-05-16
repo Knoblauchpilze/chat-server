@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const ghostUserName = "ghost"
+
 type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
@@ -45,7 +47,20 @@ func (s *roomServiceImpl) Create(
 		return communication.RoomDtoResponse{}, errors.NewCode(ErrInvalidName)
 	}
 
-	createdRoom, err := s.roomRepo.Create(ctx, room)
+	tx, err := s.conn.BeginTx(ctx)
+	if err != nil {
+		return communication.RoomDtoResponse{}, err
+	}
+	defer tx.Close(ctx)
+
+	createdRoom, err := s.roomRepo.Create(ctx, tx, room)
+	if err != nil {
+		return communication.RoomDtoResponse{}, err
+	}
+
+	err = s.roomRepo.RegisterUserByNameInRoom(
+		ctx, tx, ghostUserName, room.Id,
+	)
 	if err != nil {
 		return communication.RoomDtoResponse{}, err
 	}
