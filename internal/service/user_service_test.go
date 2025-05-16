@@ -187,7 +187,7 @@ func TestIT_UserService_Delete_WhenUserDoesNotExist_ExpectSuccess(t *testing.T) 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestIT_UserService_Delete_RemovesUserFromGeneralRoomt(t *testing.T) {
+func TestIT_UserService_Delete_RemovesUserFromGeneralRoom(t *testing.T) {
 	service, conn := newTestUserService(t)
 	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
@@ -198,14 +198,61 @@ func TestIT_UserService_Delete_RemovesUserFromGeneralRoomt(t *testing.T) {
 	assertUserNotRegisteredInRoom(t, conn, user.Id, "general")
 }
 
+func TestIT_UserService_Delete_RemovesUserFromAllRooms(t *testing.T) {
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
+	registerUserInRoom(t, conn, user.Id, room2.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room1.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room2.Id)
+
+	err := service.Delete(context.Background(), user.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room1.Name)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room2.Name)
+}
+
+func TestIT_UserService_Delete_UpdatesMessagesOwnershipToGhost(t *testing.T) {
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room.Id)
+	msg := insertTestMessage(t, conn, user.Id, room.Id)
+
+	err := service.Delete(context.Background(), user.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertMessageOwner(t, conn, msg.Id, "ghost")
+}
+
+func TestIT_UserService_Delete_DoesNotChangeOwnershipOfOtherMessagesInTheRoom(t *testing.T) {
+	service, conn := newTestUserService(t)
+	defer conn.Close(context.Background())
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room.Id)
+	msg1 := insertTestMessage(t, conn, user1.Id, room.Id)
+	msg2 := insertTestMessage(t, conn, user2.Id, room.Id)
+
+	err := service.Delete(context.Background(), user1.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertMessageOwner(t, conn, msg1.Id, "ghost")
+	assertMessageOwner(t, conn, msg2.Id, user2.Name)
+}
+
 func newTestUserService(t *testing.T) (UserService, db.Connection) {
 	conn := newTestDbConnection(t)
-
-	repos := repositories.Repositories{
-		User: repositories.NewUserRepository(conn),
-		Room: repositories.NewRoomRepository(conn),
-	}
-
+	repos := repositories.New(conn)
 	return NewUserService(conn, repos), conn
 }
 
@@ -250,59 +297,4 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Zero(t, value)
-}
-
-func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
-	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
-
-	count, err := conn.Exec(
-		context.Background(),
-		sqlQuery,
-		room,
-		user,
-	)
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, int64(1), count)
-}
-
-func assertUserRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room string,
-) {
-	value, err := db.QueryOne[int](
-		context.Background(),
-		conn,
-		`SELECT
-			COUNT(*)
-		FROM
-			room_user AS ru
-			LEFT JOIN room AS r ON ru.room = r.id
-		WHERE
-			ru.chat_user = $1
-			AND r.name = $2`,
-		user,
-		room,
-	)
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, 1, value)
-}
-
-func assertUserNotRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room string,
-) {
-	value, err := db.QueryOne[int](
-		context.Background(),
-		conn,
-		`SELECT
-			COUNT(*)
-		FROM
-			room_user AS ru
-			LEFT JOIN room AS r ON ru.room = r.id
-		WHERE
-			ru.chat_user = $1
-			AND r.name = $2`,
-		user,
-		room,
-	)
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, 0, value)
 }

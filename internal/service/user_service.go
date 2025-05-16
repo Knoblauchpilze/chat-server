@@ -11,6 +11,7 @@ import (
 )
 
 const generalRoomName = "general"
+const ghostUserName = "ghost"
 
 type UserService interface {
 	Create(ctx context.Context, userDto communication.UserDtoRequest) (communication.UserDtoResponse, error)
@@ -23,15 +24,17 @@ type UserService interface {
 type userServiceImpl struct {
 	conn db.Connection
 
-	roomRepo repositories.RoomRepository
-	userRepo repositories.UserRepository
+	roomRepo    repositories.RoomRepository
+	userRepo    repositories.UserRepository
+	messageRepo repositories.MessageRepository
 }
 
 func NewUserService(conn db.Connection, repos repositories.Repositories) UserService {
 	return &userServiceImpl{
-		conn:     conn,
-		roomRepo: repos.Room,
-		userRepo: repos.User,
+		conn:        conn,
+		roomRepo:    repos.Room,
+		userRepo:    repos.User,
+		messageRepo: repos.Message,
 	}
 }
 
@@ -114,9 +117,14 @@ func (s *userServiceImpl) Delete(
 	}
 	defer tx.Close(ctx)
 
-	err = s.roomRepo.DeleteUserFromRoomByName(
-		ctx, tx, id, generalRoomName,
+	err = s.messageRepo.UpdateMessagesOwner(
+		ctx, tx, id, ghostUserName,
 	)
+	if err != nil {
+		return err
+	}
+
+	err = s.roomRepo.DeleteUserFromRooms(ctx, tx, id)
 	if err != nil {
 		return err
 	}

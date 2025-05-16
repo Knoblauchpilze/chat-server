@@ -25,6 +25,106 @@ func newTestDbConnection(t *testing.T) db.Connection {
 	return conn
 }
 
+func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
+
+	count, err := conn.Exec(
+		context.Background(),
+		sqlQuery,
+		room,
+		user,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, int64(1), count)
+}
+
+func registerUserByNameInRoom(t *testing.T, conn db.Connection, user string, room uuid.UUID) {
+	sqlQuery := `
+		INSERT INTO
+			room_user (chat_user, room)
+		SELECT
+			id,
+			$2
+		FROM
+			chat_user
+		WHERE
+			name = $1`
+
+	count, err := conn.Exec(
+		context.Background(),
+		sqlQuery,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, int64(1), count)
+}
+
+func assertUserRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		`SELECT
+			COUNT(*)
+		FROM
+			room_user AS ru
+			LEFT JOIN room AS r ON ru.room = r.id
+		WHERE
+			ru.chat_user = $1
+			AND r.name = $2`,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 1, value)
+}
+
+func assertUserNameRegisteredInRoom(
+	t *testing.T, conn db.Connection, user string, room uuid.UUID,
+) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		`SELECT
+			COUNT(*)
+		FROM
+			room_user AS ru
+			LEFT JOIN chat_user AS cu ON cu.id = ru.chat_user
+		WHERE
+			cu.name = $1
+			AND ru.room = $2`,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 1, value)
+}
+
+func assertUserNotRegisteredInRoom(
+	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+) {
+	t.Helper()
+
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		`SELECT
+			COUNT(*)
+		FROM
+			room_user AS ru
+			LEFT JOIN room AS r ON ru.room = r.id
+		WHERE
+			ru.chat_user = $1
+			AND r.name = $2`,
+		user,
+		room,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, 0, value)
+}
+
 func insertTestMessage(
 	t *testing.T,
 	conn db.Connection,
@@ -57,4 +157,34 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Equal(t, id, value)
+}
+
+func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+	value, err := db.QueryOne[int](
+		context.Background(),
+		conn,
+		"SELECT COUNT(id) FROM message WHERE id = $1",
+		id,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Zero(t, value)
+}
+
+func assertMessageOwner(t *testing.T, conn db.Connection, msg uuid.UUID, user string) {
+	t.Helper()
+
+	value, err := db.QueryOne[string](
+		context.Background(),
+		conn,
+		`SELECT
+			cu.name
+		FROM
+			message AS m
+			LEFT JOIN chat_user AS cu ON cu.id = m.chat_user
+		WHERE
+			m.id = $1`,
+		msg,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, user, value)
 }
