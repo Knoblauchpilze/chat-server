@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
@@ -128,6 +129,74 @@ func TestIT_MessageRepository_ListForRoom(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestIT_MessageRepository_UpdateMessagesOwner(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	userOld := insertTestUser(t, conn)
+	userNew := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, userOld.Id, room.Id)
+	registerUserInRoom(t, conn, userNew.Id, room.Id)
+
+	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
+
+	err := repo.UpdateMessagesOwner(
+		context.Background(), tx, userOld.Id, userNew.Id,
+	)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertMessageOwner(t, conn, msg.Id, userNew.Id)
+}
+
+func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	userOld := insertTestUser(t, conn)
+	userNew := uuid.New()
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, userOld.Id, room.Id)
+
+	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
+
+	err := repo.UpdateMessagesOwner(
+		context.Background(), tx, userOld.Id, userNew,
+	)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+
+	assertMessageOwner(t, conn, msg.Id, userOld.Id)
+}
+
+func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserIsNotRegisteredInRoom_ExpectFailure(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	userOld := insertTestUser(t, conn)
+	userNew := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, userOld.Id, room.Id)
+
+	msg := insertTestMessage(t, conn, userOld.Id, room.Id)
+
+	err := repo.UpdateMessagesOwner(
+		context.Background(), tx, userOld.Id, userNew.Id,
+	)
+	tx.Close(context.Background())
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
+		"Actual err: %v",
+		err,
+	)
+
+	assertMessageOwner(t, conn, msg.Id, userOld.Id)
+}
+
 func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySlice(t *testing.T) {
 	repo, conn := newTestMessageRepository(t)
 	defer conn.Close(context.Background())
@@ -142,6 +211,13 @@ func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySli
 func newTestMessageRepository(t *testing.T) (MessageRepository, db.Connection) {
 	conn := newTestConnection(t)
 	return NewMessageRepository(conn), conn
+}
+
+func newTestMessageRepositoryAndTransaction(t *testing.T) (MessageRepository, db.Connection, db.Transaction) {
+	conn := newTestConnection(t)
+	tx, err := conn.BeginTx(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+	return NewMessageRepository(conn), conn, tx
 }
 
 func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
@@ -164,6 +240,17 @@ func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	)
 	assert.Nil(t, err, "Actual err: %v", err)
 	assert.Zero(t, value)
+}
+
+func assertMessageOwner(t *testing.T, conn db.Connection, msg uuid.UUID, user uuid.UUID) {
+	value, err := db.QueryOne[uuid.UUID](
+		context.Background(),
+		conn,
+		"SELECT chat_user FROM message WHERE id = $1",
+		msg,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, user, value)
 }
 
 func insertTestMessage(

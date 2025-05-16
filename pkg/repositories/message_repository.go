@@ -14,6 +14,7 @@ import (
 type MessageRepository interface {
 	Create(ctx context.Context, msg persistence.Message) (persistence.Message, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error)
+	UpdateMessagesOwner(ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser uuid.UUID) error
 }
 
 type messageRepositoryImpl struct {
@@ -89,4 +90,17 @@ func (r *messageRepositoryImpl) ListForRoom(
 	}
 
 	return messages, err
+}
+
+const updateMessagesOwnerSqlTemplate = `
+UPDATE message SET
+	chat_user = $1
+WHERE
+	chat_user = $2`
+
+func (r *messageRepositoryImpl) UpdateMessagesOwner(
+	ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser uuid.UUID,
+) error {
+	_, err := tx.Exec(ctx, updateMessagesOwnerSqlTemplate, newUser, oldUser)
+	return err
 }
