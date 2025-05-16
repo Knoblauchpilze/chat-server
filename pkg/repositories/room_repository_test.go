@@ -294,6 +294,7 @@ func TestIT_RoomRepository_DeleteUserFromRoomByName(t *testing.T) {
 
 	user := insertTestUser(t, conn)
 	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
 
 	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
 	tx.Close(context.Background())
@@ -341,6 +342,23 @@ func TestIT_RoomRepository_DeleteUserFromRoomByName_WhenNotFound_ExpectSuccess(t
 	tx.Close(context.Background())
 
 	assert.Nil(t, err, "Actual err: %v", err)
+}
+
+func TestIT_RoomRepository_DeleteUserFromRooms(t *testing.T) {
+	repo, conn, tx := newTestRoomRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.DeleteUserFromRoomByName(context.Background(), tx, user.Id, room.Name)
+	tx.Close(context.Background())
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Id)
+	assertUserExists(t, conn, user.Id)
+	assertRoomExists(t, conn, room.Id)
 }
 
 func newTestRoomRepository(t *testing.T) (RoomRepository, db.Connection) {
