@@ -17,6 +17,7 @@ type RoomRepository interface {
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
 	RegisterUserInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
 	RegisterUserInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
+	RegisterUserByNameInRoom(ctx context.Context, tx db.Transaction, user string, room uuid.UUID) error
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
 	DeleteUserFromRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 	DeleteUserFromRooms(ctx context.Context, tx db.Transaction, user uuid.UUID) error
@@ -153,6 +154,28 @@ func (r *roomRepositoryImpl) RegisterUserInRoomByName(
 
 	if err == nil && inserted == 0 {
 		return errors.WrapCode(err, ErrNoSuchRoom)
+	}
+	return handleRegistrationError(err)
+}
+
+const registerUserByNameInRoomSqlTemplate = `
+INSERT INTO
+	room_user (chat_user, room)
+SELECT
+	id,
+	$2
+FROM
+	chat_user
+WHERE
+	name = $1`
+
+func (r *roomRepositoryImpl) RegisterUserByNameInRoom(
+	ctx context.Context, tx db.Transaction, user string, room uuid.UUID,
+) error {
+	inserted, err := tx.Exec(ctx, registerUserByNameInRoomSqlTemplate, user, room)
+
+	if err == nil && inserted == 0 {
+		return errors.WrapCode(err, ErrNoSuchUser)
 	}
 	return handleRegistrationError(err)
 }
