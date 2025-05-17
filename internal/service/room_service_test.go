@@ -263,6 +263,33 @@ func TestIT_RoomService_Delete_WhenRoomDoesNotExist_ExpectSuccess(t *testing.T) 
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
+func TestIT_RoomService_Delete_DeleteRoomMessages(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+	msg := insertTestMessage(t, conn, user.Id, room.Id)
+
+	err := service.Delete(context.Background(), room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertMessageDoesNotExist(t, conn, msg.Id)
+}
+
+func TestIT_RoomService_Delete_DeleteRegisteredUser(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := service.Delete(context.Background(), room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Name)
+}
+
 func newTestRoomService(t *testing.T) (RoomService, db.Connection) {
 	conn := newTestDbConnection(t)
 	repos := repositories.New(conn)
