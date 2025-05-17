@@ -12,6 +12,7 @@ type RegistrationRepository interface {
 	RegisterInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
 	RegisterInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
 	RegisterByNameInRoom(ctx context.Context, tx db.Transaction, user string, room uuid.UUID) error
+	DeleteForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID) error
 }
 
 type registrationRepositoryImpl struct{}
@@ -74,4 +75,17 @@ func (r *registrationRepositoryImpl) RegisterByNameInRoom(
 		return errors.WrapCode(err, ErrNoSuchUser)
 	}
 	return handleRegistrationError(err)
+}
+
+const deleteUsersFromRoomSqlTemplate = `
+DELETE FROM
+	room_user
+WHERE
+	room = $1`
+
+func (r *registrationRepositoryImpl) DeleteForRoom(
+	ctx context.Context, tx db.Transaction, room uuid.UUID,
+) error {
+	_, err := tx.Exec(ctx, deleteUsersFromRoomSqlTemplate, room)
+	return err
 }

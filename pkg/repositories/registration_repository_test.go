@@ -204,6 +204,38 @@ func TestIT_RegistrationRepository_RegisterByNameUserInRoom_WhenUserAlreadyRegis
 	)
 }
 
+func TestIT_RegistrationRepository_DeleteForRoom(t *testing.T) {
+	repo, conn, tx := newTestRegistrationRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.DeleteForRoom(context.Background(), tx, room.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserExists(t, conn, user.Id)
+	assertRoomExists(t, conn, room.Id)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RegistrationRepository_DeleteForRoom_OnlyDeletesUserForSpecifiedRoom(t *testing.T) {
+	repo, conn, tx := newTestRegistrationRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
+	registerUserInRoom(t, conn, user.Id, room2.Id)
+
+	err := repo.DeleteForRoom(context.Background(), tx, room1.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user.Id, room2.Id)
+}
+
 func newTestRegistrationRepositoryAndTransaction(t *testing.T) (RegistrationRepository, db.Connection, db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
