@@ -20,22 +20,14 @@ type RoomService interface {
 }
 
 type roomServiceImpl struct {
-	conn db.Connection
-
-	messageRepo      repositories.MessageRepository
-	registrationRepo repositories.RegistrationRepository
-	roomRepo         repositories.RoomRepository
-	userRepo         repositories.UserRepository
+	conn  db.Connection
+	repos repositories.Repositories
 }
 
 func NewRoomService(conn db.Connection, repos repositories.Repositories) RoomService {
 	return &roomServiceImpl{
-		conn: conn,
-
-		messageRepo:      repos.Message,
-		registrationRepo: repos.Registration,
-		roomRepo:         repos.Room,
-		userRepo:         repos.User,
+		conn:  conn,
+		repos: repos,
 	}
 }
 
@@ -54,12 +46,12 @@ func (s *roomServiceImpl) Create(
 	}
 	defer tx.Close(ctx)
 
-	createdRoom, err := s.roomRepo.Create(ctx, tx, room)
+	createdRoom, err := s.repos.Room.Create(ctx, tx, room)
 	if err != nil {
 		return communication.RoomDtoResponse{}, err
 	}
 
-	err = s.registrationRepo.RegisterByNameInRoom(
+	err = s.repos.Registration.RegisterByNameInRoom(
 		ctx, tx, ghostUserName, room.Id,
 	)
 	if err != nil {
@@ -73,7 +65,7 @@ func (s *roomServiceImpl) Create(
 func (s *roomServiceImpl) Get(
 	ctx context.Context, id uuid.UUID,
 ) (communication.RoomDtoResponse, error) {
-	room, err := s.roomRepo.Get(ctx, id)
+	room, err := s.repos.Room.Get(ctx, id)
 	if err != nil {
 		return communication.RoomDtoResponse{}, err
 	}
@@ -85,7 +77,7 @@ func (s *roomServiceImpl) Get(
 func (s *roomServiceImpl) ListUserForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]communication.UserDtoResponse, error) {
-	users, err := s.userRepo.ListForRoom(ctx, room)
+	users, err := s.repos.User.ListForRoom(ctx, room)
 	if err != nil {
 		return []communication.UserDtoResponse{}, err
 	}
@@ -102,7 +94,7 @@ func (s *roomServiceImpl) ListUserForRoom(
 func (s *roomServiceImpl) ListMessageForRoom(
 	ctx context.Context, room uuid.UUID,
 ) ([]communication.MessageDtoResponse, error) {
-	messages, err := s.messageRepo.ListForRoom(ctx, room)
+	messages, err := s.repos.Message.ListForRoom(ctx, room)
 	if err != nil {
 		return []communication.MessageDtoResponse{}, err
 	}
@@ -125,7 +117,7 @@ func (s *roomServiceImpl) RegisterUserInRoom(
 	}
 	defer tx.Close(ctx)
 
-	return s.registrationRepo.RegisterInRoom(ctx, tx, user, room)
+	return s.repos.Registration.RegisterInRoom(ctx, tx, user, room)
 }
 
 func (s *roomServiceImpl) Delete(
@@ -137,12 +129,12 @@ func (s *roomServiceImpl) Delete(
 	}
 	defer tx.Close(ctx)
 
-	err = s.messageRepo.DeleteForRoom(ctx, tx, id)
+	err = s.repos.Message.DeleteForRoom(ctx, tx, id)
 	if err != nil {
 		return err
 	}
 
-	err = s.roomRepo.Delete(ctx, tx, id)
+	err = s.repos.Room.Delete(ctx, tx, id)
 	if err != nil {
 		return err
 	}
