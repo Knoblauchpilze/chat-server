@@ -3,15 +3,17 @@ package repositories
 import "github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 
 type Repositories struct {
-	User    UserRepository
-	Room    RoomRepository
-	Message MessageRepository
+	Message      MessageRepository
+	Registration RegistrationRepository
+	Room         RoomRepository
+	User         UserRepository
 }
 
 func New(conn db.Connection) Repositories {
 	return Repositories{
-		User:    NewUserRepository(conn),
-		Room:    NewRoomRepository(conn),
-		Message: NewMessageRepository(conn),
+		Message:      NewMessageRepository(conn),
+		Registration: NewRegistrationRepository(),
+		Room:         NewRoomRepository(conn),
+		User:         NewUserRepository(conn),
 	}
 }
