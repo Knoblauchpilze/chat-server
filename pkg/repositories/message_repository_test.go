@@ -130,6 +130,26 @@ func TestIT_MessageRepository_ListForRoom(t *testing.T) {
 	assert.ElementsMatch(t, expected, actual)
 }
 
+func TestIT_MessageRepository_DeleteForRoom(t *testing.T) {
+	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	room := insertTestRoom(t, conn)
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
+
+	msg1 := insertTestMessage(t, conn, user1.Id, room.Id)
+	msg2 := insertTestMessage(t, conn, user2.Id, room.Id)
+
+	err := repo.DeleteForRoom(context.Background(), tx, room.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertMessageDoesNotExist(t, conn, msg1.Id)
+	assertMessageDoesNotExist(t, conn, msg2.Id)
+}
+
 func TestIT_MessageRepository_UpdateMessagesOwner(t *testing.T) {
 	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
