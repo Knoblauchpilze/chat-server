@@ -14,6 +14,7 @@ type UserRepository interface {
 	GetByName(ctx context.Context, name string) (persistence.User, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.User, error)
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
+	DeleteFromRooms(ctx context.Context, tx db.Transaction, user uuid.UUID) error
 }
 
 type userRepositoryImpl struct {
@@ -147,5 +148,18 @@ func (r *userRepositoryImpl) Delete(
 	ctx context.Context, tx db.Transaction, id uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteUserSqlTemplate, id)
+	return err
+}
+
+const deleteUserFromRoomsSqlTemplate = `
+DELETE FROM
+	room_user
+WHERE
+	chat_user = $1`
+
+func (r *userRepositoryImpl) DeleteFromRooms(
+	ctx context.Context, tx db.Transaction, user uuid.UUID,
+) error {
+	_, err := tx.Exec(ctx, deleteUserFromRoomsSqlTemplate, user)
 	return err
 }
