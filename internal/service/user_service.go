@@ -22,22 +22,14 @@ type UserService interface {
 }
 
 type userServiceImpl struct {
-	conn db.Connection
-
-	messageRepo      repositories.MessageRepository
-	registrationRepo repositories.RegistrationRepository
-	roomRepo         repositories.RoomRepository
-	userRepo         repositories.UserRepository
+	conn  db.Connection
+	repos repositories.Repositories
 }
 
 func NewUserService(conn db.Connection, repos repositories.Repositories) UserService {
 	return &userServiceImpl{
-		conn: conn,
-
-		messageRepo:      repos.Message,
-		registrationRepo: repos.Registration,
-		roomRepo:         repos.Room,
-		userRepo:         repos.User,
+		conn:  conn,
+		repos: repos,
 	}
 }
 
@@ -56,12 +48,12 @@ func (s *userServiceImpl) Create(
 	}
 	defer tx.Close(ctx)
 
-	createdUser, err := s.userRepo.Create(ctx, tx, user)
+	createdUser, err := s.repos.User.Create(ctx, tx, user)
 	if err != nil {
 		return communication.UserDtoResponse{}, err
 	}
 
-	err = s.registrationRepo.RegisterInRoomByName(
+	err = s.repos.Registration.RegisterInRoomByName(
 		ctx, tx, createdUser.Id, generalRoomName,
 	)
 	if err != nil {
@@ -75,7 +67,7 @@ func (s *userServiceImpl) Create(
 func (s *userServiceImpl) Get(
 	ctx context.Context, id uuid.UUID,
 ) (communication.UserDtoResponse, error) {
-	user, err := s.userRepo.Get(ctx, id)
+	user, err := s.repos.User.Get(ctx, id)
 	if err != nil {
 		return communication.UserDtoResponse{}, err
 	}
@@ -87,7 +79,7 @@ func (s *userServiceImpl) Get(
 func (s *userServiceImpl) GetByName(
 	ctx context.Context, name string,
 ) (communication.UserDtoResponse, error) {
-	user, err := s.userRepo.GetByName(ctx, name)
+	user, err := s.repos.User.GetByName(ctx, name)
 	if err != nil {
 		return communication.UserDtoResponse{}, err
 	}
@@ -97,7 +89,7 @@ func (s *userServiceImpl) GetByName(
 }
 
 func (s *userServiceImpl) ListForUser(ctx context.Context, user uuid.UUID) ([]communication.RoomDtoResponse, error) {
-	rooms, err := s.roomRepo.ListForUser(ctx, user)
+	rooms, err := s.repos.Room.ListForUser(ctx, user)
 	if err != nil {
 		return []communication.RoomDtoResponse{}, err
 	}
@@ -120,19 +112,19 @@ func (s *userServiceImpl) Delete(
 	}
 	defer tx.Close(ctx)
 
-	err = s.messageRepo.UpdateMessagesOwner(
+	err = s.repos.Message.UpdateMessagesOwner(
 		ctx, tx, id, ghostUserName,
 	)
 	if err != nil {
 		return err
 	}
 
-	err = s.userRepo.DeleteFromRooms(ctx, tx, id)
+	err = s.repos.User.DeleteFromRooms(ctx, tx, id)
 	if err != nil {
 		return err
 	}
 
-	err = s.userRepo.Delete(ctx, tx, id)
+	err = s.repos.User.Delete(ctx, tx, id)
 	if err != nil {
 		return err
 	}
