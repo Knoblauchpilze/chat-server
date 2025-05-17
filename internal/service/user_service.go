@@ -24,17 +24,20 @@ type UserService interface {
 type userServiceImpl struct {
 	conn db.Connection
 
-	roomRepo    repositories.RoomRepository
-	userRepo    repositories.UserRepository
-	messageRepo repositories.MessageRepository
+	messageRepo      repositories.MessageRepository
+	registrationRepo repositories.RegistrationRepository
+	roomRepo         repositories.RoomRepository
+	userRepo         repositories.UserRepository
 }
 
 func NewUserService(conn db.Connection, repos repositories.Repositories) UserService {
 	return &userServiceImpl{
-		conn:        conn,
-		roomRepo:    repos.Room,
-		userRepo:    repos.User,
-		messageRepo: repos.Message,
+		conn: conn,
+
+		messageRepo:      repos.Message,
+		registrationRepo: repos.Registration,
+		roomRepo:         repos.Room,
+		userRepo:         repos.User,
 	}
 }
 
@@ -58,7 +61,7 @@ func (s *userServiceImpl) Create(
 		return communication.UserDtoResponse{}, err
 	}
 
-	err = s.roomRepo.RegisterUserInRoomByName(
+	err = s.registrationRepo.RegisterInRoomByName(
 		ctx, tx, createdUser.Id, generalRoomName,
 	)
 	if err != nil {
