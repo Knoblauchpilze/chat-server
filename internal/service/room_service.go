@@ -22,17 +22,20 @@ type RoomService interface {
 type roomServiceImpl struct {
 	conn db.Connection
 
-	roomRepo    repositories.RoomRepository
-	userRepo    repositories.UserRepository
-	messageRepo repositories.MessageRepository
+	messageRepo      repositories.MessageRepository
+	registrationRepo repositories.RegistrationRepository
+	roomRepo         repositories.RoomRepository
+	userRepo         repositories.UserRepository
 }
 
 func NewRoomService(conn db.Connection, repos repositories.Repositories) RoomService {
 	return &roomServiceImpl{
-		conn:        conn,
-		roomRepo:    repos.Room,
-		userRepo:    repos.User,
-		messageRepo: repos.Message,
+		conn: conn,
+
+		messageRepo:      repos.Message,
+		registrationRepo: repos.Registration,
+		roomRepo:         repos.Room,
+		userRepo:         repos.User,
 	}
 }
 
@@ -56,7 +59,7 @@ func (s *roomServiceImpl) Create(
 		return communication.RoomDtoResponse{}, err
 	}
 
-	err = s.roomRepo.RegisterUserByNameInRoom(
+	err = s.registrationRepo.RegisterByNameInRoom(
 		ctx, tx, ghostUserName, room.Id,
 	)
 	if err != nil {
@@ -122,7 +125,7 @@ func (s *roomServiceImpl) RegisterUserInRoom(
 	}
 	defer tx.Close(ctx)
 
-	return s.roomRepo.RegisterUserInRoom(ctx, tx, user, room)
+	return s.registrationRepo.RegisterInRoom(ctx, tx, user, room)
 }
 
 func (s *roomServiceImpl) Delete(
@@ -133,6 +136,11 @@ func (s *roomServiceImpl) Delete(
 		return err
 	}
 	defer tx.Close(ctx)
+
+	err = s.messageRepo.DeleteForRoom(ctx, tx, id)
+	if err != nil {
+		return err
+	}
 
 	err = s.roomRepo.Delete(ctx, tx, id)
 	if err != nil {
