@@ -15,9 +15,6 @@ type RoomRepository interface {
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
 	UserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) (bool, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
-	RegisterUserInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
-	RegisterUserInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
-	RegisterUserByNameInRoom(ctx context.Context, tx db.Transaction, user string, room uuid.UUID) error
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
 }
 
@@ -120,62 +117,6 @@ func (r *roomRepositoryImpl) ListForUser(
 	}
 
 	return rooms, err
-}
-
-const registerUserInRoomSqlTemplate = `
-INSERT INTO room_user (chat_user, room)
-	VALUES ($1, $2)
-	RETURNING created_at`
-
-func (r *roomRepositoryImpl) RegisterUserInRoom(
-	ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID,
-) error {
-	_, err := tx.Exec(ctx, registerUserInRoomSqlTemplate, user, room)
-	return handleRegistrationError(err)
-}
-
-const registerUserInRoomByNameSqlTemplate = `
-INSERT INTO
-	room_user (chat_user, room)
-SELECT
-	$1,
-	id
-FROM
-	room
-WHERE
-	name = $2`
-
-func (r *roomRepositoryImpl) RegisterUserInRoomByName(
-	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
-) error {
-	inserted, err := tx.Exec(ctx, registerUserInRoomByNameSqlTemplate, user, room)
-
-	if err == nil && inserted == 0 {
-		return errors.WrapCode(err, ErrNoSuchRoom)
-	}
-	return handleRegistrationError(err)
-}
-
-const registerUserByNameInRoomSqlTemplate = `
-INSERT INTO
-	room_user (chat_user, room)
-SELECT
-	id,
-	$2
-FROM
-	chat_user
-WHERE
-	name = $1`
-
-func (r *roomRepositoryImpl) RegisterUserByNameInRoom(
-	ctx context.Context, tx db.Transaction, user string, room uuid.UUID,
-) error {
-	inserted, err := tx.Exec(ctx, registerUserByNameInRoomSqlTemplate, user, room)
-
-	if err == nil && inserted == 0 {
-		return errors.WrapCode(err, ErrNoSuchUser)
-	}
-	return handleRegistrationError(err)
 }
 
 const noSuchUserForeignKey = "room_user_chat_user_fkey"
