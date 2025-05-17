@@ -124,7 +124,7 @@ func (s *userServiceImpl) Delete(
 		return err
 	}
 
-	err = s.roomRepo.DeleteUserFromRooms(ctx, tx, id)
+	err = s.userRepo.DeleteFromRooms(ctx, tx, id)
 	if err != nil {
 		return err
 	}
