@@ -134,6 +134,11 @@ func (s *roomServiceImpl) Delete(
 		return err
 	}
 
+	err = s.repos.Registration.DeleteForRoom(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+
 	err = s.repos.Room.Delete(ctx, tx, id)
 	if err != nil {
 		return err
