@@ -49,8 +49,9 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	group, errCtx := errgroup.WithContext(ctx)
 
 	// Voluntarily ignore errors: they can only be produced (as of now, true)
-	// when the process is not configured correctly. It is configured correctly
-	// here so an error can't happen.
+	// when the process is not configured correctly. However when using the
+	// `StartWithSignalHandler`, the process is build directly from the
+	// runnable given in input so there's no risk of having it misconfigured.
 	waitProcessor, _ := process.StartWithSignalHandler(errCtx, processor)
 	waitManager, _ := process.StartWithSignalHandler(errCtx, manager)
 	waitServer, _ := process.StartWithSignalHandler(errCtx, s)
