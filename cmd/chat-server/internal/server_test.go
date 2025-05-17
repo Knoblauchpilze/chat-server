@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: this fails because the ghost user is still in the room
 func TestIT_RunServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	props := newTestServerConfig(7601)
 	cancellable, cancel := context.WithCancel(context.Background())
