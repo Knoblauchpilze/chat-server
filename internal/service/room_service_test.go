@@ -110,6 +110,18 @@ func TestIT_RoomService_Get_WhenRoomDoesNotExist_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_RoomService_List(t *testing.T) {
+	service, conn := newTestRoomService(t)
+	defer conn.Close(context.Background())
+	room := insertTestRoom(t, conn)
+
+	rooms, err := service.List(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	expected := communication.ToRoomDtoResponse(room)
+	assert.Contains(t, rooms, expected)
+}
+
 func TestIT_RoomService_ListUserForRoom_WhenNobodyInRoom_ExpectEmptyList(t *testing.T) {
 	service, conn := newTestRoomService(t)
 	defer conn.Close(context.Background())
