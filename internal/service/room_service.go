@@ -13,6 +13,7 @@ import (
 type RoomService interface {
 	Create(ctx context.Context, roomDto communication.RoomDtoRequest) (communication.RoomDtoResponse, error)
 	Get(ctx context.Context, id uuid.UUID) (communication.RoomDtoResponse, error)
+	List(ctx context.Context) ([]communication.RoomDtoResponse, error)
 	ListUserForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
 	ListMessageForRoom(ctx context.Context, room uuid.UUID) ([]communication.MessageDtoResponse, error)
 	RegisterUserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) error
@@ -71,6 +72,23 @@ func (s *roomServiceImpl) Get(
 	}
 
 	out := communication.ToRoomDtoResponse(room)
+	return out, nil
+}
+
+func (s *roomServiceImpl) List(
+	ctx context.Context,
+) ([]communication.RoomDtoResponse, error) {
+	rooms, err := s.repos.Room.List(ctx)
+	if err != nil {
+		return []communication.RoomDtoResponse{}, err
+	}
+
+	out := make([]communication.RoomDtoResponse, len(rooms))
+	for _, room := range rooms {
+		dto := communication.ToRoomDtoResponse(room)
+		out = append(out, dto)
+	}
+
 	return out, nil
 }
 
