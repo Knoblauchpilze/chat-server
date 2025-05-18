@@ -142,6 +142,26 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 	)
 }
 
+func TestIT_RoomController_ListROom(t *testing.T) {
+	service, dbConn := newTestRoomService(t)
+	defer dbConn.Close(context.Background())
+	room := insertTestRoom(t, dbConn)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, rw := generateTestEchoContextFromRequest(req)
+
+	err := listRoom(ctx, service)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	var responseDtos []communication.RoomDtoResponse
+	err = json.Unmarshal(rw.Body.Bytes(), &responseDtos)
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+	expected := communication.ToRoomDtoResponse(room)
+	assert.Contains(t, responseDtos, expected)
+}
+
 func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
 	defer dbConn.Close(context.Background())

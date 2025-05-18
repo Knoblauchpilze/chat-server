@@ -25,6 +25,10 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	get := rest.NewRoute(http.MethodGet, "/rooms/:id", getHandler)
 	out = append(out, get)
 
+	listHandler := createComponentAwareHttpHandler(listRoom, service)
+	list := rest.NewRoute(http.MethodGet, "/rooms", listHandler)
+	out = append(out, list)
+
 	listUserForRoomHandler := createComponentAwareHttpHandler(listUserForRoom, service)
 	listUserForRoom := rest.NewRoute(http.MethodGet, "/rooms/:id/users", listUserForRoomHandler)
 	out = append(out, listUserForRoom)
@@ -83,6 +87,20 @@ func getRoom(c echo.Context, s service.RoomService) error {
 	}
 
 	return c.JSON(http.StatusOK, out)
+}
+
+func listRoom(c echo.Context, s service.RoomService) error {
+	rooms, err := s.List(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	out, err := marshalNilToEmptySlice(rooms)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSONBlob(http.StatusOK, out)
 }
 
 func listUserForRoom(c echo.Context, s service.RoomService) error {
