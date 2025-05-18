@@ -83,6 +83,17 @@ func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	)
 }
 
+func TestIT_RoomRepository_List(t *testing.T) {
+	repo, conn := newTestRoomRepository(t)
+	defer conn.Close(context.Background())
+	room := insertTestRoom(t, conn)
+
+	rooms, err := repo.List(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Contains(t, rooms, room)
+}
+
 func TestIT_RoomRepository_UserInRoom(t *testing.T) {
 	repo, conn := newTestRoomRepository(t)
 	defer conn.Close(context.Background())
