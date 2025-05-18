@@ -13,6 +13,7 @@ import (
 type RoomRepository interface {
 	Create(ctx context.Context, tx db.Transaction, room persistence.Room) (persistence.Room, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
+	List(ctx context.Context) ([]persistence.Room, error)
 	UserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) (bool, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
 	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
@@ -73,6 +74,28 @@ func (r *roomRepositoryImpl) Get(
 	}
 
 	return room, err
+}
+
+const listRoomSqlTemplate = `
+SELECT
+	id,
+	name,
+	created_at,
+	updated_at
+FROM
+	room`
+
+func (r *roomRepositoryImpl) List(
+	ctx context.Context,
+) ([]persistence.Room, error) {
+	rooms, err := db.QueryAll[persistence.Room](ctx, r.conn, listRoomSqlTemplate)
+
+	for id := range rooms {
+		rooms[id].CreatedAt = rooms[id].CreatedAt.UTC()
+		rooms[id].UpdatedAt = rooms[id].UpdatedAt.UTC()
+	}
+
+	return rooms, err
 }
 
 const userInRoomSqlTemplate = `
