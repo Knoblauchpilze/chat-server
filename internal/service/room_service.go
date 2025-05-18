@@ -84,9 +84,8 @@ func (s *roomServiceImpl) List(
 	}
 
 	out := make([]communication.RoomDtoResponse, len(rooms))
-	for _, room := range rooms {
-		dto := communication.ToRoomDtoResponse(room)
-		out = append(out, dto)
+	for id, room := range rooms {
+		out[id] = communication.ToRoomDtoResponse(room)
 	}
 
 	return out, nil
