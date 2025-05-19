@@ -36,9 +36,10 @@ func RunServer(ctx context.Context, config Configuration, log logger.Logger) err
 	}
 
 	services := service.Services{
-		Room:    service.NewRoomService(dbConn, repos),
-		User:    service.NewUserService(dbConn, repos),
-		Message: service.NewMessageService(opts),
+		Registration: service.NewRegistrationService(dbConn, repos),
+		Room:         service.NewRoomService(dbConn, repos),
+		User:         service.NewUserService(dbConn, repos),
+		Message:      service.NewMessageService(opts),
 	}
 
 	s, err := configureHttpServer(config.Server, dbConn, services, log)
@@ -78,6 +79,12 @@ func configureHttpServer(
 	}
 
 	for _, route := range controller.RoomEndpoints(services.Room) {
+		if err := s.AddRoute(route); err != nil {
+			return s, err
+		}
+	}
+
+	for _, route := range controller.RegistrationEndpoints(services.Registration) {
 		if err := s.AddRoute(route); err != nil {
 			return s, err
 		}

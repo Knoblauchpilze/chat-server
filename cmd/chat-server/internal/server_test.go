@@ -13,7 +13,6 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
-	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -109,40 +108,6 @@ func TestIT_RunServer_User_CreateGetDeleteWorkflow(t *testing.T) {
 	rw = doRequest(t, http.MethodGet, url)
 
 	assert.Equal(t, http.StatusNotFound, rw.StatusCode)
-
-	cancel()
-	wg.Wait()
-}
-
-func TestIT_RunServer_ListForRoom(t *testing.T) {
-	props := newTestServerConfig(7603)
-	cancellable, cancel := context.WithCancel(context.Background())
-	dbConn := newTestDbConnection(t)
-	defer dbConn.Close(context.Background())
-
-	user := insertTestUser(t, dbConn)
-	room := insertTestRoom(t, dbConn)
-	registerUserInRoom(t, dbConn, user.Id, room.Id)
-
-	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
-
-	url := fmt.Sprintf("http://localhost:7603/v1/chats/rooms/%s/users", room.Id)
-	rw := doRequest(t, http.MethodGet, url)
-
-	responseDto := assertResponseAndExtractDetails[[]communication.UserDtoResponse](
-		t, rw, success,
-	)
-
-	assert.Equal(t, http.StatusOK, rw.StatusCode)
-	assert.Len(t, responseDto, 1)
-	expected := communication.ToUserDtoResponse(user)
-	assert.True(
-		t,
-		eassert.EqualsIgnoringFields(expected, responseDto[0]),
-		"Expected: %v, actual: %v",
-		expected,
-		responseDto,
-	)
 
 	cancel()
 	wg.Wait()
@@ -323,6 +288,56 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 
 	_, err = io.ReadAll(rw.Body)
 	assert.Equal(t, io.ErrUnexpectedEOF, err, "Actual err: %v", err)
+}
+
+func TestIT_RunServer_RegisterDeregisterWorlfow(t *testing.T) {
+	props := newTestServerConfig(7607)
+	cancellable, cancel := context.WithCancel(context.Background())
+	dbConn := newTestDbConnection(t)
+	defer dbConn.Close(context.Background())
+
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+
+	wg := asyncRunServerAndAssertNoError(t, cancellable, props)
+
+	// The user should not be registered by default
+	url := fmt.Sprintf("http://localhost:7607/v1/chats/rooms/%s/users", room.Id)
+	rw := doRequest(t, http.MethodGet, url)
+
+	responseDto := assertResponseAndExtractDetails[[]communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
+
+	// Register the user
+	requestDto := communication.RoomRegistrationDtoRequest{
+		User: user.Id,
+	}
+
+	url = fmt.Sprintf("http://localhost:7607/v1/chats/rooms/%s/users", room.Id)
+	rw = doRequestWithData(t, http.MethodPost, url, requestDto)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Fetch the users for the room
+	url = fmt.Sprintf("http://localhost:7607/v1/chats/rooms/%s/users", room.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	responseDto = assertResponseAndExtractDetails[[]communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	expected := []communication.UserDtoResponse{
+		communication.ToUserDtoResponse(user),
+	}
+	assert.Equal(t, expected, responseDto)
+
+	cancel()
+	wg.Wait()
 }
 
 func newTestServerConfig(httpPort uint16) Configuration {
