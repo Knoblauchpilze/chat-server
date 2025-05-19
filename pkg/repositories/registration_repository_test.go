@@ -236,6 +236,54 @@ func TestIT_RegistrationRepository_DeleteForRoom_OnlyDeletesUserForSpecifiedRoom
 	assertUserRegisteredInRoom(t, conn, user.Id, room2.Id)
 }
 
+func TestIT_RegistrationRepository_DeleteFromRoom(t *testing.T) {
+	repo, conn, tx := newTestRegistrationRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := repo.DeleteFromRoom(context.Background(), tx, room.Id, user.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserExists(t, conn, user.Id)
+	assertRoomExists(t, conn, room.Id)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Id)
+}
+
+func TestIT_RegistrationRepository_DeleteFromRoom_OnlyDeletesSpecifiedRoom(t *testing.T) {
+	repo, conn, tx := newTestRegistrationRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
+	registerUserInRoom(t, conn, user.Id, room2.Id)
+
+	err := repo.DeleteFromRoom(context.Background(), tx, room1.Id, user.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user.Id, room2.Id)
+}
+
+func TestIT_RegistrationRepository_DeleteFromRoom_DoesNotDeleteOtherUsers(t *testing.T) {
+	repo, conn, tx := newTestRegistrationRepositoryAndTransaction(t)
+	defer conn.Close(context.Background())
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
+
+	err := repo.DeleteFromRoom(context.Background(), tx, room.Id, user1.Id)
+	tx.Close(context.Background())
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assertUserRegisteredInRoom(t, conn, user2.Id, room.Id)
+}
+
 func newTestRegistrationRepositoryAndTransaction(t *testing.T) (RegistrationRepository, db.Connection, db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
