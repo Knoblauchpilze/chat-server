@@ -16,7 +16,6 @@ type RoomService interface {
 	List(ctx context.Context) ([]communication.RoomDtoResponse, error)
 	ListUserForRoom(ctx context.Context, room uuid.UUID) ([]communication.UserDtoResponse, error)
 	ListMessageForRoom(ctx context.Context, room uuid.UUID) ([]communication.MessageDtoResponse, error)
-	RegisterUserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -123,18 +122,6 @@ func (s *roomServiceImpl) ListMessageForRoom(
 	}
 
 	return out, nil
-}
-
-func (s *roomServiceImpl) RegisterUserInRoom(
-	ctx context.Context, user uuid.UUID, room uuid.UUID,
-) error {
-	tx, err := s.conn.BeginTx(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Close(ctx)
-
-	return s.repos.Registration.RegisterInRoom(ctx, tx, user, room)
 }
 
 func (s *roomServiceImpl) Delete(
