@@ -143,10 +143,8 @@ func TestIT_RegistrationController_DeleteUserFromRoom(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("room")
-	ctx.SetParamValues(room.Id.String())
-	ctx.SetParamNames("user")
-	ctx.SetParamValues(user.Id.String())
+	ctx.SetParamNames("room", "user")
+	ctx.SetParamValues(room.Id.String(), user.Id.String())
 
 	err := deleteUserFromRoom(ctx, service)
 
