@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -18,6 +19,10 @@ func RegistrationEndpoints(service service.RegistrationService) rest.Routes {
 	postHandler := createComponentAwareHttpHandler(addUserInRoom, service)
 	post := rest.NewRoute(http.MethodPost, "/rooms/:id/users", postHandler)
 	out = append(out, post)
+
+	deleteHandler := createComponentAwareHttpHandler(deleteUserFromRoom, service)
+	delete := rest.NewRoute(http.MethodDelete, "/rooms/:room/users/:user", deleteHandler)
+	out = append(out, delete)
 
 	return out
 }
@@ -49,6 +54,29 @@ func addUserInRoom(c echo.Context, s service.RegistrationService) error {
 			return c.JSON(http.StatusConflict, "User already registered in room")
 		}
 
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func deleteUserFromRoom(c echo.Context, s service.RegistrationService) error {
+	maybeId := c.Param("room")
+	room, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
+	maybeId = c.Param("user")
+	user, err := uuid.Parse(maybeId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+	}
+
+	fmt.Printf("deleting user %s from room %s\n", user, room)
+
+	err = s.UnregisterUserInRoom(c.Request().Context(), user, room)
+	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
