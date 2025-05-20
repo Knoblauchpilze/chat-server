@@ -336,6 +336,23 @@ func TestIT_RunServer_RegisterDeregisterWorlfow(t *testing.T) {
 	}
 	assert.Equal(t, expected, responseDto)
 
+	// Delete the user from the room
+	url = fmt.Sprintf("http://localhost:7607/v1/chats/rooms/%s/users/%s", room.Id, user.Id)
+	rw = doRequest(t, http.MethodDelete, url)
+
+	assert.Equal(t, http.StatusNoContent, rw.StatusCode)
+
+	// Fetch the users again
+	url = fmt.Sprintf("http://localhost:7607/v1/chats/rooms/%s/users", room.Id)
+	rw = doRequest(t, http.MethodGet, url)
+
+	responseDto = assertResponseAndExtractDetails[[]communication.UserDtoResponse](
+		t, rw, success,
+	)
+
+	assert.Equal(t, http.StatusOK, rw.StatusCode)
+	assert.Len(t, responseDto, 0)
+
 	cancel()
 	wg.Wait()
 }
