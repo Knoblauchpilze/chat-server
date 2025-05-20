@@ -46,5 +46,6 @@ func (s *registrationServiceImpl) UnregisterUserInRoom(
 	}
 	defer tx.Close(ctx)
 
+	// TODO: We should also update messages' owner to be the ghost user
 	return s.repos.Registration.DeleteFromRoom(ctx, tx, room, user)
 }
