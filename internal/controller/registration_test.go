@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_RegistrationController_PostRegisterUserInRoom_WhenIsHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+func TestIT_RegistrationController_AddUserInRoom_WhenIsHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, dbConn := newTestRegistrationService(t)
 	defer dbConn.Close(context.Background())
 	requestDto := communication.RoomRegistrationDtoRequest{
@@ -49,7 +49,7 @@ func TestIT_RegistrationController_PostRegisterUserInRoom_WhenIsHasWrongSyntax_E
 	)
 }
 
-func TestIT_RegistrationController_PostRegisterUserInRoom_WhenRegistrationHasWrongSyntax_ExpectBadRequest(t *testing.T) {
+func TestIT_RegistrationController_AddUserInRoom_WhenRegistrationHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, dbConn := newTestRegistrationService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-registration-dto-request"))
@@ -71,7 +71,7 @@ func TestIT_RegistrationController_PostRegisterUserInRoom_WhenRegistrationHasWro
 	)
 }
 
-func TestIT_RegistrationController_PostRegisterUserInRoom_WhenUserAlreadyRegistered_ExpectConflict(t *testing.T) {
+func TestIT_RegistrationController_AddUserInRoom_WhenUserAlreadyRegistered_ExpectConflict(t *testing.T) {
 	service, dbConn := newTestRegistrationService(t)
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
@@ -105,7 +105,7 @@ func TestIT_RegistrationController_PostRegisterUserInRoom_WhenUserAlreadyRegiste
 	)
 }
 
-func TestIT_RegistrationController_PostRegisterUserInRoom(t *testing.T) {
+func TestIT_RegistrationController_AddUserInRoom(t *testing.T) {
 	service, dbConn := newTestRegistrationService(t)
 	defer dbConn.Close(context.Background())
 	user := insertTestUser(t, dbConn)
