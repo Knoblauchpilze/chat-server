@@ -133,6 +133,29 @@ func TestIT_RegistrationController_AddUserInRoom(t *testing.T) {
 	assertUserRegisteredInRoom(t, dbConn, user.Id, room.Id)
 }
 
+func TestIT_RegistrationController_DeleteUserFromRoom(t *testing.T) {
+	service, dbConn := newTestRegistrationService(t)
+	defer dbConn.Close(context.Background())
+	user := insertTestUser(t, dbConn)
+	room := insertTestRoom(t, dbConn)
+	registerUserInRoom(t, dbConn, user.Id, room.Id)
+
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	req.Header.Set("Content-Type", "application/json")
+	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx.SetParamNames("room")
+	ctx.SetParamValues(room.Id.String())
+	ctx.SetParamNames("user")
+	ctx.SetParamValues(user.Id.String())
+
+	err := deleteUserFromRoom(ctx, service)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+
+	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assertUserNotRegisteredInRoom(t, dbConn, user.Id, room.Id)
+}
+
 func newTestRegistrationService(t *testing.T) (service.RegistrationService, db.Connection) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
