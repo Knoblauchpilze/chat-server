@@ -92,6 +92,25 @@ func TestIT_RoomService_UnregisterUserInRoom(t *testing.T) {
 	assertUserRegisteredInRoom(t, conn, user2.Id, room1.Name)
 }
 
+func TestIT_RoomService_UnregisterUserInRoom_UpdateMessagesInRoom(t *testing.T) {
+	service, conn := newTestRegistrationService(t)
+	defer conn.Close(context.Background())
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room.Id)
+	registerUserInRoom(t, conn, user2.Id, room.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room.Id)
+	msg1 := insertTestMessage(t, conn, user1.Id, room.Id)
+	msg2 := insertTestMessage(t, conn, user2.Id, room.Id)
+
+	err := service.UnregisterUserInRoom(context.Background(), user1.Id, room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertMessageOwner(t, conn, msg1.Id, "ghost")
+	assertMessageOwner(t, conn, msg2.Id, user2.Name)
+}
+
 func newTestRegistrationService(t *testing.T) (RegistrationService, db.Connection) {
 	conn := newTestDbConnection(t)
 	repos := repositories.New(conn)
