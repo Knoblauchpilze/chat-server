@@ -92,6 +92,22 @@ func TestIT_RegistrationService_UnregisterUserInRoom(t *testing.T) {
 	assertUserRegisteredInRoom(t, conn, user2.Id, room1.Name)
 }
 
+func TestIT_RegistrationService_ShouldNotUnregisterFromGeneralRoom(t *testing.T) {
+	service, conn := newTestRegistrationService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := getRoomId(t, conn, "general")
+
+	err := service.UnregisterUserInRoom(context.Background(), user.Id, room)
+
+	assert.True(
+		t,
+		errors.IsErrorWithCode(err, ErrLeavingRoomIsNotAllowed),
+		"Actual err: %v",
+		err,
+	)
+}
+
 func TestIT_RegistrationService_UnregisterUserInRoom_UpdateMessagesInRoom(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
