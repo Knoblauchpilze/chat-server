@@ -10,6 +10,7 @@ import (
 
 type RegistrationService interface {
 	RegisterUserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) error
+	UnregisterUserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) error
 }
 
 type registrationServiceImpl struct {
@@ -34,4 +35,16 @@ func (s *registrationServiceImpl) RegisterUserInRoom(
 	defer tx.Close(ctx)
 
 	return s.repos.Registration.RegisterInRoom(ctx, tx, user, room)
+}
+
+func (s *registrationServiceImpl) UnregisterUserInRoom(
+	ctx context.Context, user uuid.UUID, room uuid.UUID,
+) error {
+	tx, err := s.conn.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Close(ctx)
+
+	return s.repos.Registration.DeleteFromRoom(ctx, tx, room, user)
 }

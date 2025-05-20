@@ -73,6 +73,25 @@ func TestIT_RoomService_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectError
 	)
 }
 
+func TestIT_RoomService_UnregisterUserInRoom(t *testing.T) {
+	service, conn := newTestRegistrationService(t)
+	defer conn.Close(context.Background())
+	user1 := insertTestUser(t, conn)
+	user2 := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user1.Id, room1.Id)
+	registerUserInRoom(t, conn, user1.Id, room2.Id)
+	registerUserInRoom(t, conn, user2.Id, room1.Id)
+
+	err := service.UnregisterUserInRoom(context.Background(), user1.Id, room1.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user1.Id, room1.Name)
+	assertUserRegisteredInRoom(t, conn, user1.Id, room2.Name)
+	assertUserRegisteredInRoom(t, conn, user2.Id, room1.Name)
+}
+
 func newTestRegistrationService(t *testing.T) (RegistrationService, db.Connection) {
 	conn := newTestDbConnection(t)
 	repos := repositories.New(conn)
