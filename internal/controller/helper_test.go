@@ -124,7 +124,7 @@ func assertUserNotRegisteredInRoom(
 			room_user
 		WHERE
 			chat_user = $1
-			room = $2`,
+			AND room = $2`,
 		user,
 		room,
 	)
