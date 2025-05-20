@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIT_RoomService_RegisterUserInRoom(t *testing.T) {
+func TestIT_RegistrationService_RegisterUserInRoom(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
@@ -23,7 +23,7 @@ func TestIT_RoomService_RegisterUserInRoom(t *testing.T) {
 	assertUserRegisteredInRoom(t, conn, user.Id, room.Name)
 }
 
-func TestIT_RoomService_RegisterUserInRoom_WhenUserDoesNotExist_ExpectError(t *testing.T) {
+func TestIT_RegistrationService_RegisterUserInRoom_WhenUserDoesNotExist_ExpectError(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user := uuid.New()
@@ -40,7 +40,7 @@ func TestIT_RoomService_RegisterUserInRoom_WhenUserDoesNotExist_ExpectError(t *t
 	assertUserNotRegisteredInRoom(t, conn, user, room.Name)
 }
 
-func TestIT_RoomService_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectError(t *testing.T) {
+func TestIT_RegistrationService_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectError(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
@@ -56,7 +56,7 @@ func TestIT_RoomService_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectError(t *t
 	)
 }
 
-func TestIT_RoomService_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectError(t *testing.T) {
+func TestIT_RegistrationService_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectError(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user := insertTestUser(t, conn)
@@ -73,7 +73,7 @@ func TestIT_RoomService_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectError
 	)
 }
 
-func TestIT_RoomService_UnregisterUserInRoom(t *testing.T) {
+func TestIT_RegistrationService_UnregisterUserInRoom(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
@@ -92,7 +92,7 @@ func TestIT_RoomService_UnregisterUserInRoom(t *testing.T) {
 	assertUserRegisteredInRoom(t, conn, user2.Id, room1.Name)
 }
 
-func TestIT_RoomService_UnregisterUserInRoom_UpdateMessagesInRoom(t *testing.T) {
+func TestIT_RegistrationService_UnregisterUserInRoom_UpdateMessagesInRoom(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
 	user1 := insertTestUser(t, conn)
