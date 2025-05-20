@@ -25,6 +25,19 @@ func newTestDbConnection(t *testing.T) db.Connection {
 	return conn
 }
 
+func getRoomId(t *testing.T, conn db.Connection, name string) uuid.UUID {
+	sqlQuery := `SELECT id FROM room WHERE name = $1`
+
+	id, err := db.QueryOne[uuid.UUID](
+		context.Background(),
+		conn,
+		sqlQuery,
+		name,
+	)
+	assert.Nil(t, err, "Actual err: %v", err)
+	return id
+}
+
 func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 

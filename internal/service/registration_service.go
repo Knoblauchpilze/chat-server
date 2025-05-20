@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
 )
@@ -40,6 +41,16 @@ func (s *registrationServiceImpl) RegisterUserInRoom(
 func (s *registrationServiceImpl) UnregisterUserInRoom(
 	ctx context.Context, user uuid.UUID, room uuid.UUID,
 ) error {
+	// We don't allow to unregister from the general room
+	entity, err := s.repos.Room.Get(ctx, room)
+	if err != nil {
+		return err
+	}
+
+	if entity.Name == generalRoomName {
+		return errors.NewCode(ErrLeavingRoomIsNotAllowed)
+	}
+
 	tx, err := s.conn.BeginTx(ctx)
 	if err != nil {
 		return err
