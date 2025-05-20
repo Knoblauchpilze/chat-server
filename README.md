@@ -24,7 +24,7 @@ There are multiple ways to implement a chat server. Common practices include:
 - using websockets
 - using SSE
 
-Each solution has advantages and drawbacks. During the research phase, some projects stood out. One which
+Each solution has advantages and drawbacks. During the research phase, some projects stood out:
 
 - [go-random-chat](https://github.com/minghsu0107/go-random-chat), a fully scalable chat app with backend and frontend relying on websockets
 - [gorilla chat example](https://github.com/gorilla/websocket/tree/main/examples/chat), using websockets
