@@ -30,6 +30,14 @@ INSERT INTO chat_server_schema.chat_user ("id", "name", "api_user")
     '00b265e6-6638-4b1b-aeac-5898c7307eb8'
   );
 
+-- general
+
+INSERT INTO chat_server_schema.room_user ("room", "chat_user")
+  VALUES (
+    'b2c0d9c8-c5bd-42ea-88e2-15b66fffdd68',
+    '0198ed26-8e92-4b81-aec0-aaaff33b6a11'
+  );
+
 -- room-1
 INSERT INTO chat_server_schema.room ("id", "name")
   VALUES (
