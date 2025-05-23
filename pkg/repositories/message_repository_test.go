@@ -266,7 +266,7 @@ func TestIT_MessageRepository_UpdateMessagesOwner_WhenNewUserNotRegisteredAndOld
 	assert.Nil(t, err, "Actual err: %v", err)
 }
 
-func TestIt_MessageRepository_UpdateMessagesOwnerForRoom(t *testing.T) {
+func TestIT_MessageRepository_UpdateMessagesOwnerForRoom(t *testing.T) {
 	repo, conn, tx := newTestMessageRepositoryAndTransaction(t)
 	defer conn.Close(context.Background())
 	userOld := insertTestUser(t, conn)
