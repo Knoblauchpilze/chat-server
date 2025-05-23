@@ -57,7 +57,7 @@ func (s *registrationServiceImpl) UnregisterUserInRoom(
 	}
 	defer tx.Close(ctx)
 
-	err = s.repos.Message.UpdateMessagesOwner(ctx, tx, user, ghostUserName)
+	err = s.repos.Message.UpdateMessagesOwnerForRoom(ctx, tx, room, user, ghostUserName)
 	if err != nil {
 		return err
 	}

@@ -16,6 +16,7 @@ type MessageRepository interface {
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error)
 	DeleteForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID) error
 	UpdateMessagesOwner(ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string) error
+	UpdateMessagesOwnerForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string) error
 }
 
 type messageRepositoryImpl struct {
@@ -109,18 +110,37 @@ func (r *messageRepositoryImpl) DeleteForRoom(
 // https://stackoverflow.com/questions/7869592/how-to-do-an-update-join-in-postgresql
 const updateMessagesOwnerSqlTemplate = `
 WITH new_user AS (
-	SELECT id FROM chat_user WHERE name = $1
+	SELECT id FROM chat_user WHERE name = $2
 )
 UPDATE message SET
 	chat_user = new_user.id
 FROM
 	new_user
 WHERE
-	chat_user = $2`
+	chat_user = $1`
 
 func (r *messageRepositoryImpl) UpdateMessagesOwner(
 	ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string,
 ) error {
-	_, err := tx.Exec(ctx, updateMessagesOwnerSqlTemplate, newUser, oldUser)
+	_, err := tx.Exec(ctx, updateMessagesOwnerSqlTemplate, oldUser, newUser)
+	return err
+}
+
+const updateMessagesOwnerForRoomSqlTemplate = `
+WITH new_user AS (
+	SELECT id FROM chat_user WHERE name = $3
+)
+UPDATE message SET
+	chat_user = new_user.id
+FROM
+	new_user
+WHERE
+	room = $1
+	AND chat_user = $2`
+
+func (r *messageRepositoryImpl) UpdateMessagesOwnerForRoom(
+	ctx context.Context, tx db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string,
+) error {
+	_, err := tx.Exec(ctx, updateMessagesOwnerForRoomSqlTemplate, room, oldUser, newUser)
 	return err
 }
