@@ -32,7 +32,7 @@ jobs:
           FAILURES=$(wc -l < not_matching.txt)
           if [[ ${FAILURES} -ne 0 ]]; then
             echo 'failed=true' >> $GITHUB_OUTPUT
-            cat $FAILURES
+            cat not_matching.txt
           fi
       - name: Fail if some do not match
         if: ${{ steps.matching.outputs.failed == 'true' }}
