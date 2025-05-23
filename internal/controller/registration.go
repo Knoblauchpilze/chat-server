@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -72,8 +71,6 @@ func deleteUserFromRoom(c echo.Context, s service.RegistrationService) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
 	}
-
-	fmt.Printf("deleting user %s from room %s\n", user, room)
 
 	err = s.UnregisterUserInRoom(c.Request().Context(), user, room)
 	if err != nil {

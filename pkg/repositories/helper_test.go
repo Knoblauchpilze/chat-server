@@ -51,6 +51,8 @@ func assertUserRegisteredInRoom(
 func assertUserNotRegisteredInRoom(
 	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
+	t.Helper()
+
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,

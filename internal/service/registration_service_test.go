@@ -108,6 +108,40 @@ func TestIT_RegistrationService_ShouldNotUnregisterFromGeneralRoom(t *testing.T)
 	)
 }
 
+func TestIT_RegistrationService_WhenGhostNotRegisteredButNoMessages_ExpectSuccess(t *testing.T) {
+	service, conn := newTestRegistrationService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room.Id)
+
+	err := service.UnregisterUserInRoom(context.Background(), user.Id, room.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room.Name)
+}
+
+func TestIT_RegistrationService_WhenUserRegisteredInMultipleRooms_ExpectOnlyOneChanged(t *testing.T) {
+	service, conn := newTestRegistrationService(t)
+	defer conn.Close(context.Background())
+	user := insertTestUser(t, conn)
+	room1 := insertTestRoom(t, conn)
+	room2 := insertTestRoom(t, conn)
+	registerUserInRoom(t, conn, user.Id, room1.Id)
+	registerUserByNameInRoom(t, conn, "ghost", room1.Id)
+	registerUserInRoom(t, conn, user.Id, room2.Id)
+	msgRoom1 := insertTestMessage(t, conn, user.Id, room1.Id)
+	msgRoom2 := insertTestMessage(t, conn, user.Id, room2.Id)
+
+	err := service.UnregisterUserInRoom(context.Background(), user.Id, room1.Id)
+
+	assert.Nil(t, err, "Actual err: %v", err)
+	assertUserNotRegisteredInRoom(t, conn, user.Id, room1.Name)
+	assertUserRegisteredInRoom(t, conn, user.Id, room2.Name)
+	assertMessageOwner(t, conn, msgRoom1.Id, "ghost")
+	assertMessageOwner(t, conn, msgRoom2.Id, user.Name)
+}
+
 func TestIT_RegistrationService_UnregisterUserInRoom_UpdateMessagesInRoom(t *testing.T) {
 	service, conn := newTestRegistrationService(t)
 	defer conn.Close(context.Background())
