@@ -8,6 +8,54 @@ This repository defines a chat server using TCP connections to communicate with 
 
 [![codecov](https://codecov.io/gh/Knoblauchpilze/chat-server/graph/badge.svg?token=0ABFMO9WVY)](https://codecov.io/gh/Knoblauchpilze/chat-server)
 
+# Installation
+
+## Prerequisites
+
+This project requires the following tools to be installed on your machine:
+
+- [go](https://go.dev/doc/install)
+- [postgresql](https://www.postgresql.org/download/linux/ubuntu/)
+- [docker](https://docs.docker.com/engine/install/ubuntu/) (in case you want to build the Docker image locally)
+
+## Setup the repository
+
+Once the tools above are available, you can clone the repository as so:
+
+```bash
+git clone git@github.com:Knoblauchpilze/chat-server.git
+```
+
+## General structure of the project
+
+This project defines a single application to be run available under [cmd/chat-server](cmd/chat-server/). The server uses configuration files (see e.g. [config-template-dev.yml](cmd/chat-server/configs/config-template-dev.yml)) to configure various aspects of the application.
+
+The `chat-server` folder provides a [Makefile](cmd/chat-server/Makefile) with useful targets:
+
+- `setup` should be run when setting up the repository: it will copy the template configuration files to local (ignored by `git`) versions
+- `run` will build and run the server application
+
+## Configuring the database
+
+The server uses a database to store users, rooms and messages. It is defined under the [database/chats](database/chats) repository. The database requires 3 different passwords to be defined: this is explained in a bit more detailed in the [galactic-sovereign](https://github.com/Knoblauchpilze/galactic-sovereign?tab=readme-ov-file#creating-the-database) project.
+
+As a summary, in order to setup the database you can run the following commands:
+
+```bash
+cd database
+
+export ADMIN_PASSWORD='my-admin-password'
+export MANAGER_PASSWORD='my-manager-password'
+export USER_PASSWORD='my-user-password'
+
+./create_user.sh chats
+./create_database.sh chats
+cd chats
+make migrate
+```
+
+The migrations already include a data seeding step to fill the database with a couple of users and rooms so that you can directly interact with the server.
+
 # How does this work?
 
 ## Generalities
