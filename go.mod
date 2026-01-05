@@ -1,6 +1,6 @@
 module github.com/Knoblauchpilze/chat-server
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/Knoblauchpilze/backend-toolkit v0.4.3
@@ -35,7 +35,7 @@ require (
 require (
 	github.com/Knoblauchpilze/easy-assert v0.4.0
 	github.com/labstack/echo/v4 v4.15.0
-	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
