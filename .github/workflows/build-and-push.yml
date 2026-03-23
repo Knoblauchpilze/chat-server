@@ -226,6 +226,8 @@ jobs:
             totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
           echo "status_code=$(curl -s -o /dev/null -w %{http_code} localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
           echo "response_body=$(curl -s localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
+          curl -s -o /dev/null -w %{http_code} localhost:1234/v1/chats/healthcheck
+          curl -s localhost:1234/v1/chats/healthcheck
           docker stop chat-server-test
         id: test-results
         env:
