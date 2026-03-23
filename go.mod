@@ -3,7 +3,7 @@ module github.com/Knoblauchpilze/chat-server
 go 1.26.0
 
 require (
-	github.com/Knoblauchpilze/backend-toolkit v0.4.4
+	github.com/Knoblauchpilze/backend-toolkit v0.4.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	golang.org/x/sync v0.20.0
@@ -12,7 +12,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
