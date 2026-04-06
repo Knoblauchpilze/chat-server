@@ -8,7 +8,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func MessageEndpoints(service service.MessageService) rest.Routes {
@@ -25,7 +25,7 @@ func MessageEndpoints(service service.MessageService) rest.Routes {
 	return out
 }
 
-func postMessage(c echo.Context, s service.MessageService) error {
+func postMessage(c *echo.Context, s service.MessageService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -54,7 +54,7 @@ func postMessage(c echo.Context, s service.MessageService) error {
 	return c.NoContent(http.StatusAccepted)
 }
 
-func subscribeToMessages(c echo.Context, s service.MessageService) error {
+func subscribeToMessages(c *echo.Context, s service.MessageService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {

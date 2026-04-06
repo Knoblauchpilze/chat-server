@@ -10,7 +10,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func RoomEndpoints(service service.RoomService) rest.Routes {
@@ -43,7 +43,7 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	return out
 }
 
-func createRoom(c echo.Context, s service.RoomService) error {
+func createRoom(c *echo.Context, s service.RoomService) error {
 	var roomDtoRequest communication.RoomDtoRequest
 	err := c.Bind(&roomDtoRequest)
 	if err != nil {
@@ -65,7 +65,7 @@ func createRoom(c echo.Context, s service.RoomService) error {
 	return c.JSON(http.StatusCreated, out)
 }
 
-func getRoom(c echo.Context, s service.RoomService) error {
+func getRoom(c *echo.Context, s service.RoomService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -84,7 +84,7 @@ func getRoom(c echo.Context, s service.RoomService) error {
 	return c.JSON(http.StatusOK, out)
 }
 
-func listRoom(c echo.Context, s service.RoomService) error {
+func listRoom(c *echo.Context, s service.RoomService) error {
 	rooms, err := s.List(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
@@ -98,7 +98,7 @@ func listRoom(c echo.Context, s service.RoomService) error {
 	return c.JSONBlob(http.StatusOK, out)
 }
 
-func listUserForRoom(c echo.Context, s service.RoomService) error {
+func listUserForRoom(c *echo.Context, s service.RoomService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -118,7 +118,7 @@ func listUserForRoom(c echo.Context, s service.RoomService) error {
 	return c.JSONBlob(http.StatusOK, out)
 }
 
-func listMessageForRoom(c echo.Context, s service.RoomService) error {
+func listMessageForRoom(c *echo.Context, s service.RoomService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -138,7 +138,7 @@ func listMessageForRoom(c echo.Context, s service.RoomService) error {
 	return c.JSONBlob(http.StatusOK, out)
 }
 
-func deleteRoom(c echo.Context, s service.RoomService) error {
+func deleteRoom(c *echo.Context, s service.RoomService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {

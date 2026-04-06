@@ -10,7 +10,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func UserEndpoints(service service.UserService) rest.Routes {
@@ -39,7 +39,7 @@ func UserEndpoints(service service.UserService) rest.Routes {
 	return out
 }
 
-func createUser(c echo.Context, s service.UserService) error {
+func createUser(c *echo.Context, s service.UserService) error {
 	var userDtoRequest communication.UserDtoRequest
 	err := c.Bind(&userDtoRequest)
 	if err != nil {
@@ -61,7 +61,7 @@ func createUser(c echo.Context, s service.UserService) error {
 	return c.JSON(http.StatusCreated, out)
 }
 
-func getUser(c echo.Context, s service.UserService) error {
+func getUser(c *echo.Context, s service.UserService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -80,7 +80,7 @@ func getUser(c echo.Context, s service.UserService) error {
 	return c.JSON(http.StatusOK, out)
 }
 
-func listUsers(c echo.Context, s service.UserService) error {
+func listUsers(c *echo.Context, s service.UserService) error {
 	const userNameKey = "name"
 	maybeName := c.QueryParam(userNameKey)
 	exists := (maybeName != "")
@@ -113,7 +113,7 @@ func listUsers(c echo.Context, s service.UserService) error {
 	return c.JSONBlob(http.StatusOK, out)
 }
 
-func listForUser(c echo.Context, s service.UserService) error {
+func listForUser(c *echo.Context, s service.UserService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -133,7 +133,7 @@ func listForUser(c echo.Context, s service.UserService) error {
 	return c.JSONBlob(http.StatusOK, out)
 }
 
-func deleteUser(c echo.Context, s service.UserService) error {
+func deleteUser(c *echo.Context, s service.UserService) error {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {

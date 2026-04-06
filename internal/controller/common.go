@@ -1,13 +1,13 @@
 package controller
 
 import (
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-type componentAwareHttpHandler[T any] func(echo.Context, T) error
+type componentAwareHttpHandler[T any] func(*echo.Context, T) error
 
 func createComponentAwareHttpHandler[T any](handler componentAwareHttpHandler[T], component T) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return handler(c, component)
 	}
 }

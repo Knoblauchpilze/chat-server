@@ -2,9 +2,9 @@ package internal
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/logger"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/process"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/server"
 	"github.com/Knoblauchpilze/chat-server/internal/controller"
@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func RunServer(ctx context.Context, config Configuration, log logger.Logger) error {
+func RunServer(ctx context.Context, config Configuration, log *slog.Logger) error {
 	dbConn, err := db.New(ctx, config.Database)
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func configureHttpServer(
 	config server.Config,
 	dbConn db.Connection,
 	services service.Services,
-	log logger.Logger,
+	log *slog.Logger,
 ) (server.Server, error) {
 	s := server.NewWithLogger(config, log)
 

@@ -21,6 +21,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,8 +30,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenMessageHasWrongSyntax_ExpectB
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-message-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(uuid.NewString())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
 
 	err := postMessage(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -60,8 +60,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadReq
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(uuid.NewString())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
 
 	err = postMessage(ctx, service)
 
@@ -93,8 +92,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenUserIsNotInRoom_ExpectBadRequ
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(uuid.NewString())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
 
 	err = postMessage(ctx, service)
 
@@ -130,8 +128,7 @@ func TestIT_ChatsController_PostMessageForRoom_ReturnsAccepted(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err = postMessage(ctx, service)
 
@@ -159,8 +156,7 @@ func TestIT_ChatsController_PostMessageForRoom_SendsMessageToProcessor(t *testin
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err = postMessage(ctx, service)
 
@@ -199,8 +195,7 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomInRequestDoesNotMatchRout
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err = postMessage(ctx, service)
 
@@ -275,8 +270,7 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 		req := httptest.NewRequest(http.MethodPost, "/", &body)
 		req.Header.Set("Content-Type", "application/json")
 		ctx, rw := generateTestEchoContextFromRequest(req)
-		ctx.SetParamNames("id")
-		ctx.SetParamValues(room.Id.String())
+		ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 		err = postMessage(ctx, service)
 		assert.Nil(t, err, "Actual err: %v", err)
@@ -289,8 +283,7 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 
 	req := httptest.NewRequestWithContext(reqCtx, http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(user1.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user1.Id.String()}})
 
 	err := subscribeToMessages(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/config"
@@ -18,16 +20,18 @@ func determineConfigName() string {
 }
 
 func main() {
-	log := logger.New(logger.NewPrettyWriter(os.Stdout))
+	log := logger.New(os.Stdout)
 
 	conf, err := config.Load(determineConfigName(), internal.DefaultConfig())
 	if err != nil {
-		log.Errorf("Failed to load configuration: %v", err)
+		log.Error("Failed to load configuration", slog.Any("error", err))
 		os.Exit(1)
 	}
 
+	fmt.Printf("log: %+v\n", conf)
+
 	if err := internal.RunServer(context.Background(), conf, log); err != nil {
-		log.Errorf("Error while serving: %+v", err)
+		log.Error("Error while serving", slog.Any("error", err))
 		os.Exit(1)
 	}
 }

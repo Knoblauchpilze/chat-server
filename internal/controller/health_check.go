@@ -5,7 +5,7 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func HealthCheckEndpoints(pool db.Connection) rest.Routes {
@@ -18,7 +18,7 @@ func HealthCheckEndpoints(pool db.Connection) rest.Routes {
 	return out
 }
 
-func healthcheck(c echo.Context, pool db.Connection) error {
+func healthcheck(c *echo.Context, pool db.Connection) error {
 	err := pool.Ping(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusServiceUnavailable, err)

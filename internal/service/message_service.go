@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
@@ -11,12 +12,11 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
 )
 
 type MessageService interface {
 	PostMessage(ctx context.Context, messageDto communication.MessageDtoRequest) error
-	ServeClient(ctx context.Context, user uuid.UUID, response *echo.Response) error
+	ServeClient(ctx context.Context, user uuid.UUID, response http.ResponseWriter) error
 }
 
 type MessageServiceOpts struct {
@@ -69,7 +69,7 @@ func (s *messageServiceImpl) PostMessage(
 }
 
 func (s *messageServiceImpl) ServeClient(
-	ctx context.Context, user uuid.UUID, response *echo.Response,
+	ctx context.Context, user uuid.UUID, response http.ResponseWriter,
 ) error {
 	// TODO: We could add some ping/pong mechanism. This could serve as a base
 	// for idle checking
