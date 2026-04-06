@@ -286,8 +286,9 @@ func TestIT_RunServer_SubscribeToMessage_DoesNotReceiveMessageFromAnotherRoom(t 
 
 	assert.Equal(t, http.StatusOK, rw.StatusCode)
 
-	_, err = io.ReadAll(rw.Body)
-	assert.Equal(t, io.ErrUnexpectedEOF, err, "Actual err: %v", err)
+	body, err := io.ReadAll(rw.Body)
+	assert.Nil(t, err, "Actual err: %v", err)
+	assert.Equal(t, []byte{}, body, "Actual body: %s", string(body))
 }
 
 func TestIT_RunServer_RegisterDeregisterWorlfow(t *testing.T) {
@@ -360,6 +361,7 @@ func TestIT_RunServer_RegisterDeregisterWorlfow(t *testing.T) {
 func newTestServerConfig(httpPort uint16) Configuration {
 	baseConfig := DefaultConfig()
 	baseConfig.Server.Port = httpPort
+	baseConfig.Server.ShutdownTimeout = 100 * time.Millisecond
 
 	return Configuration{
 		Server:   baseConfig.Server,

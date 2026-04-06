@@ -14,6 +14,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,8 +32,7 @@ func TestIT_RegistrationController_AddUserInRoom_WhenIsHasWrongSyntax_ExpectBadR
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues("not-a-uuid")
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
 
 	err = addUserInRoom(ctx, service)
 
@@ -54,8 +54,7 @@ func TestIT_RegistrationController_AddUserInRoom_WhenRegistrationHasWrongSyntax_
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-registration-dto-request"))
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(uuid.NewString())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
 
 	err := addUserInRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -88,8 +87,7 @@ func TestIT_RegistrationController_AddUserInRoom_WhenUserAlreadyRegistered_Expec
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err = addUserInRoom(ctx, service)
 
@@ -121,8 +119,7 @@ func TestIT_RegistrationController_AddUserInRoom(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err = addUserInRoom(ctx, service)
 
@@ -142,8 +139,16 @@ func TestIT_RegistrationController_DeleteUserFromRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("room", "user")
-	ctx.SetParamValues(room.Id.String(), user.Id.String())
+	ctx.SetPathValues([]echo.PathValue{
+		{
+			Name:  "room",
+			Value: room.Id.String(),
+		},
+		{
+			Name:  "user",
+			Value: user.Id.String(),
+		},
+	})
 
 	err := deleteUserFromRoom(ctx, service)
 

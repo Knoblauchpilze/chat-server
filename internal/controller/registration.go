@@ -9,7 +9,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func RegistrationEndpoints(service service.RegistrationService) rest.Routes {
@@ -26,7 +26,7 @@ func RegistrationEndpoints(service service.RegistrationService) rest.Routes {
 	return out
 }
 
-func addUserInRoom(c echo.Context, s service.RegistrationService) error {
+func addUserInRoom(c *echo.Context, s service.RegistrationService) error {
 	maybeId := c.Param("id")
 	room, err := uuid.Parse(maybeId)
 	if err != nil {
@@ -59,7 +59,7 @@ func addUserInRoom(c echo.Context, s service.RegistrationService) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func deleteUserFromRoom(c echo.Context, s service.RegistrationService) error {
+func deleteUserFromRoom(c *echo.Context, s service.RegistrationService) error {
 	maybeId := c.Param("room")
 	room, err := uuid.Parse(maybeId)
 	if err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -105,8 +106,7 @@ func TestIT_UserController_GetUser(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(user.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
 
 	err := getUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -127,8 +127,7 @@ func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testin
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(nonExistingId.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
 
 	err := getUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -214,8 +213,7 @@ func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues("not-a-uuid")
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
 
 	err := listForUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -242,8 +240,7 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(user.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
 
 	err := listForUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -265,8 +262,7 @@ func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *tes
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(user.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
 
 	err := listForUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -305,8 +301,7 @@ func TestIT_UserController_DeleteUser(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(user.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
 
 	err := deleteUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -322,8 +317,7 @@ func TestIT_UserController_DeleteUser_WhenUserDoesNotExist_ExpectSuccess(t *test
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(nonExistingId.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
 
 	err := deleteUser(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)

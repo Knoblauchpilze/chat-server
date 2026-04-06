@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -19,7 +20,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,7 +104,7 @@ func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *test
 	service := NewMessageService(opts)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, echo.New())
+	response := echo.NewResponse(rec, slog.Default())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -135,7 +136,7 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, echo.New())
+	response := echo.NewResponse(rec, slog.Default())
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -208,7 +209,7 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, echo.New())
+	response := echo.NewResponse(rec, slog.Default())
 
 	ctx, cancel := context.WithCancel(context.Background())
 

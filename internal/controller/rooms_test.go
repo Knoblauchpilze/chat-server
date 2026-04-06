@@ -16,6 +16,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,8 +104,7 @@ func TestIT_RoomController_GetRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := getRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -125,8 +125,7 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(nonExistingId.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
 
 	err := getRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -167,8 +166,7 @@ func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues("not-a-uuid")
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
 
 	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -197,8 +195,7 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -221,8 +218,7 @@ func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := listUserForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -269,8 +265,7 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := listMessageForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -293,8 +288,7 @@ func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySli
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := listMessageForRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -311,8 +305,7 @@ func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *t
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues("not-a-uuid")
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
 
 	err := deleteRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -335,8 +328,7 @@ func TestIT_RoomController_DeleteRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(room.Id.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
 
 	err := deleteRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
@@ -352,8 +344,7 @@ func TestIT_RoomController_DeleteRoom_WhenRoomDoesNotExist_ExpectSuccess(t *test
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
 	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetParamNames("id")
-	ctx.SetParamValues(nonExistingId.String())
+	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
 
 	err := deleteRoom(ctx, service)
 	assert.Nil(t, err, "Actual err: %v", err)
