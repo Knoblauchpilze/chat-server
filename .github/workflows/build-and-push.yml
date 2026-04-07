@@ -220,14 +220,31 @@ jobs:
           docker run \
             -d \
             --name chat-server-test \
+            --add-host host.docker.internal:host-gateway \
             -e ENV_SERVER_PORT=$PORT \
+            -e ENV_DATABASE_HOST=host.docker.internal \
             -e ENV_DATABASE_PASSWORD=$DATABASE_PASSWORD \
             -p 1234:1234 \
             totocorpsoftwareinc/chat-server:${{ needs.extract-service-tag.outputs.version }}
+
+          echo "Waiting for service to become ready..."
+          for i in $(seq 1 15); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" localhost:1234/v1/chats/healthcheck 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Service is ready"
+              break
+            fi
+            if [ "$i" = "15" ]; then
+              echo "Service did not become ready in time"
+              docker logs chat-server-test
+              exit 1
+            fi
+            echo "Not ready yet (status: $STATUS), retrying in 2s... ($i/15)"
+            sleep 2
+          done
+
           echo "status_code=$(curl -s -o /dev/null -w %{http_code} localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
           echo "response_body=$(curl -s localhost:1234/v1/chats/healthcheck)" >> $GITHUB_OUTPUT
-          curl -s -o /dev/null -w %{http_code} localhost:1234/v1/chats/healthcheck
-          curl -s localhost:1234/v1/chats/healthcheck
           docker stop chat-server-test
         id: test-results
         env:
