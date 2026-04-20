@@ -34,13 +34,10 @@ require (
 
 require (
 	github.com/Knoblauchpilze/easy-assert v0.4.0
-	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/rs/zerolog v1.35.0 // indirect
 	github.com/stretchr/testify v1.11.1
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 )
