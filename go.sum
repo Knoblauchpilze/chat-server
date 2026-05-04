@@ -1,5 +1,5 @@
-github.com/Knoblauchpilze/backend-toolkit v0.5.0 h1:VkFt4WAW/IjMlq4MLub610irJfzOF8c52jMjwHeNTFc=
-github.com/Knoblauchpilze/backend-toolkit v0.5.0/go.mod h1:No6C1Rze3tgN1ANugKou9VxNjjvqKmHoFv68e76zKiQ=
+github.com/Knoblauchpilze/backend-toolkit v0.6.3 h1:An4Cjo5/haMJkd5KPR8reeuD170ks/XCHdX64/omfhw=
+github.com/Knoblauchpilze/backend-toolkit v0.6.3/go.mod h1:4h1o9pGV0nB2W4A2dfM9aachpyXQXaAkrCMGzkyVl9E=
 github.com/Knoblauchpilze/easy-assert v0.4.0 h1:+Eanp7k3nnaHPP3eLbif3qkTNx0rb/qq0lLCL0zO06E=
 github.com/Knoblauchpilze/easy-assert v0.4.0/go.mod h1:vFiqu9yxaa2pEFoz4eXp2tst7sn8U+CkT2dgppiEYTI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -40,8 +40,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
-github.com/rs/zerolog v1.35.0 h1:VD0ykx7HMiMJytqINBsKcbLS+BJ4WYjz+05us+LRTdI=
-github.com/rs/zerolog v1.35.0/go.mod h1:EjML9kdfa/RMA7h/6z6pYmq1ykOuA8/mjWaEvGI+jcw=
+github.com/rs/zerolog v1.35.1 h1:m7xQeoiLIiV0BCEY4Hs+j2NG4Gp2o2KPKmhnnLiazKI=
+github.com/rs/zerolog v1.35.1/go.mod h1:EjML9kdfa/RMA7h/6z6pYmq1ykOuA8/mjWaEvGI+jcw=
 github.com/sagikazarmark/locafero v0.11.0 h1:1iurJgmM9G3PA/I+wWYIOw/5SyBtxapeHDcg+AAIFXc=
 github.com/sagikazarmark/locafero v0.11.0/go.mod h1:nVIGvgyzw595SUSUE6tvCp3YYTeHs15MvlmU87WwIik=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
