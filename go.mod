@@ -6,7 +6,7 @@ require (
 	github.com/Knoblauchpilze/backend-toolkit v0.5.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/labstack/echo/v5 v5.1.0
+	github.com/labstack/echo/v5 v5.1.1
 	golang.org/x/sync v0.20.0
 )
 
