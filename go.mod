@@ -3,7 +3,7 @@ module github.com/Knoblauchpilze/chat-server
 go 1.26.0
 
 require (
-	github.com/Knoblauchpilze/backend-toolkit v0.6.3
+	github.com/Knoblauchpilze/backend-toolkit v0.6.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/labstack/echo/v5 v5.1.1
