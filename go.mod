@@ -6,7 +6,7 @@ require (
 	github.com/Knoblauchpilze/backend-toolkit v0.6.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/labstack/echo/v5 v5.3.0
+	github.com/labstack/echo/v5 v5.3.1
 	golang.org/x/sync v0.22.0
 )
 
@@ -39,5 +39,5 @@ require (
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )
