@@ -1,6 +1,10 @@
 #!/bin/bash
 
-DB_PATH=$1
+DB_PATH="chats"
+if [[ $# -ge 1 ]]; then
+  DB_PATH="$1"
+fi
+
 DB_HOST=${DATABASE_HOST:-localhost}
 DB_PORT=${DATABASE_PORT:-5432}
 DB_USER=${DATABASE_USER:-postgres}

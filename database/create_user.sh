@@ -1,16 +1,21 @@
 #!/bin/bash
 
-DB_PATH=$1
+DB_PATH="chats"
+if [[ $# -ge 1 ]]; then
+  DB_PATH="$1"
+fi
+
 DB_HOST=${DATABASE_HOST:-localhost}
 DB_PORT=${DATABASE_PORT:-5432}
 DB_USER=${DATABASE_USER:-postgres}
 
+
 # Password should be provided as environment variables.
-if [[ -z "${ADMIN_PASSWORD}" ]] && [[ "${DB_PATH}" != "test" ]]; then
+if [[ -z "${ADMIN_PASSWORD}" ]]; then
   echo "DB admin password is not provided as environment variable, aborting"
   exit 1
 fi
-if [[ -z "${MANAGER_PASSWORD}" ]] && [[ "${DB_PATH}" != "test" ]]; then
+if [[ -z "${MANAGER_PASSWORD}" ]]; then
   echo "DB manager password is not provided as environment variable, aborting"
   exit 1
 fi
