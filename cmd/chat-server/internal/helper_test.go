@@ -12,6 +12,7 @@ import (
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
@@ -35,13 +36,13 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestDbConnection(t *testing.T) db.Connection {
+func newTestDbConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
-func insertTestUser(t *testing.T, dbConn db.Connection) persistence.User {
+func insertTestUser(t *testing.T, dbConn *db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(dbConn)
 
 	tx, err := dbConn.BeginTx(context.Background())
@@ -63,7 +64,7 @@ func insertTestUser(t *testing.T, dbConn db.Connection) persistence.User {
 	return out
 }
 
-func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertUserExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -74,7 +75,7 @@ func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func insertTestRoom(t *testing.T, dbConn db.Connection) persistence.Room {
+func insertTestRoom(t *testing.T, dbConn *db.Connection) persistence.Room {
 	repo := repositories.NewRoomRepository(dbConn)
 
 	tx, err := dbConn.BeginTx(context.Background())
@@ -95,7 +96,7 @@ func insertTestRoom(t *testing.T, dbConn db.Connection) persistence.Room {
 	return out
 }
 
-func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertRoomExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -106,7 +107,7 @@ func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(
@@ -156,19 +157,17 @@ func doRequestWithBody(
 func assertResponseAndExtractDetails[T any](
 	t *testing.T, rw *http.Response, status string,
 ) T {
-	type response struct {
-		Status  string          `json:"status"`
-		Details json.RawMessage `json:"details"`
-	}
-
 	data, err := io.ReadAll(rw.Body)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	var responseData response
+	var responseData rest.ResponseEnvelope[json.RawMessage]
 	err = json.Unmarshal(data, &responseData)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, status, responseData.Status)
+	assert.Equal(t, status, responseData.Status.String())
+	assert.Equal(t, rw.StatusCode, responseData.StatusCode)
+	_, err = uuid.Parse(responseData.RequestId)
+	assert.Nil(t, err, "Actual err: %v", err)
 
 	var out T
 	err = json.Unmarshal(responseData.Details, &out)

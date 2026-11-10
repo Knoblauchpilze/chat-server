@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
@@ -48,12 +46,10 @@ func TestIT_RoomRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 	_, err := repo.Create(context.Background(), tx, newRoom)
 	tx.Close(context.Background())
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
-		"Actual err: %v",
-		err,
-	)
+	var dbErr *db.DatabaseError
+	if assert.ErrorAs(t, err, &dbErr) {
+		assert.Equal(t, db.ErrUniqueConstraintViolation, dbErr.Code)
+	}
 	assertRoomDoesNotExist(t, conn, newRoom.Id)
 }
 
@@ -77,7 +73,7 @@ func TestIT_RoomRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	_, err := repo.Get(context.Background(), id)
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		err == db.ErrNoMatchingRows,
 		"Actual err: %v",
 		err,
 	)
@@ -171,19 +167,19 @@ func TestIT_RoomRepository_Delete_WhenNotFound_ExpectSuccess(t *testing.T) {
 	assertRoomExists(t, conn, room.Id)
 }
 
-func newTestRoomRepository(t *testing.T) (RoomRepository, db.Connection) {
+func newTestRoomRepository(t *testing.T) (RoomRepository, *db.Connection) {
 	conn := newTestConnection(t)
 	return NewRoomRepository(conn), conn
 }
 
-func newTestRoomRepositoryAndTransaction(t *testing.T) (RoomRepository, db.Connection, db.Transaction) {
+func newTestRoomRepositoryAndTransaction(t *testing.T) (RoomRepository, *db.Connection, *db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 	return NewRoomRepository(conn), conn, tx
 }
 
-func assertRoomExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertRoomExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -194,7 +190,7 @@ func assertRoomExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertRoomDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertRoomDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,
@@ -205,7 +201,7 @@ func assertRoomDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Zero(t, value)
 }
 
-func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
+func insertTestRoom(t *testing.T, conn *db.Connection) persistence.Room {
 	room := persistence.Room{
 		Id:   uuid.New(),
 		Name: "my-room-" + uuid.New().String(),

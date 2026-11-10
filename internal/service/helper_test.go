@@ -19,13 +19,13 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestDbConnection(t *testing.T) db.Connection {
+func newTestDbConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
-func getRoomId(t *testing.T, conn db.Connection, name string) uuid.UUID {
+func getRoomId(t *testing.T, conn *db.Connection, name string) uuid.UUID {
 	sqlQuery := `SELECT id FROM room WHERE name = $1`
 
 	id, err := db.QueryOne[uuid.UUID](
@@ -38,7 +38,7 @@ func getRoomId(t *testing.T, conn db.Connection, name string) uuid.UUID {
 	return id
 }
 
-func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(
@@ -51,7 +51,7 @@ func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room u
 	assert.Equal(t, int64(1), count)
 }
 
-func registerUserByNameInRoom(t *testing.T, conn db.Connection, user string, room uuid.UUID) {
+func registerUserByNameInRoom(t *testing.T, conn *db.Connection, user string, room uuid.UUID) {
 	sqlQuery := `
 		INSERT INTO
 			room_user (chat_user, room)
@@ -74,7 +74,7 @@ func registerUserByNameInRoom(t *testing.T, conn db.Connection, user string, roo
 }
 
 func assertUserRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room string,
 ) {
 	value, err := db.QueryOne[int](
 		context.Background(),
@@ -95,7 +95,7 @@ func assertUserRegisteredInRoom(
 }
 
 func assertUserNameRegisteredInRoom(
-	t *testing.T, conn db.Connection, user string, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user string, room uuid.UUID,
 ) {
 	value, err := db.QueryOne[int](
 		context.Background(),
@@ -116,7 +116,7 @@ func assertUserNameRegisteredInRoom(
 }
 
 func assertUserNotRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room string,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room string,
 ) {
 	t.Helper()
 
@@ -140,7 +140,7 @@ func assertUserNotRegisteredInRoom(
 
 func insertTestMessage(
 	t *testing.T,
-	conn db.Connection,
+	conn *db.Connection,
 	user uuid.UUID,
 	room uuid.UUID,
 ) persistence.Message {
@@ -161,7 +161,7 @@ func insertTestMessage(
 	return out
 }
 
-func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -172,7 +172,7 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,
@@ -183,7 +183,7 @@ func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Zero(t, value)
 }
 
-func assertMessageOwner(t *testing.T, conn db.Connection, msg uuid.UUID, user string) {
+func assertMessageOwner(t *testing.T, conn *db.Connection, msg uuid.UUID, user string) {
 	t.Helper()
 
 	value, err := db.QueryOne[string](

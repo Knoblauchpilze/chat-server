@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -16,6 +17,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestIT_RunServer_WhenPortAlreadyBound_ExpectError(t *testing.T) {
+	listener, err := net.Listen("tcp", ":0")
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer listener.Close()
+
+	port := uint16(listener.Addr().(*net.TCPAddr).Port)
+	config := newTestServerConfig(port)
+	err = RunServer(t.Context(), config, logger.New(io.Discard))
+
+	assert.Error(t, err)
+}
 
 func TestIT_RunServer_Room_CreateGetDeleteWorkflow(t *testing.T) {
 	props := newTestServerConfig(7601)
@@ -360,11 +375,12 @@ func TestIT_RunServer_RegisterDeregisterWorlfow(t *testing.T) {
 
 func newTestServerConfig(httpPort uint16) Configuration {
 	baseConfig := DefaultConfig()
-	baseConfig.Server.Port = httpPort
+	baseConfig.Port = httpPort
 	baseConfig.Server.ShutdownTimeout = 100 * time.Millisecond
 
 	return Configuration{
 		Server:   baseConfig.Server,
+		Port:     baseConfig.Port,
 		Database: dbTestConfig,
 	}
 }

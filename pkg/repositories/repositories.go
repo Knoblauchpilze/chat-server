@@ -9,7 +9,7 @@ type Repositories struct {
 	User         UserRepository
 }
 
-func New(conn db.Connection) Repositories {
+func New(conn *db.Connection) Repositories {
 	return Repositories{
 		Message:      NewMessageRepository(conn),
 		Registration: NewRegistrationRepository(),

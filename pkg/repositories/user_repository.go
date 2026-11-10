@@ -9,19 +9,19 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, tx db.Transaction, user persistence.User) (persistence.User, error)
+	Create(ctx context.Context, tx *db.Transaction, user persistence.User) (persistence.User, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.User, error)
 	GetByName(ctx context.Context, name string) (persistence.User, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.User, error)
-	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
-	DeleteFromRooms(ctx context.Context, tx db.Transaction, user uuid.UUID) error
+	Delete(ctx context.Context, tx *db.Transaction, id uuid.UUID) error
+	DeleteFromRooms(ctx context.Context, tx *db.Transaction, user uuid.UUID) error
 }
 
 type userRepositoryImpl struct {
-	conn db.Connection
+	conn *db.Connection
 }
 
-func NewUserRepository(conn db.Connection) UserRepository {
+func NewUserRepository(conn *db.Connection) UserRepository {
 	return &userRepositoryImpl{
 		conn: conn,
 	}
@@ -33,7 +33,7 @@ INSERT INTO chat_user (id, name, api_user)
 	RETURNING created_at, updated_at`
 
 func (r *userRepositoryImpl) Create(
-	ctx context.Context, tx db.Transaction, user persistence.User,
+	ctx context.Context, tx *db.Transaction, user persistence.User,
 ) (persistence.User, error) {
 	times, err := db.QueryOneTx[createdAtUpdatedAt](
 		ctx,
@@ -145,7 +145,7 @@ WHERE
 	id = $1`
 
 func (r *userRepositoryImpl) Delete(
-	ctx context.Context, tx db.Transaction, id uuid.UUID,
+	ctx context.Context, tx *db.Transaction, id uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteUserSqlTemplate, id)
 	return err
@@ -158,7 +158,7 @@ WHERE
 	chat_user = $1`
 
 func (r *userRepositoryImpl) DeleteFromRooms(
-	ctx context.Context, tx db.Transaction, user uuid.UUID,
+	ctx context.Context, tx *db.Transaction, user uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteUserFromRoomsSqlTemplate, user)
 	return err

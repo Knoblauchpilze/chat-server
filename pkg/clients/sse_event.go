@@ -99,7 +99,7 @@ func writeToResponseWriter(data []byte, rw http.ResponseWriter) error {
 	n, err := rw.Write(data)
 
 	if n != len(data) {
-		return errors.NewCode(ErrPartialSseWrite)
+		return errors.FromCode(ErrPartialSseWrite)
 	}
 
 	return err

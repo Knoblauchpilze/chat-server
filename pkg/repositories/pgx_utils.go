@@ -1,31 +1,14 @@
 package repositories
 
 import (
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 )
 
-func extractForeignKeyViolation(err error) (foreignKey string, ok bool) {
-	foreignKey = ""
-	ok = false
-
-	if !errors.IsErrorWithCode(err, pgx.ForeignKeyValidation) {
-		return
+func extractForeignKeyViolation(err error) (string, bool) {
+	dbErr, ok := db.AsDatabaseError(err)
+	if !ok || dbErr.Code != db.ErrForeignKeyValidation {
+		return "", false
 	}
 
-	cause := errors.Unwrap(err)
-	if cause == nil {
-		return
-	}
-
-	pgErr, ok := cause.(*pgconn.PgError)
-	if !ok {
-		return
-	}
-
-	foreignKey = pgErr.ConstraintName
-	ok = true
-
-	return
+	return dbErr.Constraint, true
 }

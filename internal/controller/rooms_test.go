@@ -11,26 +11,50 @@ import (
 	"testing"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/middleware"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUnit_RoomController_CreateRoom_WhenInvalidJson_ExpectErrorEnvelope(t *testing.T) {
+	for _, body := range []string{"{", `{"name": 42}`} {
+		t.Run(body, func(t *testing.T) {
+			router := gin.New()
+			router.Use(middleware.ResponseEnvelope())
+			route := RoomEndpoints(nil)[0]
+			router.Handle(route.Method(), route.Path(), route.Handler())
+
+			req := httptest.NewRequest(http.MethodPost, "/rooms", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rw := httptest.NewRecorder()
+			router.ServeHTTP(rw, req)
+
+			assert.Equal(t, http.StatusBadRequest, rw.Code)
+			assert.JSONEq(t, `{
+				"request_id": "unknown",
+				"status": "ERROR",
+				"status_code": 400,
+				"details": "Invalid room syntax"
+			}`, rw.Body.String())
+		})
+	}
+}
 
 func TestIT_RoomController_CreateRoom_WhenRoomHasWrongSyntax_ExpectBadRequest(t *testing.T) {
 	service, dbConn := newTestRoomService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-room-dto-request"))
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := createRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	createRoom(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid room syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid room syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -53,13 +77,11 @@ func TestIT_RoomController_CreateRoom_WhenRoomHasEmptyName_ExpectBadRequest(t *t
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err = createRoom(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid room name\"\n")
+	createRoom(ctx, service)
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid room name\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -82,17 +104,15 @@ func TestIT_RoomController_CreateRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err = createRoom(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
+	createRoom(ctx, service)
 
 	var responseDto communication.RoomDtoResponse
 	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, http.StatusCreated, rw.Code)
+	assert.Equal(t, http.StatusCreated, ctx.Writer.Status())
 	assert.Equal(t, requestDto.Name, responseDto.Name)
 	assertRoomExists(t, dbConn, responseDto.Id)
 }
@@ -103,17 +123,16 @@ func TestIT_RoomController_GetRoom(t *testing.T) {
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := getRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	getRoom(ctx, service)
 
 	var responseDto communication.RoomDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, http.StatusOK, ctx.Writer.Status())
 	expected := communication.ToRoomDtoResponse(room)
 	assert.Equal(t, expected, responseDto)
 }
@@ -124,14 +143,13 @@ func TestIT_RoomController_GetRoom_WhenRoomDoesNotExist_ExpectNotFound(t *testin
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: nonExistingId.String()}}
 
-	err := getRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	getRoom(ctx, service)
 
-	assert.Equal(t, http.StatusNotFound, rw.Code)
-	expectedBody := []byte("\"No such room\"\n")
+	assert.Equal(t, http.StatusNotFound, ctx.Writer.Status())
+	expectedBody := []byte("\"No such room\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -147,16 +165,15 @@ func TestIT_RoomController_ListROom(t *testing.T) {
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := listRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listRoom(ctx, service)
 
 	var responseDtos []communication.RoomDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDtos)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDtos)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, http.StatusOK, ctx.Writer.Status())
 	expected := communication.ToRoomDtoResponse(room)
 	assert.Contains(t, responseDtos, expected)
 }
@@ -165,14 +182,13 @@ func TestIT_RoomController_ListUserForRoom_WhenIdHasWrongSyntax_ExpectBadRequest
 	service, dbConn := newTestRoomService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
 
-	err := listUserForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUserForRoom(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -194,14 +210,13 @@ func TestIT_RoomController_ListUserForRoom(t *testing.T) {
 	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := listUserForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUserForRoom(ctx, service)
 
 	var responseDto []communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []communication.UserDtoResponse{
@@ -217,14 +232,13 @@ func TestIT_RoomController_ListUserForRoom_WhenNoUserInRoom_ExpectEmptySlice(t *
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := listUserForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUserForRoom(ctx, service)
 
 	var responseDto []communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
@@ -234,13 +248,12 @@ func TestIT_RoomController_ListMessageForRoom_WhenIdHasWrongSyntax_ExpectBadRequ
 	service, dbConn := newTestRoomService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := listMessageForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listMessageForRoom(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -264,14 +277,13 @@ func TestIT_RoomController_ListMessageForRoom(t *testing.T) {
 	msg2 := insertTestMessage(t, dbConn, user2.Id, room.Id)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := listMessageForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listMessageForRoom(ctx, service)
 
 	var responseDto []communication.MessageDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []communication.MessageDtoResponse{
@@ -287,14 +299,13 @@ func TestIT_RoomController_ListMessageForRoom_WhenNoMessageInRoom_ExpectEmptySli
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := listMessageForRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listMessageForRoom(ctx, service)
 
 	var responseDto []communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, []communication.UserDtoResponse{}, responseDto)
@@ -304,14 +315,13 @@ func TestIT_RoomController_DeleteRoom_WhenIdHasWrongSyntax_ExpectBadRequest(t *t
 	service, dbConn := newTestRoomService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
 
-	err := deleteRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteRoom(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -327,13 +337,12 @@ func TestIT_RoomController_DeleteRoom(t *testing.T) {
 	room := insertTestRoom(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err := deleteRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteRoom(ctx, service)
 
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 	assertRoomDoesNotExist(t, dbConn, room.Id)
 }
 
@@ -343,22 +352,21 @@ func TestIT_RoomController_DeleteRoom_WhenRoomDoesNotExist_ExpectSuccess(t *test
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: nonExistingId.String()}}
 
-	err := deleteRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteRoom(ctx, service)
 
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 }
 
-func newTestRoomService(t *testing.T) (service.RoomService, db.Connection) {
+func newTestRoomService(t *testing.T) (service.RoomService, *db.Connection) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 	return service.NewRoomService(dbConn, repos), dbConn
 }
 
-func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
+func insertTestRoom(t *testing.T, conn *db.Connection) persistence.Room {
 	repo := repositories.NewRoomRepository(conn)
 
 	tx, err := conn.BeginTx(context.Background())
@@ -378,7 +386,7 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 	return out
 }
 
-func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertRoomExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -389,7 +397,7 @@ func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertRoomDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertRoomDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,
