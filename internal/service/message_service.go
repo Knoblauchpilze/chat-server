@@ -20,7 +20,7 @@ type MessageService interface {
 }
 
 type MessageServiceOpts struct {
-	DbConn                 db.Connection
+	DbConn                 *db.Connection
 	Repos                  repositories.Repositories
 	Processor              messages.Processor
 	Manager                clients.Manager
@@ -28,7 +28,7 @@ type MessageServiceOpts struct {
 }
 
 type messageServiceImpl struct {
-	conn     db.Connection
+	conn     *db.Connection
 	roomRepo repositories.RoomRepository
 
 	processor              messages.Processor
@@ -52,7 +52,7 @@ func (s *messageServiceImpl) PostMessage(
 	message := communication.FromMessageDtoRequest(messageDto)
 
 	if message.Message == "" {
-		return errors.NewCode(ErrEmptyMessage)
+		return errors.FromCode(ErrEmptyMessage)
 	}
 
 	registered, err := s.roomRepo.UserInRoom(ctx, message.ChatUser, message.Room)
@@ -60,7 +60,7 @@ func (s *messageServiceImpl) PostMessage(
 		return err
 	}
 	if !registered {
-		return errors.NewCode(ErrUserNotInRoom)
+		return errors.FromCode(ErrUserNotInRoom)
 	}
 
 	s.processor.Enqueue(message)
@@ -82,7 +82,10 @@ func (s *messageServiceImpl) ServeClient(
 		return err
 	}
 
-	done := process.SafeRunAsync(client.Start)
+	done := make(chan error, 1)
+	go func() {
+		done <- process.SafeRunSync(client.Start)
+	}()
 
 	select {
 	case <-ctx.Done():

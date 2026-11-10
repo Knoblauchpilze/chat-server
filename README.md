@@ -35,6 +35,13 @@ The `chat-server` folder provides a [Makefile](cmd/chat-server/Makefile) with us
 - `setup` should be run when setting up the repository: it will copy the template configuration files to local (ignored by `git`) versions
 - `run` will build and run the server application
 
+HTTP routes are served by Gin through backend-toolkit v0.8.4. The listening port
+is configured with the top-level `Port` setting (or the `ENV_PORT` environment
+variable), rather than `Server.Port` / `ENV_SERVER_PORT`.
+Toolkit-generated errors use lowercase JSON fields such as `code` and `message`.
+Response envelopes use `request_id` instead of `requestId` and include
+`status_code`.
+
 ## Configuring the database
 
 The server uses a database to store users, rooms and messages. It is defined under the [database/chats](database/chats) repository. The database requires 3 different passwords to be defined: this is explained in a bit more detailed in the [galactic-sovereign](https://github.com/Knoblauchpilze/galactic-sovereign?tab=readme-ov-file#creating-the-database) project.

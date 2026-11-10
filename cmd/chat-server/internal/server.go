@@ -47,15 +47,27 @@ func RunServer(ctx context.Context, config Configuration, log *slog.Logger) erro
 		return err
 	}
 
+	listener, err := s.Bind(config.Port)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
 	group, errCtx := errgroup.WithContext(ctx)
 
 	// Voluntarily ignore errors: they can only be produced (as of now, true)
-	// when the process is not configured correctly. However when using the
-	// `StartWithSignalHandler`, the process is build directly from the
-	// runnable given in input so there's no risk of having it misconfigured.
-	waitProcessor, _ := process.StartWithSignalHandler(errCtx, processor)
-	waitManager, _ := process.StartWithSignalHandler(errCtx, manager)
-	waitServer, _ := process.StartWithSignalHandler(errCtx, s)
+	// when the process is not configured correctly. These processes all
+	// define both run and interrupt functions.
+	waitProcessor, _ := process.AsyncStartWithSignalHandler(errCtx, process.Process{
+		Run: processor.Start, Interrupt: processor.Stop,
+	})
+	waitManager, _ := process.AsyncStartWithSignalHandler(errCtx, process.Process{
+		Run: manager.Start, Interrupt: manager.Stop,
+	})
+	serverProcess := process.NewContextProcess(func(ctx context.Context) error {
+		return s.Serve(ctx, listener)
+	})
+	waitServer, _ := process.AsyncStartWithSignalHandler(errCtx, serverProcess)
 
 	group.Go(waitProcessor)
 	group.Go(waitManager)
@@ -66,10 +78,10 @@ func RunServer(ctx context.Context, config Configuration, log *slog.Logger) erro
 
 func configureHttpServer(
 	config server.Config,
-	dbConn db.Connection,
+	dbConn *db.Connection,
 	services service.Services,
 	log *slog.Logger,
-) (server.Server, error) {
+) (*server.HttpServer, error) {
 	s := server.NewWithLogger(config, log)
 
 	for _, route := range controller.HealthCheckEndpoints(dbConn) {

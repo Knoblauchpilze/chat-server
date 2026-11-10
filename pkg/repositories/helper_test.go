@@ -16,14 +16,14 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestConnection(t *testing.T) db.Connection {
+func newTestConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
 func registerUserInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
 	_, err := conn.Exec(
 		context.Background(),
@@ -35,7 +35,7 @@ func registerUserInRoom(
 }
 
 func assertUserRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
 	value, err := db.QueryOne[int](
 		context.Background(),
@@ -49,7 +49,7 @@ func assertUserRegisteredInRoom(
 }
 
 func assertUserNotRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
 	t.Helper()
 

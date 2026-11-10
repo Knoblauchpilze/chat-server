@@ -82,7 +82,7 @@ func TestIT_MessageProcessor_WhenMessageFailsToBeWritten_ExpectProcessingStops(t
 	wg.Wait()
 }
 
-func newTestMessageProcessor(t *testing.T) (Processor, db.Connection, *mockDispatcher) {
+func newTestMessageProcessor(t *testing.T) (Processor, *db.Connection, *mockDispatcher) {
 	conn := newTestDbConnection(t)
 	mock := &mockDispatcher{}
 

@@ -18,7 +18,7 @@ func New(
 ) (Client, error) {
 	_, ok := rw.(http.Flusher)
 	if !ok {
-		return nil, errors.NewCode(ErrUnsupportedConnection)
+		return nil, errors.FromCode(ErrUnsupportedConnection)
 	}
 
 	callbacks := messages.Callbacks{

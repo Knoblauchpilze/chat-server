@@ -9,11 +9,11 @@ import (
 )
 
 type RegistrationRepository interface {
-	RegisterInRoom(ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID) error
-	RegisterInRoomByName(ctx context.Context, tx db.Transaction, user uuid.UUID, room string) error
-	RegisterByNameInRoom(ctx context.Context, tx db.Transaction, user string, room uuid.UUID) error
-	DeleteForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID) error
-	DeleteFromRoom(ctx context.Context, tx db.Transaction, room uuid.UUID, user uuid.UUID) error
+	RegisterInRoom(ctx context.Context, tx *db.Transaction, user uuid.UUID, room uuid.UUID) error
+	RegisterInRoomByName(ctx context.Context, tx *db.Transaction, user uuid.UUID, room string) error
+	RegisterByNameInRoom(ctx context.Context, tx *db.Transaction, user string, room uuid.UUID) error
+	DeleteForRoom(ctx context.Context, tx *db.Transaction, room uuid.UUID) error
+	DeleteFromRoom(ctx context.Context, tx *db.Transaction, room uuid.UUID, user uuid.UUID) error
 }
 
 type registrationRepositoryImpl struct{}
@@ -28,7 +28,7 @@ INSERT INTO room_user (chat_user, room)
 	RETURNING created_at`
 
 func (r *registrationRepositoryImpl) RegisterInRoom(
-	ctx context.Context, tx db.Transaction, user uuid.UUID, room uuid.UUID,
+	ctx context.Context, tx *db.Transaction, user uuid.UUID, room uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, registerInRoomSqlTemplate, user, room)
 	return handleRegistrationError(err)
@@ -46,7 +46,7 @@ WHERE
 	name = $2`
 
 func (r *registrationRepositoryImpl) RegisterInRoomByName(
-	ctx context.Context, tx db.Transaction, user uuid.UUID, room string,
+	ctx context.Context, tx *db.Transaction, user uuid.UUID, room string,
 ) error {
 	inserted, err := tx.Exec(ctx, registerInRoomByNameSqlTemplate, user, room)
 
@@ -68,7 +68,7 @@ WHERE
 	name = $1`
 
 func (r *registrationRepositoryImpl) RegisterByNameInRoom(
-	ctx context.Context, tx db.Transaction, user string, room uuid.UUID,
+	ctx context.Context, tx *db.Transaction, user string, room uuid.UUID,
 ) error {
 	inserted, err := tx.Exec(ctx, registerByNameInRoomSqlTemplate, user, room)
 
@@ -85,7 +85,7 @@ WHERE
 	room = $1`
 
 func (r *registrationRepositoryImpl) DeleteForRoom(
-	ctx context.Context, tx db.Transaction, room uuid.UUID,
+	ctx context.Context, tx *db.Transaction, room uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteForRoomSqlTemplate, room)
 	return err
@@ -99,7 +99,7 @@ WHERE
 	AND chat_user = $2`
 
 func (r *registrationRepositoryImpl) DeleteFromRoom(
-	ctx context.Context, tx db.Transaction, room uuid.UUID, user uuid.UUID,
+	ctx context.Context, tx *db.Transaction, room uuid.UUID, user uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteFromRoomSqlTemplate, room, user)
 	return err

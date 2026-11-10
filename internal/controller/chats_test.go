@@ -20,8 +20,8 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/messages"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,14 +29,13 @@ func TestIT_ChatsController_PostMessageForRoom_WhenMessageHasWrongSyntax_ExpectB
 	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-message-dto-request"))
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: uuid.NewString()}}
 
-	err := postMessage(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	postMessage(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid message syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid message syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -59,14 +58,12 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomHasEmptyName_ExpectBadReq
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: uuid.NewString()}}
 
-	err = postMessage(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid empty message\"\n")
+	postMessage(ctx, service)
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid empty message\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -91,14 +88,12 @@ func TestIT_ChatsController_PostMessageForRoom_WhenUserIsNotInRoom_ExpectBadRequ
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: uuid.NewString()}}
 
-	err = postMessage(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"User is not registered in the room\"\n")
+	postMessage(ctx, service)
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"User is not registered in the room\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -127,13 +122,11 @@ func TestIT_ChatsController_PostMessageForRoom_ReturnsAccepted(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err = postMessage(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusAccepted, rw.Code)
+	postMessage(ctx, service)
+	assert.Equal(t, http.StatusAccepted, ctx.Writer.Status())
 }
 
 func TestIT_ChatsController_PostMessageForRoom_SendsMessageToProcessor(t *testing.T) {
@@ -155,16 +148,15 @@ func TestIT_ChatsController_PostMessageForRoom_SendsMessageToProcessor(t *testin
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err = postMessage(ctx, service)
+	postMessage(ctx, service)
 
 	// Wait for message to be processed
 	time.Sleep(50 * time.Millisecond)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusAccepted, rw.Code)
+	assert.Equal(t, http.StatusAccepted, ctx.Writer.Status())
 
 	assert.Len(t, mock.enqueued, 1)
 	actual := mock.enqueued[0]
@@ -194,16 +186,15 @@ func TestIT_ChatsController_PostMessageForRoom_WhenRoomInRequestDoesNotMatchRout
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err = postMessage(ctx, service)
+	postMessage(ctx, service)
 
 	// Wait for message to be processed
 	time.Sleep(50 * time.Millisecond)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusAccepted, rw.Code)
+	assert.Equal(t, http.StatusAccepted, ctx.Writer.Status())
 
 	assert.Len(t, mock.enqueued, 1)
 	actual := mock.enqueued[0]
@@ -214,13 +205,12 @@ func TestIT_ChatsController_SubscribeToMessages_WhenIdHasWrongSyntax_ExpectBadRe
 	service, dbConn, _ := newTestMessageService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := subscribeToMessages(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	subscribeToMessages(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -269,12 +259,11 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 
 		req := httptest.NewRequest(http.MethodPost, "/", &body)
 		req.Header.Set("Content-Type", "application/json")
-		ctx, rw := generateTestEchoContextFromRequest(req)
-		ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+		ctx, _ := generateTestGinContextFromRequest(req)
+		ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-		err = postMessage(ctx, service)
-		assert.Nil(t, err, "Actual err: %v", err)
-		assert.Equal(t, http.StatusAccepted, rw.Code)
+		postMessage(ctx, service)
+		assert.Equal(t, http.StatusAccepted, ctx.Writer.Status())
 	}()
 
 	// Give the message a bit of time to be processed
@@ -282,17 +271,16 @@ func TestIT_ChatsController_SubscribeToMessage_ReceivesPostedMessage(t *testing.
 	defer cancel()
 
 	req := httptest.NewRequestWithContext(reqCtx, http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user1.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: user1.Id.String()}}
 
-	err := subscribeToMessages(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	subscribeToMessages(ctx, service)
 
-	err = processor.Stop()
+	err := processor.Stop()
 	assert.Nil(t, err, "Actual err: %v", err)
 	wg.Wait()
 
-	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, http.StatusOK, ctx.Writer.Status())
 
 	// We don't know the id of the message so we need to use a regex
 	// https://ihateregex.io/expr/uuid/
@@ -322,7 +310,7 @@ data: {"id":"%s","user":"%s","room":"%s","message":"%s","created_at":"%s"}
 
 func newTestMessageService(
 	t *testing.T,
-) (service.MessageService, db.Connection, *mockProcessor) {
+) (service.MessageService, *db.Connection, *mockProcessor) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 	mock := &mockProcessor{}

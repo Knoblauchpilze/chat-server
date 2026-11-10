@@ -1,13 +1,16 @@
 package controller
 
 import (
-	"github.com/labstack/echo/v5"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
+	"github.com/gin-gonic/gin"
 )
 
-type componentAwareHttpHandler[T any] func(*echo.Context, T) error
+type Routes []*rest.Route
 
-func createComponentAwareHttpHandler[T any](handler componentAwareHttpHandler[T], component T) echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		return handler(c, component)
+type componentAwareHttpHandler[T any] func(*gin.Context, T)
+
+func createComponentAwareHttpHandler[T any](handler componentAwareHttpHandler[T], component T) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		handler(c, component)
 	}
 }

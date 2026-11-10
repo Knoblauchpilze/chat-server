@@ -22,11 +22,11 @@ type UserService interface {
 }
 
 type userServiceImpl struct {
-	conn  db.Connection
+	conn  *db.Connection
 	repos repositories.Repositories
 }
 
-func NewUserService(conn db.Connection, repos repositories.Repositories) UserService {
+func NewUserService(conn *db.Connection, repos repositories.Repositories) UserService {
 	return &userServiceImpl{
 		conn:  conn,
 		repos: repos,
@@ -39,7 +39,7 @@ func (s *userServiceImpl) Create(
 	user := communication.FromUserDtoRequest(userDto)
 
 	if user.Name == "" {
-		return communication.UserDtoResponse{}, errors.NewCode(ErrInvalidName)
+		return communication.UserDtoResponse{}, errors.FromCode(ErrInvalidName)
 	}
 
 	tx, err := s.conn.BeginTx(ctx)

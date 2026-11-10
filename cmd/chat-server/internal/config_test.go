@@ -13,10 +13,10 @@ func TestUnit_DefaultConfig_DefinesCorrectRestConfiguration(t *testing.T) {
 
 	expectedConf := server.Config{
 		BasePath:        "/v1/chats",
-		Port:            uint16(80),
 		ShutdownTimeout: 3 * time.Second,
 	}
 	assert.Equal(t, expectedConf, config.Server)
+	assert.Equal(t, uint16(80), config.Port)
 }
 
 func TestUnit_DefaultConfig_DefinesReasonableMessageQueueSize(t *testing.T) {

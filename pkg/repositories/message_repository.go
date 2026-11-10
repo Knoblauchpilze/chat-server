@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
@@ -14,16 +13,16 @@ import (
 type MessageRepository interface {
 	Create(ctx context.Context, msg persistence.Message) (persistence.Message, error)
 	ListForRoom(ctx context.Context, room uuid.UUID) ([]persistence.Message, error)
-	DeleteForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID) error
-	UpdateMessagesOwner(ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string) error
-	UpdateMessagesOwnerForRoom(ctx context.Context, tx db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string) error
+	DeleteForRoom(ctx context.Context, tx *db.Transaction, room uuid.UUID) error
+	UpdateMessagesOwner(ctx context.Context, tx *db.Transaction, oldUser uuid.UUID, newUser string) error
+	UpdateMessagesOwnerForRoom(ctx context.Context, tx *db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string) error
 }
 
 type messageRepositoryImpl struct {
-	conn db.Connection
+	conn *db.Connection
 }
 
-func NewMessageRepository(conn db.Connection) MessageRepository {
+func NewMessageRepository(conn *db.Connection) MessageRepository {
 	return &messageRepositoryImpl{
 		conn: conn,
 	}
@@ -51,7 +50,7 @@ func (r *messageRepositoryImpl) Create(
 
 	msg.CreatedAt = createdAt.UTC()
 
-	if errors.IsErrorWithCode(err, pgx.ForeignKeyValidation) {
+	if dbErr, ok := db.AsDatabaseError(err); ok && dbErr.Code == db.ErrForeignKeyValidation {
 		foreignKey, ok := extractForeignKeyViolation(err)
 
 		if ok && foreignKey == userNotInRoomForeignKey {
@@ -101,7 +100,7 @@ WHERE
 	room = $1`
 
 func (r *messageRepositoryImpl) DeleteForRoom(
-	ctx context.Context, tx db.Transaction, room uuid.UUID,
+	ctx context.Context, tx *db.Transaction, room uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteMessageByRoomSqlTemplate, room)
 	return err
@@ -120,7 +119,7 @@ WHERE
 	chat_user = $1`
 
 func (r *messageRepositoryImpl) UpdateMessagesOwner(
-	ctx context.Context, tx db.Transaction, oldUser uuid.UUID, newUser string,
+	ctx context.Context, tx *db.Transaction, oldUser uuid.UUID, newUser string,
 ) error {
 	_, err := tx.Exec(ctx, updateMessagesOwnerSqlTemplate, oldUser, newUser)
 	return err
@@ -139,7 +138,7 @@ WHERE
 	AND chat_user = $2`
 
 func (r *messageRepositoryImpl) UpdateMessagesOwnerForRoom(
-	ctx context.Context, tx db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string,
+	ctx context.Context, tx *db.Transaction, room uuid.UUID, oldUser uuid.UUID, newUser string,
 ) error {
 	_, err := tx.Exec(ctx, updateMessagesOwnerForRoomSqlTemplate, room, oldUser, newUser)
 	return err
