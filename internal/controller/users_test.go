@@ -15,8 +15,8 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,13 +24,12 @@ func TestIT_UserController_CreateUser_WhenUserHasWrongSyntax_ExpectBadRequest(t 
 	service, dbConn := newTestUserService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-user-dto-request"))
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := createUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	createUser(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid user syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid user syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -54,13 +53,11 @@ func TestIT_UserController_CreateUser_WhenUserHasEmptyName_ExpectBadRequest(t *t
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err = createUser(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid user name\"\n")
+	createUser(ctx, service)
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid user name\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -84,17 +81,15 @@ func TestIT_UserController_CreateUser(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err = createUser(ctx, service)
-
-	assert.Nil(t, err, "Actual err: %v", err)
+	createUser(ctx, service)
 
 	var responseDto communication.UserDtoResponse
 	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, http.StatusCreated, rw.Code)
+	assert.Equal(t, http.StatusCreated, ctx.Writer.Status())
 	assert.Equal(t, requestDto.Name, responseDto.Name)
 	assertUserExists(t, dbConn, responseDto.Id)
 }
@@ -105,17 +100,16 @@ func TestIT_UserController_GetUser(t *testing.T) {
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: user.Id.String()}}
 
-	err := getUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	getUser(ctx, service)
 
 	var responseDto communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
-	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, http.StatusOK, ctx.Writer.Status())
 	expected := communication.ToUserDtoResponse(user)
 	assert.Equal(t, expected, responseDto)
 }
@@ -126,14 +120,13 @@ func TestIT_UserController_GetUser_WhenUserDoesNotExist_ExpectNotFound(t *testin
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: nonExistingId.String()}}
 
-	err := getUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	getUser(ctx, service)
 
-	assert.Equal(t, http.StatusNotFound, rw.Code)
-	expectedBody := []byte("\"No such user\"\n")
+	assert.Equal(t, http.StatusNotFound, ctx.Writer.Status())
+	expectedBody := []byte("\"No such user\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -147,13 +140,12 @@ func TestIT_UserController_ListUsers_WhenNoNameProvided_ExpectBadRequest(t *test
 	service, dbConn := newTestUserService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := listUsers(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUsers(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Please provide a user name as filtering parameter\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Please provide a user name as filtering parameter\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -170,13 +162,12 @@ func TestIT_UserController_ListUsers(t *testing.T) {
 	insertTestUser(t, dbConn)
 
 	req := generateTestRequestWithQueryParam(http.MethodGet, "name", user.Name)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := listUsers(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUsers(ctx, service)
 
 	var responseDto []communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []communication.UserDtoResponse{
@@ -192,13 +183,12 @@ func TestIT_UserController_ListUsers_WhenNameHasSpecialCharacters_ExpectSuccess(
 	user := insertTestUserWithName(t, dbConn, name)
 
 	req := generateTestRequestWithQueryParam(http.MethodGet, "name", user.Name)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := listUsers(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listUsers(ctx, service)
 
 	var responseDto []communication.UserDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []communication.UserDtoResponse{
@@ -212,14 +202,13 @@ func TestIT_UserController_ListForUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *
 	service, dbConn := newTestUserService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
 
-	err := listForUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listForUser(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -239,14 +228,13 @@ func TestIT_UserController_ListForUser(t *testing.T) {
 	registerUserInRoom(t, dbConn, user.Id, room1.Id)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: user.Id.String()}}
 
-	err := listForUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listForUser(ctx, service)
 
 	var responseDto []communication.RoomDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	expected := []communication.RoomDtoResponse{
@@ -261,14 +249,13 @@ func TestIT_UserController_ListForUser_WhenUserHasNoRoom_ExpectEmptySlice(t *tes
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: user.Id.String()}}
 
-	err := listForUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	listForUser(ctx, service)
 
 	var responseDto []communication.RoomDtoResponse
-	err = json.Unmarshal(rw.Body.Bytes(), &responseDto)
+	err := json.Unmarshal(rw.Body.Bytes(), &responseDto)
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	assert.Equal(t, []communication.RoomDtoResponse{}, responseDto)
@@ -278,13 +265,12 @@ func TestIT_UserController_DeleteUser_WhenIdHasWrongSyntax_ExpectBadRequest(t *t
 	service, dbConn := newTestUserService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodDelete, "/not-a-uuid", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := deleteUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteUser(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -300,13 +286,12 @@ func TestIT_UserController_DeleteUser(t *testing.T) {
 	user := insertTestUser(t, dbConn)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: user.Id.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: user.Id.String()}}
 
-	err := deleteUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteUser(ctx, service)
 
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 	assertUserDoesNotExist(t, dbConn, user.Id)
 }
 
@@ -316,27 +301,26 @@ func TestIT_UserController_DeleteUser_WhenUserDoesNotExist_ExpectSuccess(t *test
 
 	nonExistingId := uuid.MustParse("00000000-0000-1221-0000-000000000000")
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: nonExistingId.String()}})
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: nonExistingId.String()}}
 
-	err := deleteUser(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	deleteUser(ctx, service)
 
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 }
 
-func newTestUserService(t *testing.T) (service.UserService, db.Connection) {
+func newTestUserService(t *testing.T) (service.UserService, *db.Connection) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 	return service.NewUserService(dbConn, repos), dbConn
 }
 
-func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+func insertTestUser(t *testing.T, conn *db.Connection) persistence.User {
 	name := fmt.Sprintf("my-user-%s", uuid.NewString())
 	return insertTestUserWithName(t, conn, name)
 }
 
-func insertTestUserWithName(t *testing.T, conn db.Connection, name string) persistence.User {
+func insertTestUserWithName(t *testing.T, conn *db.Connection, name string) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
 	tx, err := conn.BeginTx(context.Background())
@@ -357,7 +341,7 @@ func insertTestUserWithName(t *testing.T, conn db.Connection, name string) persi
 	return out
 }
 
-func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertUserExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -368,7 +352,7 @@ func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertUserDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,

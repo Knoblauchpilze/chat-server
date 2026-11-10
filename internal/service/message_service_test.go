@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
+
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -20,7 +20,7 @@ import (
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,12 +61,10 @@ func TestIT_MessageService_PostMessage_InvalidName(t *testing.T) {
 
 	err := service.PostMessage(context.Background(), messageDtoRequest)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrEmptyMessage),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrEmptyMessage, codedErr.Code)
+	}
 }
 
 func TestIT_MessageService_PostMessage_WhenUserNotInRoom_ExpectError(t *testing.T) {
@@ -81,12 +79,10 @@ func TestIT_MessageService_PostMessage_WhenUserNotInRoom_ExpectError(t *testing.
 
 	err := service.PostMessage(context.Background(), messageDtoRequest)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserNotInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserNotInRoom, codedErr.Code)
+	}
 }
 
 func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *testing.T) {
@@ -104,7 +100,7 @@ func TestIT_MessageService_ServeClient_WhenContextTerminates_ExpectStops(t *test
 	service := NewMessageService(opts)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, slog.Default())
+	response := rec
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -136,7 +132,7 @@ func TestIT_MessageService_ServeClient_WhenMessageEnqueued_ExpectClientReceivesI
 	registerUserInRoom(t, dbConn, user2.Id, room.Id)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, slog.Default())
+	response := rec
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -209,7 +205,7 @@ func TestIT_MessageService_ServeClient_WhenMessageFromClientReceived_ExpectClien
 	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	rec := httptest.NewRecorder()
-	response := echo.NewResponse(rec, slog.Default())
+	response := rec
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -266,7 +262,7 @@ func newTestMessageService(
 	t *testing.T,
 	processor messages.Processor,
 	manager clients.Manager,
-) (MessageService, db.Connection) {
+) (MessageService, *db.Connection) {
 	dbConn := newTestDbConnection(t)
 
 	opts := MessageServiceOpts{
@@ -309,7 +305,7 @@ func asyncServeClientAndAssertNoError(
 	service MessageService,
 	ctx context.Context,
 	client uuid.UUID,
-	response *echo.Response,
+	response http.ResponseWriter,
 ) *sync.WaitGroup {
 	var wg sync.WaitGroup
 	wg.Add(1)

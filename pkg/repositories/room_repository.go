@@ -4,26 +4,25 @@ import (
 	"context"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/google/uuid"
 )
 
 type RoomRepository interface {
-	Create(ctx context.Context, tx db.Transaction, room persistence.Room) (persistence.Room, error)
+	Create(ctx context.Context, tx *db.Transaction, room persistence.Room) (persistence.Room, error)
 	Get(ctx context.Context, id uuid.UUID) (persistence.Room, error)
 	List(ctx context.Context) ([]persistence.Room, error)
 	UserInRoom(ctx context.Context, user uuid.UUID, room uuid.UUID) (bool, error)
 	ListForUser(ctx context.Context, user uuid.UUID) ([]persistence.Room, error)
-	Delete(ctx context.Context, tx db.Transaction, id uuid.UUID) error
+	Delete(ctx context.Context, tx *db.Transaction, id uuid.UUID) error
 }
 
 type roomRepositoryImpl struct {
-	conn db.Connection
+	conn *db.Connection
 }
 
-func NewRoomRepository(conn db.Connection) RoomRepository {
+func NewRoomRepository(conn *db.Connection) RoomRepository {
 	return &roomRepositoryImpl{
 		conn: conn,
 	}
@@ -35,7 +34,7 @@ INSERT INTO room (id, name)
 	RETURNING created_at, updated_at`
 
 func (r *roomRepositoryImpl) Create(
-	ctx context.Context, tx db.Transaction, room persistence.Room,
+	ctx context.Context, tx *db.Transaction, room persistence.Room,
 ) (persistence.Room, error) {
 	times, err := db.QueryOneTx[createdAtUpdatedAt](
 		ctx,
@@ -147,7 +146,7 @@ const noSuchRoomForeignKey = "room_user_room_fkey"
 
 func handleRegistrationError(err error) error {
 
-	if errors.IsErrorWithCode(err, pgx.ForeignKeyValidation) {
+	if dbErr, ok := db.AsDatabaseError(err); ok && dbErr.Code == db.ErrForeignKeyValidation {
 		if foreignKey, ok := extractForeignKeyViolation(err); ok {
 			switch foreignKey {
 			case noSuchUserForeignKey:
@@ -159,7 +158,7 @@ func handleRegistrationError(err error) error {
 		}
 	}
 
-	if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {
+	if dbErr, ok := db.AsDatabaseError(err); ok && dbErr.Code == db.ErrUniqueConstraintViolation {
 		return errors.WrapCode(err, ErrUserAlreadyRegisteredInRoom)
 	}
 
@@ -173,7 +172,7 @@ WHERE
 	id = $1`
 
 func (r *roomRepositoryImpl) Delete(
-	ctx context.Context, tx db.Transaction, id uuid.UUID,
+	ctx context.Context, tx *db.Transaction, id uuid.UUID,
 ) error {
 	_, err := tx.Exec(ctx, deleteRoomSqlTemplate, id)
 	return err

@@ -32,12 +32,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoom_WhenRoomDoesNotExist_Expec
 
 	err := repo.RegisterInRoom(context.Background(), tx, user.Id, room)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchRoom, codedErr.Code)
+	}
 
 	assertUserNotRegisteredInRoom(t, conn, user.Id, room)
 }
@@ -50,12 +48,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoom_WhenUserDoesNotExist_Expec
 
 	err := repo.RegisterInRoom(context.Background(), tx, user, room.Id)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchUser),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchUser, codedErr.Code)
+	}
 
 	assertUserNotRegisteredInRoom(t, conn, user, room.Id)
 }
@@ -69,12 +65,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoom_WhenUserAlreadyRegistered_
 
 	err := repo.RegisterInRoom(context.Background(), tx, user.Id, room.Id)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserAlreadyRegisteredInRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationRepository_RegisterUserInRoomByName(t *testing.T) {
@@ -98,12 +92,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoomByName_WhenRoomDoesNotExist
 
 	err := repo.RegisterInRoomByName(context.Background(), tx, user.Id, room)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationRepository_RegisterUserInRoomByName_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
@@ -114,12 +106,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoomByName_WhenUserDoesNotExist
 
 	err := repo.RegisterInRoomByName(context.Background(), tx, user, room.Name)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchUser),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchUser, codedErr.Code)
+	}
 
 	assertUserNotRegisteredInRoom(t, conn, user, room.Id)
 }
@@ -133,12 +123,10 @@ func TestIT_RegistrationRepository_RegisterUserInRoomByName_WhenUserAlreadyRegis
 
 	err := repo.RegisterInRoomByName(context.Background(), tx, user.Id, room.Name)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserAlreadyRegisteredInRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationRepository_RegisterUserByNameInRoom(t *testing.T) {
@@ -162,12 +150,10 @@ func TestIT_RegistrationRepository_RegisterUserByNameInRoom_WhenRoomDoesNotExist
 
 	err := repo.RegisterByNameInRoom(context.Background(), tx, user.Name, room)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchRoom, codedErr.Code)
+	}
 	assertUserNotRegisteredInRoom(t, conn, user.Id, room)
 }
 
@@ -179,12 +165,10 @@ func TestIT_RegistrationRepository_RegisterUserByNameInRoom_WhenUserDoesNotExist
 
 	err := repo.RegisterByNameInRoom(context.Background(), tx, user, room.Id)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrNoSuchUser),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrNoSuchUser, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationRepository_RegisterByNameUserInRoom_WhenUserAlreadyRegistered_ExpectFailure(t *testing.T) {
@@ -196,12 +180,10 @@ func TestIT_RegistrationRepository_RegisterByNameUserInRoom_WhenUserAlreadyRegis
 
 	err := repo.RegisterByNameInRoom(context.Background(), tx, user.Name, room.Id)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserAlreadyRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserAlreadyRegisteredInRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationRepository_DeleteForRoom(t *testing.T) {
@@ -284,7 +266,7 @@ func TestIT_RegistrationRepository_DeleteFromRoom_DoesNotDeleteOtherUsers(t *tes
 	assertUserRegisteredInRoom(t, conn, user2.Id, room.Id)
 }
 
-func newTestRegistrationRepositoryAndTransaction(t *testing.T) (RegistrationRepository, db.Connection, db.Transaction) {
+func newTestRegistrationRepositoryAndTransaction(t *testing.T) (RegistrationRepository, *db.Connection, *db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)

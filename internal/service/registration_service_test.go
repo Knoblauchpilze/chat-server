@@ -31,12 +31,10 @@ func TestIT_RegistrationService_RegisterUserInRoom_WhenUserDoesNotExist_ExpectEr
 
 	err := service.RegisterUserInRoom(context.Background(), user, room.Id)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, repositories.ErrNoSuchUser),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, repositories.ErrNoSuchUser, codedErr.Code)
+	}
 	assertUserNotRegisteredInRoom(t, conn, user, room.Name)
 }
 
@@ -48,12 +46,10 @@ func TestIT_RegistrationService_RegisterUserInRoom_WhenRoomDoesNotExist_ExpectEr
 
 	err := service.RegisterUserInRoom(context.Background(), user.Id, room)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, repositories.ErrNoSuchRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, repositories.ErrNoSuchRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationService_RegisterUserInRoom_WhenUserAlreadyRegistered_ExpectError(t *testing.T) {
@@ -65,12 +61,10 @@ func TestIT_RegistrationService_RegisterUserInRoom_WhenUserAlreadyRegistered_Exp
 
 	err := service.RegisterUserInRoom(context.Background(), user.Id, room.Id)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, repositories.ErrUserAlreadyRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, repositories.ErrUserAlreadyRegisteredInRoom, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationService_UnregisterUserInRoom(t *testing.T) {
@@ -100,12 +94,10 @@ func TestIT_RegistrationService_ShouldNotUnregisterFromGeneralRoom(t *testing.T)
 
 	err := service.UnregisterUserInRoom(context.Background(), user.Id, room)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrLeavingRoomIsNotAllowed),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrLeavingRoomIsNotAllowed, codedErr.Code)
+	}
 }
 
 func TestIT_RegistrationService_WhenGhostNotRegisteredButNoMessages_ExpectSuccess(t *testing.T) {
@@ -161,7 +153,7 @@ func TestIT_RegistrationService_UnregisterUserInRoom_UpdateMessagesInRoom(t *tes
 	assertMessageOwner(t, conn, msg2.Id, user2.Name)
 }
 
-func newTestRegistrationService(t *testing.T) (RegistrationService, db.Connection) {
+func newTestRegistrationService(t *testing.T) (RegistrationService, *db.Connection) {
 	conn := newTestDbConnection(t)
 	repos := repositories.New(conn)
 	return NewRegistrationService(conn, repos), conn

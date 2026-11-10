@@ -13,8 +13,8 @@ import (
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,15 +31,13 @@ func TestIT_RegistrationController_AddUserInRoom_WhenIsHasWrongSyntax_ExpectBadR
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: "not-a-uuid"}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
 
-	err = addUserInRoom(ctx, service)
+	addUserInRoom(ctx, service)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid id syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid id syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -53,14 +51,13 @@ func TestIT_RegistrationController_AddUserInRoom_WhenRegistrationHasWrongSyntax_
 	service, dbConn := newTestRegistrationService(t)
 	defer dbConn.Close(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not-a-registration-dto-request"))
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: uuid.NewString()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: uuid.NewString()}}
 
-	err := addUserInRoom(ctx, service)
-	assert.Nil(t, err, "Actual err: %v", err)
+	addUserInRoom(ctx, service)
 
-	assert.Equal(t, http.StatusBadRequest, rw.Code)
-	expectedBody := []byte("\"Invalid registration syntax\"\n")
+	assert.Equal(t, http.StatusBadRequest, ctx.Writer.Status())
+	expectedBody := []byte("\"Invalid registration syntax\"")
 	assert.Equal(
 		t,
 		expectedBody,
@@ -86,17 +83,15 @@ func TestIT_RegistrationController_AddUserInRoom_WhenUserAlreadyRegistered_Expec
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err = addUserInRoom(ctx, service)
+	addUserInRoom(ctx, service)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	assert.Equal(t, http.StatusConflict, rw.Code)
+	assert.Equal(t, http.StatusConflict, ctx.Writer.Status())
 	assert.Equal(
 		t,
-		[]byte("\"User already registered in room\"\n"),
+		[]byte("\"User already registered in room\""),
 		rw.Body.Bytes(),
 		"Actual body: %s",
 		rw.Body.String(),
@@ -118,14 +113,12 @@ func TestIT_RegistrationController_AddUserInRoom(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/", &body)
 	req.Header.Set("Content-Type", "application/json")
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{{Name: "id", Value: room.Id.String()}})
+	ctx, rw := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{{Key: "id", Value: room.Id.String()}}
 
-	err = addUserInRoom(ctx, service)
+	addUserInRoom(ctx, service)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 	assert.Equal(t, []byte(nil), rw.Body.Bytes(), "Actual body: %s", rw.Body.String())
 	assertUserRegisteredInRoom(t, dbConn, user.Id, room.Id)
 }
@@ -138,27 +131,25 @@ func TestIT_RegistrationController_DeleteUserFromRoom(t *testing.T) {
 	registerUserInRoom(t, dbConn, user.Id, room.Id)
 
 	req := httptest.NewRequest(http.MethodDelete, "/", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
-	ctx.SetPathValues([]echo.PathValue{
+	ctx, _ := generateTestGinContextFromRequest(req)
+	ctx.Params = gin.Params{
 		{
-			Name:  "room",
+			Key:   "id",
 			Value: room.Id.String(),
 		},
 		{
-			Name:  "user",
+			Key:   "user",
 			Value: user.Id.String(),
 		},
-	})
+	}
 
-	err := deleteUserFromRoom(ctx, service)
+	deleteUserFromRoom(ctx, service)
 
-	assert.Nil(t, err, "Actual err: %v", err)
-
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.Equal(t, http.StatusNoContent, ctx.Writer.Status())
 	assertUserNotRegisteredInRoom(t, dbConn, user.Id, room.Id)
 }
 
-func newTestRegistrationService(t *testing.T) (service.RegistrationService, db.Connection) {
+func newTestRegistrationService(t *testing.T) (service.RegistrationService, *db.Connection) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 	return service.NewRegistrationService(dbConn, repos), dbConn

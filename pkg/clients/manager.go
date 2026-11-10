@@ -89,7 +89,7 @@ func (m *managerImpl) OnConnect(id uuid.UUID, client Client) error {
 	defer m.lock.Unlock()
 
 	if _, ok := m.clients[id]; ok {
-		return errors.NewCode(ErrClientAlreadyRegistered)
+		return errors.FromCode(ErrClientAlreadyRegistered)
 	}
 
 	m.clients[id] = client

@@ -4,41 +4,28 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUnit_ExtractForeignKeyViolation(t *testing.T) {
-	type testCase struct {
+	testCases := []struct {
 		err           error
 		expectedKey   string
 		expectedFound bool
-	}
-
-	pgErr := &pgconn.PgError{
-		ConstraintName: "my-constraint",
-	}
-
-	testCases := []testCase{
+	}{
+		{},
+		{err: fmt.Errorf("some error")},
+		{err: &db.DatabaseError{Code: db.ErrUniqueConstraintViolation, Constraint: "other-constraint"}},
 		{
-			err:           fmt.Errorf("some error"),
-			expectedKey:   "",
-			expectedFound: false,
+			err:           &db.DatabaseError{Code: db.ErrForeignKeyValidation, Constraint: "my-constraint"},
+			expectedKey:   "my-constraint",
+			expectedFound: true,
 		},
 		{
-			err:           errors.NewCode(pgx.ForeignKeyValidation),
-			expectedKey:   "",
-			expectedFound: false,
-		},
-		{
-			err:           errors.WrapCode(fmt.Errorf("some error"), pgx.ForeignKeyValidation),
-			expectedKey:   "",
-			expectedFound: false,
-		},
-		{
-			err:           errors.WrapCode(pgErr, pgx.ForeignKeyValidation),
+			err: fmt.Errorf("wrapped: %w", &db.DatabaseError{
+				Code: db.ErrForeignKeyValidation, Constraint: "my-constraint",
+			}),
 			expectedKey:   "my-constraint",
 			expectedFound: true,
 		},

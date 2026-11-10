@@ -9,6 +9,7 @@ import (
 
 type Configuration struct {
 	Server                 server.Config
+	Port                   uint16
 	MessageQueueSize       int
 	ClientMessageQueueSize int
 	Database               postgresql.Config
@@ -21,9 +22,9 @@ func DefaultConfig() Configuration {
 	return Configuration{
 		Server: server.Config{
 			BasePath:        "/v1/chats",
-			Port:            uint16(80),
 			ShutdownTimeout: 3 * time.Second,
 		},
+		Port:                   uint16(80),
 		MessageQueueSize:       10,
 		ClientMessageQueueSize: 2,
 		Database: postgresql.NewConfigForDockerContainer(

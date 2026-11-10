@@ -20,11 +20,11 @@ type RoomService interface {
 }
 
 type roomServiceImpl struct {
-	conn  db.Connection
+	conn  *db.Connection
 	repos repositories.Repositories
 }
 
-func NewRoomService(conn db.Connection, repos repositories.Repositories) RoomService {
+func NewRoomService(conn *db.Connection, repos repositories.Repositories) RoomService {
 	return &roomServiceImpl{
 		conn:  conn,
 		repos: repos,
@@ -37,7 +37,7 @@ func (s *roomServiceImpl) Create(
 	room := communication.FromRoomDtoRequest(roomDto)
 
 	if room.Name == "" {
-		return communication.RoomDtoResponse{}, errors.NewCode(ErrInvalidName)
+		return communication.RoomDtoResponse{}, errors.FromCode(ErrInvalidName)
 	}
 
 	tx, err := s.conn.BeginTx(ctx)

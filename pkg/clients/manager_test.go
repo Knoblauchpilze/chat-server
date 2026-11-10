@@ -23,12 +23,10 @@ func TestIT_Manager_WhenClientAlreadyRegistered_ExpectError(t *testing.T) {
 	assert.Nil(t, err, "Actual err: %v", err)
 
 	err = manager.OnConnect(id, nil)
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrClientAlreadyRegistered),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrClientAlreadyRegistered, codedErr.Code)
+	}
 }
 
 func TestIT_Manager_WhenClosing_ExpectClientIsAlsoClosed(t *testing.T) {
@@ -184,7 +182,7 @@ func TestIT_Manager_WhenSendingMessageToSpecificClient_ExpectMessageReceived(t *
 	assert.Equal(t, 0, mock2.enqueueCalled)
 }
 
-func newTestManager(t *testing.T) (Manager, db.Connection) {
+func newTestManager(t *testing.T) (Manager, *db.Connection) {
 	dbConn := newTestDbConnection(t)
 	repos := repositories.New(dbConn)
 
