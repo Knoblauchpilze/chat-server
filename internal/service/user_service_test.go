@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
+
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
@@ -40,12 +40,10 @@ func TestIT_UserService_Create_InvalidName(t *testing.T) {
 	defer conn.Close(context.Background())
 	_, err := service.Create(context.Background(), userDtoRequest)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrInvalidName),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrInvalidName, codedErr.Code)
+	}
 }
 
 func TestIT_UserService_Create_WhenUserWithSameNameAlreadyExists_ExpectFailure(t *testing.T) {
@@ -59,12 +57,10 @@ func TestIT_UserService_Create_WhenUserWithSameNameAlreadyExists_ExpectFailure(t
 
 	_, err := service.Create(context.Background(), userDtoRequest)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
-		"Actual err: %v",
-		err,
-	)
+	var dbErr *db.DatabaseError
+	if assert.ErrorAs(t, err, &dbErr) {
+		assert.Equal(t, db.ErrUniqueConstraintViolation, dbErr.Code)
+	}
 }
 
 func TestIT_UserService_Create_RegistersUserInGeneralRoomt(t *testing.T) {
@@ -103,7 +99,7 @@ func TestIT_UserService_Get_WhenUserDoesNotExist_ExpectFailure(t *testing.T) {
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		err == db.ErrNoMatchingRows,
 		"Actual err: %v",
 		err,
 	)
@@ -131,7 +127,7 @@ func TestIT_UserService_GetByName_WhenUserDoesNotExist_ExpectFailure(t *testing.
 
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		err == db.ErrNoMatchingRows,
 		"Actual err: %v",
 		err,
 	)
@@ -250,13 +246,13 @@ func TestIT_UserService_Delete_DoesNotChangeOwnershipOfOtherMessagesInTheRoom(t 
 	assertMessageOwner(t, conn, msg2.Id, user2.Name)
 }
 
-func newTestUserService(t *testing.T) (UserService, db.Connection) {
+func newTestUserService(t *testing.T) (UserService, *db.Connection) {
 	conn := newTestDbConnection(t)
 	repos := repositories.New(conn)
 	return NewUserService(conn, repos), conn
 }
 
-func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+func insertTestUser(t *testing.T, conn *db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
 	tx, err := conn.BeginTx(context.Background())
@@ -277,7 +273,7 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 	return out
 }
 
-func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertUserExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -288,7 +284,7 @@ func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertUserDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,

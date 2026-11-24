@@ -15,11 +15,11 @@ type RegistrationService interface {
 }
 
 type registrationServiceImpl struct {
-	conn  db.Connection
+	conn  *db.Connection
 	repos repositories.Repositories
 }
 
-func NewRegistrationService(conn db.Connection, repos repositories.Repositories) RegistrationService {
+func NewRegistrationService(conn *db.Connection, repos repositories.Repositories) RegistrationService {
 	return &registrationServiceImpl{
 		conn:  conn,
 		repos: repos,
@@ -48,7 +48,7 @@ func (s *registrationServiceImpl) UnregisterUserInRoom(
 	}
 
 	if entity.Name == generalRoomName {
-		return errors.NewCode(ErrLeavingRoomIsNotAllowed)
+		return errors.FromCode(ErrLeavingRoomIsNotAllowed)
 	}
 
 	tx, err := s.conn.BeginTx(ctx)

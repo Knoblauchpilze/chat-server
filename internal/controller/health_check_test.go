@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,13 +15,11 @@ func TestIT_HealthcheckController(t *testing.T) {
 	defer dbConn.Close(context.Background())
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := healthcheck(ctx, dbConn)
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, "\"OK\"\n", rw.Body.String())
+	healthcheck(ctx, dbConn)
+	assert.Equal(t, http.StatusOK, ctx.Writer.Status())
+	assert.Equal(t, "\"OK\"", rw.Body.String())
 }
 
 func TestIT_HealthcheckController_WhenConnectionClosed_ExpectServiceUnavailable(t *testing.T) {
@@ -30,40 +27,36 @@ func TestIT_HealthcheckController_WhenConnectionClosed_ExpectServiceUnavailable(
 	dbConn.Close(context.Background())
 
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := healthcheck(ctx, dbConn)
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, rw.Code)
+	healthcheck(ctx, dbConn)
+	assert.Equal(t, http.StatusServiceUnavailable, ctx.Writer.Status())
 	expectedResponse := `
 	{
-		"Code": 100,
-		"Message": "An unexpected error occurred"
+		"code": 100,
+		"message": "an unexpected error occurred"
 	}`
 	assert.JSONEq(t, expectedResponse, rw.Body.String())
 }
 
 func TestUnit_HealthcheckController_WhenConnectionFails_ExpectServiceUnavailable(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/healtcheck", nil)
-	ctx, rw := generateTestEchoContextFromRequest(req)
+	ctx, rw := generateTestGinContextFromRequest(req)
 
-	err := healthcheck(ctx, &mockDbConn{})
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, rw.Code)
+	healthcheck(ctx, &mockDbConn{})
+	assert.Equal(t, http.StatusServiceUnavailable, ctx.Writer.Status())
 	expectedResponse := `
 	{
-		"Code": 100,
-		"Message": "An unexpected error occurred"
+		"code": 100,
+		"message": "an unexpected error occurred"
 	}`
 	assert.JSONEq(t, expectedResponse, rw.Body.String())
 }
 
 type mockDbConn struct {
-	db.Connection
+	*db.Connection
 }
 
 func (m *mockDbConn) Ping(ctx context.Context) error {
-	return errors.NewCode(db.NotConnected)
+	return db.ErrNotConnected
 }

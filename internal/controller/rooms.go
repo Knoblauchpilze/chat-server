@@ -4,17 +4,16 @@ import (
 	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 )
 
-func RoomEndpoints(service service.RoomService) rest.Routes {
-	var out rest.Routes
+func RoomEndpoints(service service.RoomService) Routes {
+	var out Routes
 
 	postHandler := createComponentAwareHttpHandler(createRoom, service)
 	post := rest.NewRoute(http.MethodPost, "/rooms", postHandler)
@@ -43,112 +42,129 @@ func RoomEndpoints(service service.RoomService) rest.Routes {
 	return out
 }
 
-func createRoom(c *echo.Context, s service.RoomService) error {
+func createRoom(c *gin.Context, s service.RoomService) {
 	var roomDtoRequest communication.RoomDtoRequest
-	err := c.Bind(&roomDtoRequest)
+	err := c.ShouldBindJSON(&roomDtoRequest)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid room syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid room syntax")
+		return
 	}
 
-	out, err := s.Create(c.Request().Context(), roomDtoRequest)
+	out, err := s.Create(c.Request.Context(), roomDtoRequest)
 	if err != nil {
-		if errors.IsErrorWithCode(err, service.ErrInvalidName) {
-			return c.JSON(http.StatusBadRequest, "Invalid room name")
+		if codedErr, ok := errors.AsErrorWithCode(err); ok && codedErr.Code == service.ErrInvalidName {
+			c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid room name")
+			return
 		}
-		if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {
-			return c.JSON(http.StatusConflict, "Room name already in use")
+		if dbErr, ok := db.AsDatabaseError(err); ok && dbErr.Code == db.ErrUniqueConstraintViolation {
+			c.AbortWithStatusJSON(http.StatusConflict, "Room name already in use")
+			return
 		}
 
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSON(http.StatusCreated, out)
+	c.JSON(http.StatusCreated, out)
 }
 
-func getRoom(c *echo.Context, s service.RoomService) error {
+func getRoom(c *gin.Context, s service.RoomService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	out, err := s.Get(c.Request().Context(), id)
+	out, err := s.Get(c.Request.Context(), id)
 	if err != nil {
-		if errors.IsErrorWithCode(err, db.NoMatchingRows) {
-			return c.JSON(http.StatusNotFound, "No such room")
+		if err == db.ErrNoMatchingRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, "No such room")
+			return
 		}
 
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSON(http.StatusOK, out)
+	c.JSON(http.StatusOK, out)
 }
 
-func listRoom(c *echo.Context, s service.RoomService) error {
-	rooms, err := s.List(c.Request().Context())
+func listRoom(c *gin.Context, s service.RoomService) {
+	rooms, err := s.List(c.Request.Context())
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
 	out, err := marshalNilToEmptySlice(rooms)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSONBlob(http.StatusOK, out)
+	c.Data(http.StatusOK, "application/json", out)
 }
 
-func listUserForRoom(c *echo.Context, s service.RoomService) error {
+func listUserForRoom(c *gin.Context, s service.RoomService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	users, err := s.ListUserForRoom(c.Request().Context(), id)
+	users, err := s.ListUserForRoom(c.Request.Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
 	out, err := marshalNilToEmptySlice(users)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSONBlob(http.StatusOK, out)
+	c.Data(http.StatusOK, "application/json", out)
 }
 
-func listMessageForRoom(c *echo.Context, s service.RoomService) error {
+func listMessageForRoom(c *gin.Context, s service.RoomService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	messages, err := s.ListMessageForRoom(c.Request().Context(), id)
+	messages, err := s.ListMessageForRoom(c.Request.Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
 	out, err := marshalNilToEmptySlice(messages)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSONBlob(http.StatusOK, out)
+	c.Data(http.StatusOK, "application/json", out)
 }
 
-func deleteRoom(c *echo.Context, s service.RoomService) error {
+func deleteRoom(c *gin.Context, s service.RoomService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	err = s.Delete(c.Request().Context(), id)
+	err = s.Delete(c.Request.Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }

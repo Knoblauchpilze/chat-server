@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
@@ -53,12 +52,10 @@ func TestIT_MessageRepository_Create_WhenUserNotRegisteredInRoom_ExpectFailure(t
 	}
 
 	_, err := repo.Create(context.Background(), msg)
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserNotRegisteredInRoom, codedErr.Code)
+	}
 	assertMessageDoesNotExist(t, conn, msg.Id)
 }
 
@@ -77,12 +74,10 @@ func TestIT_MessageRepository_Create_WhenUserDoesNotExist_ExpectFailure(t *testi
 
 	_, err := repo.Create(context.Background(), msg)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserNotRegisteredInRoom, codedErr.Code)
+	}
 	assertUserDoesNotExist(t, conn, msg.Id)
 }
 
@@ -101,12 +96,10 @@ func TestIT_MessageRepository_Create_WhenRoomDoesNotExist_ExpectFailure(t *testi
 
 	_, err := repo.Create(context.Background(), msg)
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, ErrUserNotRegisteredInRoom),
-		"Actual err: %v",
-		err,
-	)
+	var codedErr *errors.ErrorWithCode
+	if assert.ErrorAs(t, err, &codedErr) {
+		assert.Equal(t, ErrUserNotRegisteredInRoom, codedErr.Code)
+	}
 	assertUserDoesNotExist(t, conn, msg.Id)
 }
 
@@ -243,12 +236,10 @@ func TestIT_MessageRepository_UpdateMessagesOwner_WhenUserIsNotRegisteredInRoom_
 
 	err := repo.UpdateMessagesOwner(context.Background(), tx, userOld.Id, userNew.Name)
 	tx.Close(context.Background())
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, pgx.ForeignKeyValidation),
-		"Actual err: %v",
-		err,
-	)
+	var dbErr *db.DatabaseError
+	if assert.ErrorAs(t, err, &dbErr) {
+		assert.Equal(t, db.ErrForeignKeyValidation, dbErr.Code)
+	}
 
 	assertMessageOwner(t, conn, msg.Id, userOld.Id)
 }
@@ -364,19 +355,19 @@ func TestIT_MessageRepository_ListForRoom_WhenNoMessageAvailable_ReturnsEmptySli
 	assert.Equal(t, []persistence.Message{}, actual)
 }
 
-func newTestMessageRepository(t *testing.T) (MessageRepository, db.Connection) {
+func newTestMessageRepository(t *testing.T) (MessageRepository, *db.Connection) {
 	conn := newTestConnection(t)
 	return NewMessageRepository(conn), conn
 }
 
-func newTestMessageRepositoryAndTransaction(t *testing.T) (MessageRepository, db.Connection, db.Transaction) {
+func newTestMessageRepositoryAndTransaction(t *testing.T) (MessageRepository, *db.Connection, *db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 	return NewMessageRepository(conn), conn, tx
 }
 
-func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -387,7 +378,7 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,
@@ -398,7 +389,7 @@ func assertMessageDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Zero(t, value)
 }
 
-func assertMessageOwner(t *testing.T, conn db.Connection, msg uuid.UUID, user uuid.UUID) {
+func assertMessageOwner(t *testing.T, conn *db.Connection, msg uuid.UUID, user uuid.UUID) {
 	t.Helper()
 
 	value, err := db.QueryOne[uuid.UUID](
@@ -413,7 +404,7 @@ func assertMessageOwner(t *testing.T, conn db.Connection, msg uuid.UUID, user uu
 
 func insertTestMessage(
 	t *testing.T,
-	conn db.Connection,
+	conn *db.Connection,
 	user uuid.UUID,
 	room uuid.UUID,
 ) persistence.Message {

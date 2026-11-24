@@ -1,15 +1,19 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
-	"github.com/labstack/echo/v5"
+	"github.com/gin-gonic/gin"
 )
 
-func HealthCheckEndpoints(pool db.Connection) rest.Routes {
-	var out rest.Routes
+type healthCheckConnection interface {
+	Ping(context.Context) error
+}
+
+func HealthCheckEndpoints(pool healthCheckConnection) Routes {
+	var out Routes
 
 	getHandler := createComponentAwareHttpHandler(healthcheck, pool)
 	get := rest.NewRoute(http.MethodGet, "/healthcheck", getHandler)
@@ -18,11 +22,12 @@ func HealthCheckEndpoints(pool db.Connection) rest.Routes {
 	return out
 }
 
-func healthcheck(c *echo.Context, pool db.Connection) error {
-	err := pool.Ping(c.Request().Context())
+func healthcheck(c *gin.Context, pool healthCheckConnection) {
+	err := pool.Ping(c.Request.Context())
 	if err != nil {
-		return c.JSON(http.StatusServiceUnavailable, err)
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, err)
+		return
 	}
 
-	return c.JSON(http.StatusOK, "OK")
+	c.JSON(http.StatusOK, "OK")
 }

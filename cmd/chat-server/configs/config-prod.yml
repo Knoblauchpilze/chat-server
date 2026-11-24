@@ -1,5 +1,4 @@
-Server:
-  Port: 80
+Port: 80
 Database:
   User: chat_server_manager
   Password: comes-from-the-environment

@@ -21,13 +21,13 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestDbConnection(t *testing.T) db.Connection {
+func newTestDbConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
-func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+func insertTestUser(t *testing.T, conn *db.Connection) persistence.User {
 	repo := repositories.NewUserRepository(conn)
 
 	tx, err := conn.BeginTx(context.Background())
@@ -48,7 +48,7 @@ func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
 	return out
 }
 
-func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertUserExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -59,7 +59,7 @@ func assertUserExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
+func insertTestRoom(t *testing.T, conn *db.Connection) persistence.Room {
 	repo := repositories.NewRoomRepository(conn)
 
 	tx, err := conn.BeginTx(context.Background())
@@ -79,7 +79,7 @@ func insertTestRoom(t *testing.T, conn db.Connection) persistence.Room {
 	return out
 }
 
-func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
+func assertRoomExists(t *testing.T, dbConn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		dbConn,
@@ -90,7 +90,7 @@ func assertRoomExists(t *testing.T, dbConn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(
@@ -103,7 +103,7 @@ func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room u
 	assert.Equal(t, int64(1), count)
 }
 
-func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,

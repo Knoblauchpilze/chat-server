@@ -4,17 +4,16 @@ import (
 	"net/http"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/rest"
 	"github.com/Knoblauchpilze/chat-server/internal/service"
 	"github.com/Knoblauchpilze/chat-server/pkg/communication"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 )
 
-func UserEndpoints(service service.UserService) rest.Routes {
-	var out rest.Routes
+func UserEndpoints(service service.UserService) Routes {
+	var out Routes
 
 	postHandler := createComponentAwareHttpHandler(createUser, service)
 	post := rest.NewRoute(http.MethodPost, "/users", postHandler)
@@ -39,50 +38,57 @@ func UserEndpoints(service service.UserService) rest.Routes {
 	return out
 }
 
-func createUser(c *echo.Context, s service.UserService) error {
+func createUser(c *gin.Context, s service.UserService) {
 	var userDtoRequest communication.UserDtoRequest
-	err := c.Bind(&userDtoRequest)
+	err := c.ShouldBindJSON(&userDtoRequest)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid user syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid user syntax")
+		return
 	}
 
-	out, err := s.Create(c.Request().Context(), userDtoRequest)
+	out, err := s.Create(c.Request.Context(), userDtoRequest)
 	if err != nil {
-		if errors.IsErrorWithCode(err, service.ErrInvalidName) {
-			return c.JSON(http.StatusBadRequest, "Invalid user name")
+		if codedErr, ok := errors.AsErrorWithCode(err); ok && codedErr.Code == service.ErrInvalidName {
+			c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid user name")
+			return
 		}
-		if errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation) {
-			return c.JSON(http.StatusConflict, "User name already in use")
+		if dbErr, ok := db.AsDatabaseError(err); ok && dbErr.Code == db.ErrUniqueConstraintViolation {
+			c.AbortWithStatusJSON(http.StatusConflict, "User name already in use")
+			return
 		}
 
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSON(http.StatusCreated, out)
+	c.JSON(http.StatusCreated, out)
 }
 
-func getUser(c *echo.Context, s service.UserService) error {
+func getUser(c *gin.Context, s service.UserService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	out, err := s.Get(c.Request().Context(), id)
+	out, err := s.Get(c.Request.Context(), id)
 	if err != nil {
-		if errors.IsErrorWithCode(err, db.NoMatchingRows) {
-			return c.JSON(http.StatusNotFound, "No such user")
+		if err == db.ErrNoMatchingRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, "No such user")
+			return
 		}
 
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSON(http.StatusOK, out)
+	c.JSON(http.StatusOK, out)
 }
 
-func listUsers(c *echo.Context, s service.UserService) error {
+func listUsers(c *gin.Context, s service.UserService) {
 	const userNameKey = "name"
-	maybeName := c.QueryParam(userNameKey)
+	maybeName := c.Query(userNameKey)
 	exists := (maybeName != "")
 
 	var users []communication.UserDtoResponse
@@ -90,60 +96,68 @@ func listUsers(c *echo.Context, s service.UserService) error {
 
 	if exists {
 		var user communication.UserDtoResponse
-		user, err = s.GetByName(c.Request().Context(), maybeName)
+		user, err = s.GetByName(c.Request.Context(), maybeName)
 		if err == nil {
 			users = append(users, user)
 		}
 	} else {
-		return c.JSON(
+		c.JSON(
 			http.StatusBadRequest,
 			"Please provide a user name as filtering parameter",
 		)
+		return
 	}
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
 	out, err := marshalNilToEmptySlice(users)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSONBlob(http.StatusOK, out)
+	c.Data(http.StatusOK, "application/json", out)
 }
 
-func listForUser(c *echo.Context, s service.UserService) error {
+func listForUser(c *gin.Context, s service.UserService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	rooms, err := s.ListForUser(c.Request().Context(), id)
+	rooms, err := s.ListForUser(c.Request.Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
 	out, err := marshalNilToEmptySlice(rooms)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSONBlob(http.StatusOK, out)
+	c.Data(http.StatusOK, "application/json", out)
 }
 
-func deleteUser(c *echo.Context, s service.UserService) error {
+func deleteUser(c *gin.Context, s service.UserService) {
 	maybeId := c.Param("id")
 	id, err := uuid.Parse(maybeId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid id syntax")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "Invalid id syntax")
+		return
 	}
 
-	err = s.Delete(c.Request().Context(), id)
+	err = s.Delete(c.Request.Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/postgresql"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	"github.com/Knoblauchpilze/chat-server/pkg/repositories"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,17 +23,22 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"manager_password",
 )
 
-func newTestDbConnection(t *testing.T) db.Connection {
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
+}
+
+func newTestDbConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
 	assert.Nil(t, err, "Actual err: %v", err)
 	return conn
 }
 
-func generateTestEchoContextFromRequest(req *http.Request) (*echo.Context, *httptest.ResponseRecorder) {
-	e := echo.New()
+func generateTestGinContextFromRequest(req *http.Request) (*gin.Context, *httptest.ResponseRecorder) {
 	rw := httptest.NewRecorder()
 
-	ctx := e.NewContext(req, rw)
+	ctx, _ := gin.CreateTestContext(rw)
+	ctx.Request = req
 	return ctx, rw
 }
 
@@ -46,7 +52,7 @@ func generateTestRequestWithQueryParam(
 	return req
 }
 
-func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID) {
+func registerUserInRoom(t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID) {
 	sqlQuery := `INSERT INTO room_user (room, chat_user) VALUES ($1, $2)`
 
 	count, err := conn.Exec(
@@ -60,7 +66,7 @@ func registerUserInRoom(t *testing.T, conn db.Connection, user uuid.UUID, room u
 }
 
 func insertTestMessage(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) persistence.Message {
 	repo := repositories.NewMessageRepository(conn)
 
@@ -79,7 +85,7 @@ func insertTestMessage(
 	return out
 }
 
-func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertMessageExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -91,7 +97,7 @@ func assertMessageExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 }
 
 func assertUserRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
 	value, err := db.QueryOne[int](
 		context.Background(),
@@ -111,7 +117,7 @@ func assertUserRegisteredInRoom(
 }
 
 func assertUserNotRegisteredInRoom(
-	t *testing.T, conn db.Connection, user uuid.UUID, room uuid.UUID,
+	t *testing.T, conn *db.Connection, user uuid.UUID, room uuid.UUID,
 ) {
 	t.Helper()
 

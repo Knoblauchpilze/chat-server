@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/db/pgx"
-	"github.com/Knoblauchpilze/backend-toolkit/pkg/errors"
 	"github.com/Knoblauchpilze/chat-server/pkg/persistence"
 	eassert "github.com/Knoblauchpilze/easy-assert/assert"
 	"github.com/google/uuid"
@@ -50,12 +48,10 @@ func TestIT_UserRepository_Create_WhenDuplicateName_ExpectFailure(t *testing.T) 
 	_, err := repo.Create(context.Background(), tx, newUser)
 	tx.Close(context.Background())
 
-	assert.True(
-		t,
-		errors.IsErrorWithCode(err, pgx.UniqueConstraintViolation),
-		"Actual err: %v",
-		err,
-	)
+	var dbErr *db.DatabaseError
+	if assert.ErrorAs(t, err, &dbErr) {
+		assert.Equal(t, db.ErrUniqueConstraintViolation, dbErr.Code)
+	}
 	assertUserDoesNotExist(t, conn, newUser.Id)
 }
 
@@ -79,7 +75,7 @@ func TestIT_UserRepository_Get_WhenNotFound_ExpectFailure(t *testing.T) {
 	_, err := repo.Get(context.Background(), id)
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		err == db.ErrNoMatchingRows,
 		"Actual err: %v",
 		err,
 	)
@@ -106,7 +102,7 @@ func TestIT_UserRepository_GetByName_WhenNotFound_ExpectFailure(t *testing.T) {
 	_, err := repo.GetByName(context.Background(), name)
 	assert.True(
 		t,
-		errors.IsErrorWithCode(err, db.NoMatchingRows),
+		err == db.ErrNoMatchingRows,
 		"Actual err: %v",
 		err,
 	)
@@ -200,19 +196,19 @@ func TestIT_UserRepository_DeleteUserFromRooms_DoesNotDeleteOtherUsers(t *testin
 	assertUserRegisteredInRoom(t, conn, user2.Id, room.Id)
 }
 
-func newTestUserRepository(t *testing.T) (UserRepository, db.Connection) {
+func newTestUserRepository(t *testing.T) (UserRepository, *db.Connection) {
 	conn := newTestConnection(t)
 	return NewUserRepository(conn), conn
 }
 
-func newTestUserRepositoryAndTransaction(t *testing.T) (UserRepository, db.Connection, db.Transaction) {
+func newTestUserRepositoryAndTransaction(t *testing.T) (UserRepository, *db.Connection, *db.Transaction) {
 	conn := newTestConnection(t)
 	tx, err := conn.BeginTx(context.Background())
 	assert.Nil(t, err, "Actual err: %v", err)
 	return NewUserRepository(conn), conn, tx
 }
 
-func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertUserExists(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[uuid.UUID](
 		context.Background(),
 		conn,
@@ -223,7 +219,7 @@ func assertUserExists(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Equal(t, id, value)
 }
 
-func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
+func assertUserDoesNotExist(t *testing.T, conn *db.Connection, id uuid.UUID) {
 	value, err := db.QueryOne[int](
 		context.Background(),
 		conn,
@@ -234,7 +230,7 @@ func assertUserDoesNotExist(t *testing.T, conn db.Connection, id uuid.UUID) {
 	assert.Zero(t, value)
 }
 
-func insertTestUser(t *testing.T, conn db.Connection) persistence.User {
+func insertTestUser(t *testing.T, conn *db.Connection) persistence.User {
 	user := persistence.User{
 		Id:      uuid.New(),
 		Name:    "my-name-" + uuid.New().String(),
