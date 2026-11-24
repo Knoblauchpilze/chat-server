@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/Knoblauchpilze/backend-toolkit/pkg/db"
@@ -21,6 +22,11 @@ var dbTestConfig = postgresql.NewConfigForLocalhost(
 	"chat_server_manager",
 	"manager_password",
 )
+
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
+}
 
 func newTestDbConnection(t *testing.T) *db.Connection {
 	conn, err := db.New(context.Background(), dbTestConfig)
